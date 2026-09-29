@@ -48,6 +48,7 @@
 | `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit`、`graph_capabilities` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.subagents for the depth check` | `tool/call`、`graph/plan`、`tool/result` | - | 实验性。`mode: off` 不注册任何东西；`shadow` 与 `enforce` 注册相同的两个工具，只在准入上不同。`assumption` 是没有默认值的必填项，因此本目录提供了一个；`allowedTools` 与 `routes` 默认为空，这只影响审计与能力结果，不影响 schema。 |
 | `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`、`graph_query`、`history_read` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.sessionQuery for history_read` | `tool/call`、`tool/result` | - | 实验性且只读：它折叠 graph/plan、graph/node、graph/run 与 graph/edge 事件、当前轮次的工具记录以及压缩片段，自身不写入任何会话事件。 |
 | `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`、`ctx.sessionProjections`、`ctx.subagents`、`graph-contract and graph-projection mounted`、`owning Agent session` | `tool/call`、`graph/run`、`graph/node`、`graph/edge`、`subagent/catalog`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。 |
+| `@deepseek-ai/dsh-experimental-tool-knowledge` | `knowledge_cite`、`knowledge_query`、`knowledge_read`、`knowledge_write` | `ctx.tools`、`ctx.sessionProjections`、`ctx.fs`、`a ctx.knowledge provider`、`owning Agent session for knowledge_write` | `tool/call`、`approval/asked`、`approval/decided`、`knowledge/write`、`tool/result` | - | 实验性。`read-only`（默认）注册 knowledge_query、knowledge_read 与 knowledge_cite；`read-write` 另加 knowledge_write，其描述会写出所配置的证据工具，并且总是请求批准。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2684,6 +2685,155 @@ status、basis 与 version 属于 harness，出现在计划中会被拒绝。
 来源：[`packages/experimental/graph-runner/src/index.ts`](../packages/experimental/graph-runner/src/index.ts)
 
 实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。
+
+<a id="deepseek-aidsh-experimental-tool-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-knowledge`
+
+### `knowledge_cite`
+
+列出起于或止于某个知识页面的边，每条边带一个可引用的稳定边 id（e: 加 8 位十六进制）：正文链接（wikilink、mdlink）、声明的关系（derives-from、depends-on、implements、supports、contradicts、supersedes），以及指向页面所提及的工作区代码路径的 touches 边。把边 id 作为 ref 传入可查找那一条边。depth 从 1 起还会返回相距不超过该链接数的页面。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page reference, or an edge id such as e:1a2b3c4d."
+    },
+    "depth": {
+      "type": "integer",
+      "description": "Link distance of neighbor pages to include, 0 to 2 (default 0)."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_query`
+
+搜索本工作区的知识库：由之前的会话和人记录的、关于项目的持久页面。按页面包含的查询词比例排序返回页面，附带 id、标题、类型、最后更新时间与 stale（它所依赖的页面在它之后发生了变化或已被取代）。依赖某个页面之前，先用 knowledge_read 阅读它。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words to search for."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most hits to return, 1 to 10 (default 10)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_read`
+
+按 id（例如 concepts/retry.md）、不带 .md 的 id，或在知识库中唯一的文件名读取一个知识页面。返回其标题、类型、最后更新时间、stale 标记、声明的关系与 Markdown 文本。页面可能已过时：在断言关于代码的陈述之前，先对照当前文件核实。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page id, id without .md, or a unique file name."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_write`
+
+创建或替换一个知识页面。id 是位于知识库某个内容目录内的路径，例如 concepts/retry.md。sources 必须列出你在本会话中用 read 读取过的工作区文件；harness 会在页面中引用这些读取，并拒绝没有这些读取的页面。relations 只能指向已存在的页面。每次写入都需用户批准。记录关于项目的持久事实，而不是本会话的计划、进度或临时状态。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Page path such as concepts/retry.md."
+    },
+    "type": {
+      "type": "string",
+      "description": "One word such as concept, entity, source, or episode."
+    },
+    "title": {
+      "type": "string",
+      "description": "One-line title."
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown body; the harness adds frontmatter, the title heading, and the Origin section."
+    },
+    "relations": {
+      "type": "array",
+      "description": "Relations to existing pages.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "derives-from",
+              "depends-on",
+              "implements",
+              "supports",
+              "contradicts",
+              "supersedes"
+            ]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "to"
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Workspace files you read with read that the page is based on.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "title",
+    "body",
+    "sources"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+实验性。`read-only`（默认）注册 knowledge_query、knowledge_read 与 knowledge_cite；`read-write` 另加 knowledge_write，其描述会写出所配置的证据工具，并且总是请求批准。
 
 <a id="deepseek-aidsh-tool-todo"></a>
 

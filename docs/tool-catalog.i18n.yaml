@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 1e2f22610573baf0
-  zh: ea8adfb16b773a26
+  en: a76cb80e7bebfeef
+  zh: 54b1e6d48cb9e28b
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -309,8 +309,23 @@
   en: 2e99c9c30ab16d4e
   zh: 2e99c9c30ab16d4e
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-runner/graph-run:
-  en: a79043d71604055f
-  zh: e3f760c4bcad6089
+  en: 820c01d4c3d07a9f
+  zh: 528d94b42c87fb89
+/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-knowledge:
+  en: 3af5b08a61ff735c
+  zh: 3af5b08a61ff735c
+/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-knowledge/knowledge-cite:
+  en: d9fbb65592e0fcdb
+  zh: cc887694043c9b15
+/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-knowledge/knowledge-query:
+  en: 2c921b30b7f8ab25
+  zh: 2ec8b074ce53077d
+/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-knowledge/knowledge-read:
+  en: f9b3fdd43287d544
+  zh: 2a91e9d23e3e048a
+/tool-schema-catalog/deepseek-ai-dsh-experimental-tool-knowledge/knowledge-write:
+  en: d091b563e89224a6
+  zh: edf5f836e1c71678
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo:
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68

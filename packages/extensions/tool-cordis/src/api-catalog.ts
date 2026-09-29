@@ -1362,6 +1362,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'knowledge',
+    summary: 'Abstract knowledge store.',
+    description: 'Abstract knowledge store. Subclass it and load the subclass as a plugin; it registers as `ctx.knowledge` (one provider per context: loading a second throws). Every provider honors:\n\n- Reads derive edges, staleness, and ranking from the stored pages on every call; nothing derivable is stored.\n- `write` returns `refused` for an entry that breaks a store rule, including an empty `citation.sourceEventSeqs`, and throws only on I/O failure.\n- `includes` answers whether a workspace path lies inside the store, so a guard can refuse writes that bypass `write`.',
+    methods: [
+      {
+        signature: 'abstract index(scope: KnowledgeScope): Promise<KnowledgeIndex>',
+        description: 'List the readable pages, newest first, and the quarantined ones.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }],
+        returns: 'the store listing.',
+      },
+      {
+        signature: 'abstract query(scope: KnowledgeScope, text: string, limit: number): Promise<KnowledgeHit[]>',
+        description: 'Rank pages by the query words they contain.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'text', description: 'query text.' }, { name: 'limit', description: 'maximum hits.' }],
+        returns: 'hits with a score above zero, best first.',
+      },
+      {
+        signature: 'abstract read(scope: KnowledgeScope, ref: string): Promise<KnowledgePage | undefined>',
+        description: 'Read one page by id, id without `.md`, or a file name unique in the store.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference.' }],
+        returns: 'the page, or `undefined` when the reference names no readable page.',
+      },
+      {
+        signature: 'abstract cite(scope: KnowledgeScope, ref: string): Promise<KnowledgeEdge[]>',
+        description: 'Edges that start or end at one page, or the one edge with an edge id.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference or `e:` edge id.' }],
+        returns: 'matching edges; empty when the reference matches nothing.',
+      },
+      {
+        signature: 'abstract neighbors(scope: KnowledgeScope, ref: string, depth: number): Promise<KnowledgeNeighbors | undefined>',
+        description: 'Pages within `depth` links of one page, in either direction.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference.' }, { name: 'depth', description: 'maximum link distance, at least 1.' }],
+        returns: 'the pages by distance, or `undefined` when the reference names no readable page.',
+      },
+      {
+        signature: 'abstract write(scope: KnowledgeScope, entry: KnowledgeEntry, citation: KnowledgeCitation): Promise<KnowledgeWriteResult>',
+        description: 'Create or replace one page after checking every store rule.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'entry', description: 'page to write.' }, { name: 'citation', description: 'the session events the page is based on.' }],
+        returns: '`written` with the pages that became stale, or `refused` with the broken rule.',
+      },
+      {
+        signature: 'abstract includes(scope: KnowledgeScope, path: string): Promise<boolean>',
+        description: 'Whether a workspace path lies inside the store.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'path', description: 'absolute path, or a path relative to `scope.cwd`.' }],
+        returns: 'true for the store root and every path below it.',
+      },
+    ],
+  },
+  {
     key: 'llm',
     summary: 'The abstract `llm` service: an adapter registry plus a streaming model-call API, interceptable via the `llm/stream` waterfall.',
     description: 'The abstract `llm` service: an adapter registry plus a streaming model-call API, interceptable via the `llm/stream` waterfall.',
@@ -5556,6 +5605,78 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'JsonValue',
     declaration: 'export type JsonValue = null | boolean | number | string | JsonValue[] | {\n    [key: string]: JsonValue;\n};',
+  },
+  {
+    name: 'KnowledgeCitation',
+    declaration: 'export interface KnowledgeCitation {\n    sessionId: SessionId;\n    sourceEventSeqs: readonly SessionSeq[];\n    sources: readonly string[];\n    writer: KnowledgeWriter;\n}',
+  },
+  {
+    name: 'KnowledgeDeclaredRelation',
+    declaration: 'export type KnowledgeDeclaredRelation = \'derives-from\' | \'depends-on\' | \'implements\' | \'supports\' | \'contradicts\' | \'supersedes\';',
+  },
+  {
+    name: 'KnowledgeEdge',
+    declaration: 'export interface KnowledgeEdge {\n    eid: KnowledgeEdgeId;\n    from: KnowledgePageId;\n    to: string;\n    toKind: KnowledgeNodeKind;\n    relation: KnowledgeRelation;\n}',
+  },
+  {
+    name: 'KnowledgeEdgeId',
+    declaration: 'export type KnowledgeEdgeId = Branded<\'KnowledgeEdgeId\'>;',
+  },
+  {
+    name: 'KnowledgeEntry',
+    declaration: 'export interface KnowledgeEntry {\n    id: KnowledgePageId;\n    type: string;\n    title: string;\n    body: string;\n    relations: readonly KnowledgeRelationDeclaration[];\n}',
+  },
+  {
+    name: 'KnowledgeHit',
+    declaration: 'export interface KnowledgeHit extends KnowledgeIndexEntry {\n    score: number;\n}',
+  },
+  {
+    name: 'KnowledgeIndex',
+    declaration: 'export interface KnowledgeIndex {\n    entries: KnowledgeIndexEntry[];\n    quarantined: KnowledgePageId[];\n}',
+  },
+  {
+    name: 'KnowledgeIndexEntry',
+    declaration: 'export interface KnowledgeIndexEntry {\n    id: KnowledgePageId;\n    title: string;\n    type: string;\n    updated?: string;\n    stale: boolean;\n}',
+  },
+  {
+    name: 'KnowledgeNeighbors',
+    declaration: 'export interface KnowledgeNeighbors {\n    id: KnowledgePageId;\n    levels: KnowledgePageId[][];\n}',
+  },
+  {
+    name: 'KnowledgeNodeKind',
+    declaration: 'export type KnowledgeNodeKind = \'page\' | \'code\';',
+  },
+  {
+    name: 'KnowledgePage',
+    declaration: 'export interface KnowledgePage extends KnowledgeIndexEntry {\n    relations: KnowledgeRelationDeclaration[];\n    content: string;\n}',
+  },
+  {
+    name: 'KnowledgePageId',
+    declaration: 'export type KnowledgePageId = Branded<\'KnowledgePageId\'>;',
+  },
+  {
+    name: 'KnowledgeRelation',
+    declaration: 'export type KnowledgeRelation = KnowledgeDeclaredRelation | \'wikilink\' | \'mdlink\' | \'touches\';',
+  },
+  {
+    name: 'KnowledgeRelationDeclaration',
+    declaration: 'export interface KnowledgeRelationDeclaration {\n    relation: KnowledgeDeclaredRelation;\n    to: KnowledgePageId;\n}',
+  },
+  {
+    name: 'KnowledgeRule',
+    declaration: 'export type KnowledgeRule = \'layout\' | \'read-only-dir\' | \'frontmatter\' | \'origin\' | \'citation\' | \'dangling-relation\' | \'superseded-dependency\';',
+  },
+  {
+    name: 'KnowledgeScope',
+    declaration: 'export interface KnowledgeScope {\n    readonly cwd?: string | undefined;\n    readonly signal?: AbortSignal | undefined;\n}',
+  },
+  {
+    name: 'KnowledgeWriter',
+    declaration: 'export type KnowledgeWriter = \'tool\' | \'distill\';',
+  },
+  {
+    name: 'KnowledgeWriteResult',
+    declaration: 'export type KnowledgeWriteResult = {\n    kind: \'written\';\n    id: KnowledgePageId;\n    operation: \'create\' | \'update\';\n    stale: KnowledgePageId[];\n} | {\n    kind: \'refused\';\n    rule: KnowledgeRule;\n    reason: string;\n};',
   },
   {
     name: 'KvFacet',

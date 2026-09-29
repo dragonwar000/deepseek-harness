@@ -54,6 +54,10 @@ kind: "package-group"
 | [`graph-contract`](graph-contract/README.zh.md) | 确定性的 `dsh-graph/v1` 计划审计、拒绝记忆、循环边规则与 shell 写入警告，shadow 或 enforce | 注册 `graph_audit` 工具与 `graphPlans` 投影 |
 | [`graph-projection`](graph-projection/README.zh.md) | 从会话日志折叠的任务图、轮次证据与被压缩的历史，提供只读的 `graph_query`、`graph_cite` 与 `history_read` 工具 | 注册 `graph_query`、`graph_cite` 与 `history_read` 工具，以及 `graph`、`graphEvidence` 与 `graphHistory` 投影 |
 | [`graph-runner`](graph-runner/README.zh.md) | 前台运行已准入计划的 `graph_run`：每个节点一个新子代理、基于证据的完成、重试、恢复、写入范围与循环边 | 注册 `graph_run` 工具与 `fs/write-intent`/`fs/edit-intent` 监听器 |
+| [`knowledge`](knowledge/README.zh.md) | 知识库接缝：页面与边的词汇、抽象服务，以及写入与注入事件 | `ctx.knowledge` |
+| [`knowledge-wiki-filesystem`](knowledge-wiki-filesystem/README.zh.md) | 会话工作区内的 Markdown wiki 知识库：推导的边与过期状态、经规则校验的写入 | `ctx.knowledge` |
+| [`knowledge-rules`](knowledge-rules/README.zh.md) | 失败即拒绝的守卫：拒绝绕过 `knowledge_write` 的文件与 shell 写入 | 注册 `fs/write-intent`/`fs/edit-intent` 监听器与工具守卫 |
+| [`tool-knowledge`](tool-knowledge/README.zh.md) | `knowledge_query`、`knowledge_read`、`knowledge_cite` 与需审批、带出处的 `knowledge_write` | 在 `ctx.tools` 上注册四个工具 |
 
 -----
 

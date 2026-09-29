@@ -750,6 +750,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns the implicit-root roster, durable peer mailbox, shared task DAG, and continuable-child lifecycle; tool-agent-team contributes model controls.',
   },
   {
+    key: 'knowledge',
+    pkg: 'experimental-knowledge',
+    title: 'Knowledge store seam',
+    mode: 'seam',
+    implementations: ['experimental-knowledge-wiki-filesystem'],
+    consumers: ['experimental-knowledge-rules', 'experimental-tool-knowledge'],
+    note: 'The experimental Service Definition lists, searches, reads, cites, and writes pages of one knowledge store; providers derive edges and staleness on every read and refuse writes that cite no session event.',
+  },
+  {
     key: 'inspector',
     pkg: 'inspector',
     title: 'Cross-realm runtime inspection',

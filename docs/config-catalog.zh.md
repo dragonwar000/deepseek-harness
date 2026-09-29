@@ -1222,6 +1222,51 @@ export interface InspectorOptions {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-rules -->
+<a id="deepseek-aidsh-experimental-knowledge-rules"></a>
+
+## `@deepseek-ai/dsh-experimental-knowledge-rules`
+
+- `inject`: `knowledge` · `fs` · `tools`
+- `source`: [`packages/experimental/knowledge-rules/src/index.ts:28`](../packages/experimental/knowledge-rules/src/index.ts)
+
+```ts config-catalog
+/** Guard settings. */
+export interface Config {
+  /** Tool names whose `command` argument is a shell command line (default `bash`, `pwsh`). */
+  shellTools?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-rules -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem -->
+<a id="deepseek-aidsh-experimental-knowledge-wiki-filesystem"></a>
+
+## `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem`
+
+- `inject`: `fs`
+- `source`: [`packages/experimental/knowledge-wiki-filesystem/src/index.ts:34`](../packages/experimental/knowledge-wiki-filesystem/src/index.ts)
+
+```ts config-catalog
+/** Store location, layout, and limits. Invalid values fail plugin load. */
+export interface Config {
+  /** Store directory, relative to the session working directory (default `knowledge`). */
+  root?: string
+  /** Top-level directories that hold pages (default `concepts`, `entities`, `sources`, `architecture`, `tours`, `episodes`). */
+  contentDirs?: string[]
+  /** Top-level directories only people change; writes into them are refused (default `raw`). */
+  readOnlyDirs?: string[]
+  /**
+   * File extensions of backticked code paths that become `touches` edges when the file exists
+   * (default `py`, `js`, `ts`, `sh`, `yaml`, `yml`, `json`, `html`).
+   */
+  codeExtensions?: string[]
+  /** Most pages one read loads before it fails (default 2000). */
+  maxPages?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-loop-budget -->
 <a id="deepseek-aidsh-experimental-loop-budget"></a>
 
@@ -1487,6 +1532,31 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-knowledge -->
+<a id="deepseek-aidsh-experimental-tool-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-knowledge`
+
+- `inject`: `knowledge` · `fs` · `tools` · `sessionProjections`
+- `source`: [`packages/experimental/tool-knowledge/src/index.ts:31`](../packages/experimental/tool-knowledge/src/index.ts)
+
+```ts config-catalog
+/** Tool settings. Invalid values fail plugin load. */
+export interface Config {
+  /** `read-only` registers the three read tools; `read-write` adds `knowledge_write`. Default `read-only`. */
+  mode?: 'read-only' | 'read-write'
+  /** Tools whose successful calls count as reads of their `file_path` or `path` argument (default `read`). */
+  evidenceTools?: string[]
+  /** Most hits one `knowledge_query` returns (default 10). */
+  maxResults?: number
+  /** Characters of page text one `knowledge_read` returns (default 20000). */
+  maxPageChars?: number
+  /** Largest `depth` of `knowledge_cite` (default 2). */
+  maxDepth?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-knowledge -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->
 <a id="deepseek-aidsh-experimental-verifier-gate"></a>
@@ -4820,6 +4890,7 @@ export interface Config {
 | `@deepseek-ai/dsh-compaction` | `CompactionEngine` | — | [`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts) |
 | `@deepseek-ai/dsh-credentials` | `CredentialProvider` | — | [`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts) |
 | `@deepseek-ai/dsh-deepseek-account` | `DeepSeekAccount` | — | [`packages/credentials/deepseek-account/src/index.ts`](../packages/credentials/deepseek-account/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-knowledge` | `KnowledgeService` | — | [`packages/experimental/knowledge/src/index.ts`](../packages/experimental/knowledge/src/index.ts) |
 | `@deepseek-ai/dsh-file-reference` | `FileReferenceService` | — | [`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts) |
 | `@deepseek-ai/dsh-fs` | `FileSystem` | — | [`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts) |
 | `@deepseek-ai/dsh-host-directory-picker` | `DirectoryPicker` | — | [`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts) |

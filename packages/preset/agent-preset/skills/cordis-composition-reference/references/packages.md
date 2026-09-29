@@ -194,12 +194,15 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-graph-runner` | yes | Runs admitted dsh-graph/v1 plans in the foreground: each agent node a fresh subagent, verify commands and human gates as proof, retries, resume, and write-scope enforcement; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-infra-snapshot` | yes | Appends one infra/snapshot session event per agent: node, platform, cpu, memory, sandbox mode |
 | `@deepseek-ai/dsh-experimental-inspector` | yes | Experimental cross-realm CDP hub for Host debugging and Client Runtime inspection |
+| `@deepseek-ai/dsh-experimental-knowledge-rules` | yes | Fail-closed guard of the knowledge store: refuses file tool writes and edits and shell commands that change store pages without going through knowledge_write |
+| `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem` | yes | Wiki filesystem provider of the knowledge seam: Markdown pages with YAML frontmatter in the session workspace, derived links, relations, touches edges and staleness, and rule-checked writes that cite session events |
 | `@deepseek-ai/dsh-experimental-loop-budget` | yes | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor; pauses the goal on a trip; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-ptc-runtime-python` | yes | CPython subprocess implementation of the DeepSeek Harness PTC execution seam |
 | `@deepseek-ai/dsh-experimental-speech-to-text` | yes | Experimental speech recognition with independently selectable providers |
 | `@deepseek-ai/dsh-experimental-speech-to-text-sensevoice` | yes | Local SenseVoice ONNX transcription with a managed sherpa-onnx process |
 | `@deepseek-ai/dsh-experimental-stationarity-guard` | yes | Step-boundary guard: reminds or stops an agent whose tool steps keep returning identical evidence; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | yes | Scoped model-facing Agent Teams tools over ctx.agentTeams |
+| `@deepseek-ai/dsh-experimental-tool-knowledge` | yes | Model-facing knowledge tools: knowledge_query, knowledge_read, knowledge_cite, and approval-gated knowledge_write whose pages cite the session's successful reads |
 | `@deepseek-ai/dsh-experimental-verifier-gate` | yes | Turn-stopping gate: runs configured verify commands before a turn may end; shadow or enforce |
 
 ## extensions

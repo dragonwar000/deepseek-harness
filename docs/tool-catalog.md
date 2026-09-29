@@ -44,6 +44,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit`, `graph_capabilities` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.subagents for the depth check` | `tool/call`, `graph/plan`, `tool/result` | - | Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same two tools and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` and `routes` default to none, which only changes audit and capability results, not the schemas. |
 | `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`, `graph_query`, `history_read` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.sessionQuery for history_read` | `tool/call`, `tool/result` | - | Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn's tool records, and compaction spans, and writes no session event of its own. |
 | `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`, `ctx.sessionProjections`, `ctx.subagents`, `graph-contract and graph-projection mounted`, `owning Agent session` | `tool/call`, `graph/run`, `graph/node`, `graph/edge`, `subagent/catalog`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema. |
+| `@deepseek-ai/dsh-experimental-tool-knowledge` | `knowledge_cite`, `knowledge_query`, `knowledge_read`, `knowledge_write` | `ctx.tools`, `ctx.sessionProjections`, `ctx.fs`, `a ctx.knowledge provider`, `owning Agent session for knowledge_write` | `tool/call`, `approval/asked`, `approval/decided`, `knowledge/write`, `tool/result` | - | Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2673,6 +2674,155 @@ The result names the stop reason and every node's status. After NO_PROGRESS, fix
 Source: [`packages/experimental/graph-runner/src/index.ts`](../packages/experimental/graph-runner/src/index.ts)
 
 Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema.
+
+<a id="deepseek-aidsh-experimental-tool-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-knowledge`
+
+### `knowledge_cite`
+
+List the edges that start or end at one knowledge page, each with a stable edge id (e: and 8 hex digits) you can cite: body links (wikilink, mdlink), declared relations (derives-from, depends-on, implements, supports, contradicts, supersedes), and touches edges to workspace code paths the page names. Pass an edge id as ref to look up that one edge. depth from 1 also returns the pages within that many links.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page reference, or an edge id such as e:1a2b3c4d."
+    },
+    "depth": {
+      "type": "integer",
+      "description": "Link distance of neighbor pages to include, 0 to 2 (default 0)."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_query`
+
+Search the knowledge store of this workspace: durable pages about the project that earlier sessions and people recorded. Returns pages ranked by the share of query words they contain, with id, title, type, last update, and stale (a page it depends on changed after it or was superseded). Read a page with knowledge_read before relying on it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words to search for."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most hits to return, 1 to 10 (default 10)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_read`
+
+Read one knowledge page by id (for example concepts/retry.md), by id without .md, or by a file name that is unique in the store. Returns its title, type, last update, stale flag, declared relations, and Markdown text. Pages can be outdated: verify statements about code against the current files before asserting them.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page id, id without .md, or a unique file name."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_write`
+
+Create or replace one knowledge page. id is a path such as concepts/retry.md inside one of the store's content directories. sources must list workspace files you read in this session with read; the harness cites those reads in the page and refuses a page without them. relations may point only at existing pages. The user approves every write. Record durable facts about the project, not plans, progress, or temporary state of this session.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Page path such as concepts/retry.md."
+    },
+    "type": {
+      "type": "string",
+      "description": "One word such as concept, entity, source, or episode."
+    },
+    "title": {
+      "type": "string",
+      "description": "One-line title."
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown body; the harness adds frontmatter, the title heading, and the Origin section."
+    },
+    "relations": {
+      "type": "array",
+      "description": "Relations to existing pages.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "derives-from",
+              "depends-on",
+              "implements",
+              "supports",
+              "contradicts",
+              "supersedes"
+            ]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "to"
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Workspace files you read with read that the page is based on.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "title",
+    "body",
+    "sources"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval.
 
 <a id="deepseek-aidsh-tool-todo"></a>
 

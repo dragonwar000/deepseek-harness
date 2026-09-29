@@ -54,6 +54,10 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`graph-contract`](graph-contract/README.md) | Deterministic `dsh-graph/v1` plan audit with rejection memory, loop-edge rules, and a shell-write warning, shadow or enforce | registers the `graph_audit` tool and the `graphPlans` projection |
 | [`graph-projection`](graph-projection/README.md) | Task graphs, turn evidence, and compacted history folded from the session log, with the read-only `graph_query`, `graph_cite`, and `history_read` tools | registers the `graph_query`, `graph_cite`, and `history_read` tools and the `graph`, `graphEvidence`, and `graphHistory` projections |
 | [`graph-runner`](graph-runner/README.md) | Foreground `graph_run` for admitted plans: fresh subagent per node, proof-based completion, retries, resume, write scopes, and loop edges | registers the `graph_run` tool and `fs/write-intent`/`fs/edit-intent` listeners |
+| [`knowledge`](knowledge/README.md) | Knowledge store seam: page and edge vocabulary, abstract service, and write and inject events | `ctx.knowledge` |
+| [`knowledge-wiki-filesystem`](knowledge-wiki-filesystem/README.md) | Markdown wiki store in the session workspace with derived edges, staleness, and rule-checked writes | `ctx.knowledge` |
+| [`knowledge-rules`](knowledge-rules/README.md) | Fail-closed guard refusing file and shell writes that bypass `knowledge_write` | registers `fs/write-intent`/`fs/edit-intent` listeners and a tool guard |
+| [`tool-knowledge`](tool-knowledge/README.md) | `knowledge_query`, `knowledge_read`, `knowledge_cite`, and approval-gated `knowledge_write` that cites session reads | registers four tools on `ctx.tools` |
 
 -----
 

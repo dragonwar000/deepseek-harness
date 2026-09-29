@@ -12885,6 +12885,328 @@
       }
     },
     {
+      "key": "event:knowledge/inject",
+      "kind": "event",
+      "event": "knowledge/inject",
+      "surface": false,
+      "digest": "e472cdd6eb69e2b1f370cf990d8b4863aac452735a27b7edf945eee79017156c",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 5,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "bytes",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "digest",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "ids",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "lines",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "omitted",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "quarantined",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "knowledge/inject"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:knowledge/write",
+      "kind": "event",
+      "event": "knowledge/write",
+      "surface": false,
+      "digest": "2a3b113cb05f616fac21c4a8701fb388170f1f4ee3f85ca3c1dd802791ef3b41",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 25,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 26,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "applied",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "mode",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "operation",
+                "type": 7,
+                "optional": true
+              },
+              {
+                "name": "refusal",
+                "type": 10,
+                "optional": true
+              },
+              {
+                "name": "sourceEventSeqs",
+                "type": 19,
+                "optional": false
+              },
+              {
+                "name": "sources",
+                "type": 21,
+                "optional": false
+              },
+              {
+                "name": "stale",
+                "type": 21,
+                "optional": false
+              },
+              {
+                "name": "writer",
+                "type": 22,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              5,
+              6
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "enforce"
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "union",
+            "types": [
+              8,
+              9
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "create"
+          },
+          {
+            "kind": "literal",
+            "value": "update"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "reason",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "rule",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "citation"
+          },
+          {
+            "kind": "literal",
+            "value": "dangling-relation"
+          },
+          {
+            "kind": "literal",
+            "value": "frontmatter"
+          },
+          {
+            "kind": "literal",
+            "value": "layout"
+          },
+          {
+            "kind": "literal",
+            "value": "origin"
+          },
+          {
+            "kind": "literal",
+            "value": "read-only-dir"
+          },
+          {
+            "kind": "literal",
+            "value": "superseded-dependency"
+          },
+          {
+            "kind": "array",
+            "element": 20
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "union",
+            "types": [
+              23,
+              24
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "distill"
+          },
+          {
+            "kind": "literal",
+            "value": "tool"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "knowledge/write"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:llm/retry",
       "kind": "event",
       "event": "llm/retry",
@@ -26714,6 +27036,11 @@
       "sources": []
     },
     {
+      "digest": "14490c86e74799c1a4c36900e7b672b1165eb4b385b12f4e698af110fb9132cb",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "146a1af39f7ea4cb967b4213465441ef635ce57319070d2d389f3551e966f475",
       "names": [],
       "sources": []
@@ -27192,6 +27519,11 @@
       "sources": []
     },
     {
+      "digest": "28b6e694897cd6f38ee9e4c3411a09c9362b3156cb2146c7a0b067b52a2e83f0",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "290f32bfd81ff85a8095886a8066fae06e885942b63a8bcd6a8d66d328445808",
       "names": [],
       "sources": []
@@ -27217,6 +27549,11 @@
     },
     {
       "digest": "29ca41a99f866ff073379f008adf456e05ff4eee31618c71b2a69b10d56bec8b",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "2a3b113cb05f616fac21c4a8701fb388170f1f4ee3f85ca3c1dd802791ef3b41",
       "names": [],
       "sources": []
     },
@@ -27267,6 +27604,11 @@
       "sources": [
         "packages/experimental/graph-contract/src/types.ts:202"
       ]
+    },
+    {
+      "digest": "2d8a3e29f33932989810ec2546da5ec9d24e8663abd008d5fa49fada01f226d2",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "2da725e554cd89301d829ed9dc45a572c3cd1b93b5e91d0d71f007976d8a0863",
@@ -27478,6 +27820,11 @@
     },
     {
       "digest": "393b018bb03a640a290a48c53bde8438e2c98a44695385a55f4348fc7020158c",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "39a306a9c512214a647ba7ae5287f42fd8d0b7a333cd5f97517090a4e989ef15",
       "names": [],
       "sources": []
     },
@@ -27844,6 +28191,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphNodeId",
         "packages/experimental/graph-contract/src/types.ts#GraphPlanId",
         "packages/experimental/graph-contract/src/types.ts#GraphRunId",
+        "packages/experimental/knowledge/src/types.ts#KnowledgePageId",
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackVersion",
         "packages/goal/goal/src/types.ts#GoalId",
         "packages/interaction/commands/src/brand.ts#CommandId",
@@ -27872,6 +28220,7 @@
         "packages/experimental/graph-contract/src/types.ts:14",
         "packages/experimental/graph-contract/src/types.ts:17",
         "packages/experimental/graph-contract/src/types.ts:258",
+        "packages/experimental/knowledge/src/types.ts:12",
         "packages/feedback/message-feedback/src/types.ts:14",
         "packages/goal/goal/src/types.ts:17",
         "packages/interaction/commands/src/brand.ts:31",
@@ -27936,6 +28285,11 @@
     },
     {
       "digest": "4f507598cf476214aa7646ce7841a7064a9dcb05d0a1eaaefaf79c2b738f160f",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "4f75496df3103406890a14ab6b6b283c88493be9ecbcc18c2b255bc929fd0c5f",
       "names": [],
       "sources": []
     },
@@ -28174,6 +28528,11 @@
       "sources": []
     },
     {
+      "digest": "59becb1de54ba8082f1c34b196fb6e1ba3fe7ea17d1894203d3fa9b462512af5",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "5abab3a27fd2736660ecddd94b28d6bbf114986dd894880153bd1be3ccacb563",
       "names": [],
       "sources": []
@@ -28246,6 +28605,15 @@
       "digest": "5e04b790389779f90159b46252b70405410333ee86e34a52680745fe095e132a",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "5e608e6312db176c4cde49e357f68496a774bfda3928798656050ec98339412d",
+      "names": [
+        "packages/experimental/knowledge/src/types.ts#KnowledgeRule"
+      ],
+      "sources": [
+        "packages/experimental/knowledge/src/types.ts:140"
+      ]
     },
     {
       "digest": "5e6cf94f34b0ed83fadc4b6ad74cf28e0458f507bafe03117ee982996fc1c35d",
@@ -28367,6 +28735,15 @@
       "digest": "641c5917a4504be74dd8eeef9ad324c83daa7ac76d2c429b5c64b03412d39dad",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "64301d98dfb6f8e16d8eabe8328d1b4ab2ca54d0a04fcf914a607b34f8e09040",
+      "names": [
+        "packages/experimental/knowledge/src/types.ts#KnowledgeInjectRecord"
+      ],
+      "sources": [
+        "packages/experimental/knowledge/src/types.ts:191"
+      ]
     },
     {
       "digest": "6487b10ba7542f3c447b1e41a1c6a590b7bfafe0b9b66b49f34028da85bb970f",
@@ -28747,6 +29124,13 @@
       "sources": []
     },
     {
+      "digest": "767c7ce033436882994e000800349f53cfa1438ae7469ffb33dec18ec8ea4afe",
+      "names": [],
+      "sources": [
+        "packages/experimental/knowledge/src/types.ts:187"
+      ]
+    },
+    {
       "digest": "76d88d9b441e7edd7efa97cf77cb4074499d2df97cf882ed388c1d908f694cb0",
       "names": [
         "packages/experimental/graph-contract/src/types.ts#GraphNodeBudget"
@@ -28999,6 +29383,11 @@
       "sources": []
     },
     {
+      "digest": "834da3217c2792b810e8d5cf8a18be75bf0bccd3612f74490a5e017186472469",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "838a2108842c8cef0477e91d1baa17db142ca5abd56ac6d786768428a3ad7df5",
       "names": [
         "packages/core/tools/src/json-schema.ts#ObjectJsonSchema"
@@ -29223,6 +29612,15 @@
       ],
       "sources": [
         "packages/schedule/schedule/src/types.ts:237"
+      ]
+    },
+    {
+      "digest": "8f0d2eb1c35c35a097377d4e55a1c031142c1dd3395112253a9b67e3fb6f793e",
+      "names": [
+        "packages/experimental/knowledge/src/types.ts#KnowledgeWriter"
+      ],
+      "sources": [
+        "packages/experimental/knowledge/src/types.ts:125"
       ]
     },
     {
@@ -30430,6 +30828,11 @@
       ]
     },
     {
+      "digest": "c66c561db80e334d620372be95d2d893fe5931645317d6c961e001ae124faac4",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "c6e4fa548c431804f6adebfaed3e343205c813699d2a191f990a7b1133e8c5ba",
       "names": [],
       "sources": []
@@ -30536,6 +30939,11 @@
       "sources": []
     },
     {
+      "digest": "ce4bba293669f2c175c1216babd2ecfb0509c6bc786a3b8604f777738da1870f",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "ceb8e2992b1c782bbe8fce50e6474daeab5418607df876f56b2dd7a776ffebde",
       "names": [],
       "sources": []
@@ -30565,6 +30973,11 @@
       "sources": []
     },
     {
+      "digest": "d12954880962924ea4478b20828bdda4249a3cc62c0cd480ae3c273f3e144bef",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "d27c90fe02ec1e48c4ea704130ab475c769a9355075c090c41622f99517e711a",
       "names": [
         "packages/experimental/graph-contract/src/types.ts#GraphRejectionCode"
@@ -30577,6 +30990,15 @@
       "digest": "d28765f87d6b6ab408e0b2f3e7e297791b004b806d8e302c49903ebae815feb2",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "d2f16bd8e5a78794203fb47c501ee83022c53cdb0d9c0109ba77fbbdd489b2fc",
+      "names": [
+        "packages/experimental/knowledge/src/types.ts#KnowledgeWriteRecord"
+      ],
+      "sources": [
+        "packages/experimental/knowledge/src/types.ts:169"
+      ]
     },
     {
       "digest": "d3c0b323291b3fd396ec50af064f84f347b7d5df62fbec370268a744b856fc4e",
@@ -30831,6 +31253,11 @@
       "sources": []
     },
     {
+      "digest": "e472cdd6eb69e2b1f370cf990d8b4863aac452735a27b7edf945eee79017156c",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "e481c46af3813e0010558e93f578b2986acd658404cec2d1679e3ac2a6c48654",
       "names": [],
       "sources": [
@@ -31061,6 +31488,11 @@
       ]
     },
     {
+      "digest": "f10975b457a534221f41f840599daa11a82c4a44dcd764494afe647d96d6b26c",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "f1184920e1199c2c5e29777f9385a67b368a65e9858cfd1e5ba4b854873e449f",
       "names": [],
       "sources": []
@@ -31243,6 +31675,11 @@
     },
     {
       "digest": "f789af5ab844827eb5a4f357c0afae1eeed108c6c22d8ca1a56e586b349a7c85",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "f87fc910e41b8a1b256d544037d8e7ff0ae2a5f51f474d58fee46eec4a7e8415",
       "names": [],
       "sources": []
     },

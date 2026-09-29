@@ -66,6 +66,8 @@ import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
 import * as GraphContract from '@deepseek-ai/dsh-experimental-graph-contract'
 import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
 import * as GraphRunner from '@deepseek-ai/dsh-experimental-graph-runner'
+import WikiFilesystemKnowledge from '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
+import * as ToolKnowledge from '@deepseek-ai/dsh-experimental-tool-knowledge'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import type PluginManager from '@deepseek-ai/dsh-plugin-manager'
 import * as PluginManagerTools from '@deepseek-ai/dsh-plugin-manager/tools'
@@ -661,6 +663,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
       })
     },
     note: 'Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-tool-knowledge',
+    dir: 'tool-knowledge',
+    source: 'packages/experimental/tool-knowledge/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'ctx.fs', 'a ctx.knowledge provider', 'owning Agent session for knowledge_write'],
+    writes: ['tool/call', 'approval/asked', 'approval/decided', 'knowledge/write', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(LocalFileSystem)
+      await ctx.plugin(WikiFilesystemKnowledge)
+      await ctx.plugin(ToolKnowledge, { mode: 'read-write' })
+    },
+    note: 'Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-todo',
