@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-09-30-graph-evidence-heuristic-claims.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.md
+/agent-note-final-answer-evidence-is-a-heuristic-fold-of-the-turn-s-tool-records:
+  en: c395b74771635086
+  zh: 4a0bb59b7c69cb4b
+/agent-note-final-answer-evidence-is-a-heuristic-fold-of-the-turn-s-tool-records/problem:
+  en: 8e48c440e081ee8f
+  zh: a318a717aa9cef03
+/agent-note-final-answer-evidence-is-a-heuristic-fold-of-the-turn-s-tool-records/decision:
+  en: baba62c8bc7c4483
+  zh: 05b7b2fb2a79265e
+/agent-note-final-answer-evidence-is-a-heuristic-fold-of-the-turn-s-tool-records/alternatives-considered:
+  en: 4e6efc0f5fbc09d1
+  zh: f2bbea3826b0d8b2
+/agent-note-final-answer-evidence-is-a-heuristic-fold-of-the-turn-s-tool-records/consequences:
+  en: 0d8267dd7bc2bd78
+  zh: a032cf18604a6361

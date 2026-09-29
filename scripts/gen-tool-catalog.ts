@@ -640,19 +640,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-experimental-graph-projection',
     dir: 'graph-projection',
     source: 'packages/experimental/graph-projection/src/index.ts',
-    requires: ['ctx.tools', 'ctx.sessionProjections', 'owning Agent session'],
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'owning Agent session', 'optional ctx.sessionQuery for history_read'],
     writes: ['tool/call', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(GraphProjection)
     },
-    note: 'Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own.',
+    note: 'Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn\'s tool records, and compaction spans, and writes no session event of its own.',
   },
   {
     pkg: '@deepseek-ai/dsh-experimental-graph-runner',
     dir: 'graph-runner',
     source: 'packages/experimental/graph-runner/src/index.ts',
     requires: ['ctx.tools', 'ctx.sessionProjections', 'ctx.subagents', 'graph-contract and graph-projection mounted', 'owning Agent session'],
-    writes: ['tool/call', 'graph/run', 'graph/node', 'subagent/catalog', 'approval/asked', 'approval/decided', 'tool/result'],
+    writes: ['tool/call', 'graph/run', 'graph/node', 'graph/edge', 'subagent/catalog', 'approval/asked', 'approval/decided', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(SubagentRuntime)
       await ctx.plugin(GraphRunner, {

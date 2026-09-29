@@ -14,6 +14,7 @@ import { REJECTION_RULES, rejection } from './audit.ts'
 import type {
   GraphCheck,
   GraphContextScope,
+  GraphEdgeRecord,
   GraphEdgeRelation,
   GraphLevel,
   GraphNodeBasis,
@@ -93,19 +94,19 @@ export function normalizeWriteScope(value: string): string | undefined {
 }
 
 /**
- * Whether a value is an object-rooted JSON Schema in the dsh-tools subset.
- * @param value - candidate schema.
- * @returns true when `assertObjectJsonSchema` accepts it.
+ * Why a value is not an object-rooted JSON Schema in the dsh-tools subset.
+ * @param value - candidate node output schema.
+ * @returns each violation with its path rooted at `output`, or none when `assertObjectJsonSchema` accepts it.
  */
-function isObjectJsonSchema(value: unknown): value is ObjectJsonSchema {
+function outputSchemaViolations(value: unknown): string[] {
   try {
     assertObjectJsonSchema(value)
   } catch (error) {
     /* v8 ignore next -- assertObjectJsonSchema reports every violation as JsonSchemaError; any other throw is a defect and propagates. */
     if (!(error instanceof JsonSchemaError)) throw error
-    return false
+    return error.violations.map(violation => violation.replace(/^schema/u, 'output'))
   }
-  return true
+  return []
 }
 
 const unique = (items: readonly unknown[]): boolean => new Set(items).size === items.length
@@ -131,7 +132,9 @@ const writeScope = z.string().transform((value, ctx) => {
   return scope
 })
 
-const outputSchema = z.custom<ObjectJsonSchema>(isObjectJsonSchema, 'must be an object-rooted JSON Schema using only type, properties, required, additionalProperties, items, enum, const, oneOf, and annotations')
+const outputSchema = z.custom<ObjectJsonSchema>().superRefine((value, ctx) => {
+  for (const violation of outputSchemaViolations(value)) ctx.addIssue(`unsupported output schema: ${violation}`)
+})
 
 const bindingSchema = z.object({
   name: text,
@@ -157,12 +160,20 @@ const nodeSchema = z.object({
   category: text.optional(),
 }).strict()
 
+const cycleGuardSchema = z.object({
+  maxIterations: positiveInt,
+  until: text,
+  plateauAfter: positiveInt.optional(),
+  metricCommand: text.optional(),
+}).strict().refine(guard => (guard.plateauAfter === undefined) === (guard.metricCommand === undefined), 'plateauAfter and metricCommand must be set together')
+
 const edgeSchema = z.object({
   from: graphNodeIdSchema,
   to: graphNodeIdSchema,
   relation: z.enum(keysOf(EDGE_RELATIONS)),
   artifact: z.string(),
   allowedFields: z.array(text).optional(),
+  cycleGuard: cycleGuardSchema.optional(),
 }).strict()
 
 /** One capability route. */
@@ -300,6 +311,13 @@ export const sessionIdSchema = z.string().min(1).transform(value => brandString<
 /** Lossless JSON value schema. */
 export const jsonValueSchema = jsonValue
 
+const checkSchema = z.object({
+  command: z.string(),
+  exitCode: z.number().int().nullable(),
+  timedOut: z.boolean(),
+  outputTail: z.string(),
+}).strict()
+
 /** `graph/node` payload schema. */
 export const graphNodeRecordSchema = z.object({
   runId: graphRunIdSchema,
@@ -312,14 +330,10 @@ export const graphNodeRecordSchema = z.object({
   attempt: nonNegativeInt,
   revision: positiveInt,
   fingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
+  iteration: nonNegativeInt.optional(),
   childSession: sessionIdSchema.optional(),
   output: jsonValue.optional(),
-  checks: z.array(z.object({
-    command: z.string(),
-    exitCode: z.number().int().nullable(),
-    timedOut: z.boolean(),
-    outputTail: z.string(),
-  }).strict()).optional(),
+  checks: z.array(checkSchema).optional(),
   carriedFrom: positiveInt.optional(),
   violations: z.array(z.string()).optional(),
   detail: z.string().optional(),
@@ -335,3 +349,21 @@ export const graphRunRecordSchema = z.object({
   stopReason: stopReasonSchema.optional(),
   detail: z.string().optional(),
 }).strict() as z.ZodType<GraphRunRecord>
+
+/** Cycle-edge outcome schema. */
+export const edgeOutcomeSchema = z.enum(['fired', 'until-met', 'exhausted', 'plateau'])
+
+/** `graph/edge` payload schema. */
+export const graphEdgeRecordSchema = z.object({
+  runId: graphRunIdSchema,
+  planId: graphPlanIdSchema,
+  version: positiveInt,
+  from: graphNodeIdSchema,
+  to: graphNodeIdSchema,
+  iteration: nonNegativeInt,
+  fireCount: nonNegativeInt,
+  outcome: edgeOutcomeSchema,
+  checks: z.array(checkSchema),
+  metric: z.string().optional(),
+  output: jsonValue.optional(),
+}).strict() as z.ZodType<GraphEdgeRecord>

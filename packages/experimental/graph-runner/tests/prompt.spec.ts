@@ -66,4 +66,11 @@ describe('nodePrompt', () => {
     const lone = { ...node(graph, 'check'), id: graphNodeId('lone') }
     expect(nodePrompt(graph, 1, lone, [], false)).toContain('Artifacts to check yourself, as they are now: none declared.')
   })
+
+  it('adds loop feedback from a fired cycle edge', () => {
+    const graph = plan()
+    const text = nodePrompt(graph, 1, node(graph, 'build'), [], false, { from: graphNodeId('check'), fire: 2, output: { verdict: 'fail' } })
+    expect(text).toContain('Loop feedback from check (fire 2): {"verdict":"fail"}\nRevise your result using this feedback.')
+    expect(nodePrompt(graph, 1, node(graph, 'build'), [], false, { from: graphNodeId('check'), fire: 1, output: undefined })).toContain('Loop feedback from check (fire 1): none')
+  })
 })

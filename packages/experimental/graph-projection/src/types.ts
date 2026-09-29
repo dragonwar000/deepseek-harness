@@ -1,11 +1,12 @@
 /**
  * Pure types of the graph projection: the `graph` task-graph state folded
- * from admitted `graph/plan` versions and the runner's `graph/node` and
- * `graph/run` records.
+ * from admitted `graph/plan` versions and the runner's `graph/node`,
+ * `graph/run`, and `graph/edge` records.
  * @module @deepseek-ai/dsh-experimental-graph-projection/types
  */
 
 import type {
+  GraphEdgeOutcome,
   GraphNodeBasis,
   GraphNodeId,
   GraphNodeKind,
@@ -39,6 +40,8 @@ export interface GraphTaskNode {
   revision: number
   /** Node fingerprint; empty for a node that cannot be ordered. */
   fingerprint: string
+  /** Loop iteration; 0 before any cycle edge reopened the node. */
+  iteration: number
   /** Basis of the latest status. */
   basis?: GraphNodeBasis
   /** Structured output of the latest attempt. */
@@ -77,6 +80,24 @@ export interface GraphRunView {
   stopReason?: GraphStopReason
 }
 
+/** Decision state of one cycle edge of the admitted version. */
+export interface GraphEdgeView {
+  /** Node the edge leaves. */
+  from: GraphNodeId
+  /** Node the loop restarts at. */
+  to: GraphNodeId
+  /** Fires so far in this version. */
+  fireCount: number
+  /** Iteration of `from` at the latest decision, or null before any decision. */
+  decided: number | null
+  /** Latest outcome. */
+  outcome?: GraphEdgeOutcome
+  /** Metric values of every decision that read one, oldest first. */
+  metrics: string[]
+  /** Output the latest decision sent back; set only by a fire. */
+  output?: JsonValue
+}
+
 /** The task graph of the latest admitted version of one plan. */
 export interface GraphTask {
   /** Plan id. */
@@ -93,6 +114,8 @@ export interface GraphTask {
   carry: GraphCarry | null
   /** Runs of this version, oldest first. */
   runs: GraphRunView[]
+  /** Cycle edges of this version with their decisions, in declaration order. */
+  edges: GraphEdgeView[]
 }
 
 /** `graph` projection state; a set `failure` is terminal. */
@@ -103,9 +126,88 @@ export interface GraphState {
   failure?: string
 }
 
+/** Kind of record that mentions a claimed path or command. */
+export type EvidenceLeafKind = 'tool-record' | 'observed' | 'absence'
+
+/** One record of the current turn that mentions a path or command. */
+export interface EvidenceLeaf {
+  /** `tool-record`: a tool call argument; `observed`: a successful tool result; `absence`: a failed tool result. */
+  kind: EvidenceLeafKind
+  /** Seq of the `tool/call` or `tool/result` event. */
+  seq: number
+  /** Tool name. */
+  tool: string
+}
+
+/** One path or command the current turn's records mention, with the latest leaf of each kind. */
+export interface EvidenceMention {
+  /** Normalized path or command. */
+  text: string
+  /** Latest leaf per kind, in kind order. */
+  leaves: EvidenceLeaf[]
+}
+
+/** One path or command an assistant message names; no leaf means parametric. */
+export interface EvidenceClaim {
+  /** Path or command. */
+  kind: 'path' | 'command'
+  /** Normalized text. */
+  text: string
+  /** Records of the turn that mention it, latest per kind. */
+  leaves: EvidenceLeaf[]
+}
+
+/** Claims of the latest assistant message. */
+export interface EvidenceAnswer {
+  /** Turn of the message. */
+  turn: number
+  /** Seq of the `assistant/message` event. */
+  seq: number
+  /** Claims in answer order. */
+  claims: EvidenceClaim[]
+}
+
+/** `graphEvidence` projection state: the current turn's records and the claims of its latest assistant message. */
+export interface EvidenceState {
+  /** Turn the records belong to. */
+  turn: number
+  /** Tool calls of the turn, to name results. */
+  calls: { callId: string; tool: string }[]
+  /** Mentioned paths, sorted. */
+  paths: EvidenceMention[]
+  /** Mentioned commands, sorted. */
+  commands: EvidenceMention[]
+  /** Claims of the turn's latest assistant message, or null before one. */
+  answer: EvidenceAnswer | null
+}
+
+/** One span that compaction replaced (`summary`) or shortened in place (`prune`). */
+export interface HistorySpan {
+  /** Seq of the `compaction/summary` or `compaction/prune` event; the span's id for history_read. */
+  seq: number
+  /** Which compaction produced it. */
+  kind: 'summary' | 'prune'
+  /** First shadowed surface seq. */
+  start: number
+  /** Last shadowed surface seq. */
+  end: number
+  /** Every shadowed surface seq, in surface order. */
+  items: number[]
+}
+
+/** `graphHistory` projection state. */
+export interface HistoryState {
+  /** Spans in log order. */
+  spans: HistorySpan[]
+}
+
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
     /** Task graphs of admitted plans with runner state. */
     graph: GraphState
+    /** Heuristic evidence of the current turn and the claims of its latest assistant message. */
+    graphEvidence: EvidenceState
+    /** Spans that compaction replaced or shortened, readable with history_read. */
+    graphHistory: HistoryState
   }
 }

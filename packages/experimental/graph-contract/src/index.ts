@@ -31,13 +31,15 @@ import { graphPlansProjection, historyOf } from './projection.ts'
 import { parsePlan } from './schema.ts'
 import type { GraphNodeBudget, GraphPlanHistory, GraphPlansState, GraphRoute } from './types.ts'
 
-export { auditPlan, planOrder, planWaves, REJECTION_RULES, rejection, routesFor, runsAsAgent, scopesOverlap } from './audit.ts'
+export { auditPlan, cycleBody, planOrder, planWaves, reaches, REJECTION_RULES, rejection, routesFor, runsAsAgent, scopesOverlap } from './audit.ts'
 export type { AuditEnvironment, AuditResult, RejectionRule } from './audit.ts'
 export { canonicalJson, planSha } from './digest.ts'
 export { applyGraphPlanEvent, emptyGraphPlans, graphPlansProjection, historyOf } from './projection.ts'
-export { canTransition, needSatisfied, NODE_TRANSITIONS, nodeFingerprints } from './run.ts'
+export { canReopen, canTransition, needSatisfied, NODE_TRANSITIONS, nodeFingerprints } from './run.ts'
 export {
+  edgeOutcomeSchema,
   GRAPH_FORMAT,
+  graphEdgeRecordSchema,
   graphNodeId,
   graphNodeIdSchema,
   graphNodeRecordSchema,
@@ -65,7 +67,10 @@ export type { ParsedPlan } from './schema.ts'
 export type {
   GraphCheck,
   GraphContextScope,
+  GraphCycleGuard,
   GraphEdge,
+  GraphEdgeOutcome,
+  GraphEdgeRecord,
   GraphEdgeRelation,
   GraphInputBinding,
   GraphLevel,
@@ -111,10 +116,14 @@ export interface Config {
   assumption?: string
   /** Global tools a graph node may declare; default none. */
   allowedTools?: string[]
+  /** Tools a node may declare that run shell commands; the audit warns for each such declaration. Default none. */
+  shellTools?: string[]
   /** Run limits per kind for one plan's worst case; 0 (default) is unlimited. */
   runBudget?: GraphNodeBudget
   /** Capability routes: a node's category selects the provider and model of its subagent. */
   routes?: GraphRouteConfig[]
+  /** Highest `cycleGuard.maxIterations` a plan may declare (default 8). */
+  maxCycleIterations?: number
 }
 
 /** One configured capability route. */
@@ -134,6 +143,7 @@ export const Config: z<Config> = z.object({
   mode: z.union(['off', 'shadow', 'enforce']).default('shadow'),
   assumption: z.string().default(''),
   allowedTools: z.array(z.string()).default([]),
+  shellTools: z.array(z.string()).default([]),
   runBudget: z.object({
     steps: z.number().default(0),
     tokens: z.number().default(0),
@@ -145,15 +155,16 @@ export const Config: z<Config> = z.object({
     model: z.string().required(),
     reliability: z.union(['verified', 'unverified']).default('unverified'),
   })).default([]),
+  maxCycleIterations: z.number().default(8),
 })
 
 /** Model-facing description of `graph_audit`. */
 export const GRAPH_AUDIT_DESCRIPTION = [
-  'Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version.',
+  'Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version. It warns when a node declares a tool that can write files through a shell.',
   'Every call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.',
   'Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).',
-  'Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).',
-  'Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).',
+  'Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema using only type, properties, required, additionalProperties, items, enum, const, oneOf, and annotations; every property declares a type; verification nodes require "verdict": {"type": "string", "enum": ["pass", "fail"]}); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).',
+  'Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional); cycleGuard (optional) {maxIterations, until, plateauAfter?, metricCommand?} marks a loop edge: relation feeds, from a node back to itself or to a node it depends on, not listed in needs. When from finishes, the loop runs again unless the until shell command exits 0, maxIterations is reached, or the metricCommand output stayed the same for plateauAfter decisions. Only the from node of a loop may feed nodes outside it.',
   'Status, basis, and version belong to the harness and are rejected inside a plan.',
 ].join('\n\n')
 
@@ -316,12 +327,18 @@ export function apply(ctx: Context, config: Config): void {
   if (allowedTools.has(RUN_CODE_NAME)) {
     throw new Error(`graph-contract: allowedTools cannot name ${RUN_CODE_NAME}; it is the PTC transport, not a node tool`)
   }
+  const shellTools = new Set(config.shellTools as string[])
+  if ([...shellTools].some(tool => tool.trim() === '')) throw new Error('graph-contract: shellTools entries must be non-blank')
   const runBudget = config.runBudget as Required<GraphNodeBudget>
   for (const kind of ['steps', 'tokens', 'wallMs'] as const) {
     const value = runBudget[kind]
     if (!Number.isSafeInteger(value) || value < 0) {
       throw new Error(`graph-contract: invalid runBudget.${kind} ${value} — must be an integer >= 0`)
     }
+  }
+  const maxCycleIterations = config.maxCycleIterations as number
+  if (!Number.isSafeInteger(maxCycleIterations) || maxCycleIterations < 1) {
+    throw new Error(`graph-contract: invalid maxCycleIterations ${maxCycleIterations} — must be an integer >= 1`)
   }
 
   const routes = new Map<string, GraphRoute>()
@@ -355,11 +372,13 @@ export function apply(ctx: Context, config: Config): void {
   function environment(agent: Agent, history: GraphPlanHistory | undefined): AuditEnvironment {
     return {
       allowedTools,
+      shellTools,
       isRegisteredTool: tool => ctx.tools.get(tool) !== undefined,
       runBudget,
       depth: depthOf(agent),
       frozenAcceptance: history?.acceptance ?? undefined,
       routes,
+      maxCycleIterations,
     }
   }
 

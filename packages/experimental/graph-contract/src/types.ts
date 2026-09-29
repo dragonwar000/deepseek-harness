@@ -82,6 +82,18 @@ export interface GraphNode {
   category?: string
 }
 
+/** Loop limits of a cycle edge, which points from a node back to itself or to a node it depends on. */
+export interface GraphCycleGuard {
+  /** Fires allowed per plan version. */
+  maxIterations: number
+  /** Shell command whose exit 0 ends the loop instead of the next fire. */
+  until: string
+  /** Consecutive unchanged metric values after which the loop ends; set together with `metricCommand`. */
+  plateauAfter?: number
+  /** Shell command whose last non-empty stdout line is the loop metric. */
+  metricCommand?: string
+}
+
 /** One dependency with the artifact that crosses it. */
 export interface GraphEdge {
   /** Needed node. */
@@ -94,6 +106,8 @@ export interface GraphEdge {
   artifact: string
   /** Output properties of `from` that `to` may read; absent means all. */
   allowedFields?: string[]
+  /** Present only on a cycle edge: an edge back to `from` itself or to one of its needs, never listed in `needs`. */
+  cycleGuard?: GraphCycleGuard
 }
 
 /** One `dsh-graph/v1` plan version. */
@@ -143,6 +157,7 @@ export type GraphRejectionCode =
   | 'MISSING_HUMAN_GATE'
   | 'MISSING_STOP_HANDOFF'
   | 'WRITE_SCOPE_OVERLAP'
+  | 'SHELL_WRITES_UNCHECKED'
   | 'CAPABILITY_UNVERIFIED'
   | 'BUDGET_EXCEEDED'
   | 'INPUT_MAY_BE_ABSENT'
@@ -298,6 +313,8 @@ export interface GraphNodeRecord {
   revision: number
   /** Node fingerprint: digest of the node and its needs' fingerprints. */
   fingerprint: string
+  /** Loop iteration; absent is 0. A higher iteration with status `pending` reopens the node after a cycle edge fired. */
+  iteration?: number
   /** Child session of the attempt that produced this status. */
   childSession?: SessionId
   /** Structured output of the attempt. */
@@ -330,6 +347,35 @@ export interface GraphRunRecord {
   detail?: string
 }
 
+/** What the runner decided for a cycle edge when its `from` node became executed. */
+export type GraphEdgeOutcome = 'fired' | 'until-met' | 'exhausted' | 'plateau'
+
+/** One cycle-edge decision written by the graph runner. */
+export interface GraphEdgeRecord {
+  /** Run that decided. */
+  runId: GraphRunId
+  /** Plan id. */
+  planId: GraphPlanId
+  /** Admitted version the run executes. */
+  version: number
+  /** Node the edge leaves; its executed result triggered the decision. */
+  from: GraphNodeId
+  /** Node the loop restarts at. */
+  to: GraphNodeId
+  /** Loop iteration of `from` at the decision. */
+  iteration: number
+  /** Fires of this edge in this version, after the decision. */
+  fireCount: number
+  /** The decision. */
+  outcome: GraphEdgeOutcome
+  /** The `until` command run for the decision. */
+  checks: GraphNodeCheck[]
+  /** Metric read by `metricCommand`. */
+  metric?: string
+  /** Output of `from` sent back to `to` on a fire, limited to the edge's `allowedFields`. */
+  output?: JsonValue
+}
+
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /** One graph_audit result for a plan with a readable id. Log-only; never derived history. */
@@ -338,6 +384,8 @@ declare module '@deepseek-ai/dsh-session/types' {
     'graph/node': GraphNodeRecord
     /** Start or stop of one graph run. Log-only; never derived history. */
     'graph/run': GraphRunRecord
+    /** One cycle-edge decision by the graph runner. Log-only; never derived history. */
+    'graph/edge': GraphEdgeRecord
   }
 }
 

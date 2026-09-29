@@ -6,7 +6,7 @@
       "kind": "event",
       "event": "graph/plan",
       "surface": false,
-      "digest": "831e16f193f276537679f5281a25c025ba04e387a5ef15e25e526e6c403da73f",
+      "digest": "6021c0913fd7ca9a06eb9621db858f3746456d9d2a4d62cd1af8a8480333d666",
       "schema": {
         "root": 0,
         "nodes": [
@@ -20,22 +20,22 @@
               },
               {
                 "name": "ignorable",
-                "type": 101,
+                "type": 103,
                 "optional": true
               },
               {
                 "name": "seq",
-                "type": 27,
+                "type": 13,
                 "optional": false
               },
               {
                 "name": "time",
-                "type": 27,
+                "type": 13,
                 "optional": false
               },
               {
                 "name": "type",
-                "type": 102,
+                "type": 104,
                 "optional": false
               }
             ],
@@ -66,17 +66,17 @@
               },
               {
                 "name": "rejections",
-                "type": 59,
+                "type": 60,
                 "optional": false
               },
               {
                 "name": "repeatOf",
-                "type": 27,
+                "type": 13,
                 "optional": true
               },
               {
                 "name": "routes",
-                "type": 96,
+                "type": 98,
                 "optional": true
               },
               {
@@ -86,7 +86,7 @@
               },
               {
                 "name": "version",
-                "type": 27,
+                "type": 13,
                 "optional": false
               }
             ],
@@ -115,7 +115,7 @@
             "kind": "union",
             "types": [
               7,
-              36
+              37
             ]
           },
           {
@@ -138,7 +138,7 @@
               },
               {
                 "name": "format",
-                "type": 19,
+                "type": 21,
                 "optional": false
               },
               {
@@ -153,12 +153,12 @@
               },
               {
                 "name": "level",
-                "type": 20,
+                "type": 22,
                 "optional": false
               },
               {
                 "name": "nodes",
-                "type": 24,
+                "type": 26,
                 "optional": false
               },
               {
@@ -195,13 +195,18 @@
                 "optional": false
               },
               {
+                "name": "cycleGuard",
+                "type": 12,
+                "optional": true
+              },
+              {
                 "name": "from",
                 "type": 9,
                 "optional": false
               },
               {
                 "name": "relation",
-                "type": 12,
+                "type": 14,
                 "optional": false
               },
               {
@@ -213,14 +218,44 @@
             "indices": []
           },
           {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "maxIterations",
+                "type": 13,
+                "optional": false
+              },
+              {
+                "name": "metricCommand",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "plateauAfter",
+                "type": 13,
+                "optional": true
+              },
+              {
+                "name": "until",
+                "type": 9,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
             "kind": "union",
             "types": [
-              13,
-              14,
               15,
               16,
               17,
-              18
+              18,
+              19,
+              20
             ]
           },
           {
@@ -254,9 +289,9 @@
           {
             "kind": "union",
             "types": [
-              21,
-              22,
-              23
+              23,
+              24,
+              25
             ]
           },
           {
@@ -273,14 +308,14 @@
           },
           {
             "kind": "array",
-            "element": 25
+            "element": 27
           },
           {
             "kind": "object",
             "properties": [
               {
                 "name": "budget",
-                "type": 26,
+                "type": 28,
                 "optional": false
               },
               {
@@ -290,7 +325,7 @@
               },
               {
                 "name": "contextScope",
-                "type": 28,
+                "type": 29,
                 "optional": false
               },
               {
@@ -300,7 +335,7 @@
               },
               {
                 "name": "inputs",
-                "type": 31,
+                "type": 32,
                 "optional": false
               },
               {
@@ -310,7 +345,7 @@
               },
               {
                 "name": "kind",
-                "type": 37,
+                "type": 38,
                 "optional": false
               },
               {
@@ -325,12 +360,12 @@
               },
               {
                 "name": "output",
-                "type": 45,
+                "type": 46,
                 "optional": false
               },
               {
                 "name": "retryBudget",
-                "type": 27,
+                "type": 13,
                 "optional": false
               },
               {
@@ -356,31 +391,27 @@
             "properties": [
               {
                 "name": "steps",
-                "type": 27,
+                "type": 13,
                 "optional": true
               },
               {
                 "name": "tokens",
-                "type": 27,
+                "type": 13,
                 "optional": true
               },
               {
                 "name": "wallMs",
-                "type": 27,
+                "type": 13,
                 "optional": true
               }
             ],
             "indices": []
           },
           {
-            "kind": "primitive",
-            "type": "number"
-          },
-          {
             "kind": "union",
             "types": [
-              29,
-              30
+              30,
+              31
             ]
           },
           {
@@ -393,14 +424,14 @@
           },
           {
             "kind": "array",
-            "element": 32
+            "element": 33
           },
           {
             "kind": "object",
             "properties": [
               {
                 "name": "fallback",
-                "type": 33,
+                "type": 34,
                 "optional": true
               },
               {
@@ -426,15 +457,15 @@
             "types": [
               2,
               9,
-              27,
-              34,
+              13,
               35,
-              36
+              36,
+              37
             ]
           },
           {
             "kind": "array",
-            "element": 33
+            "element": 34
           },
           {
             "kind": "object",
@@ -442,7 +473,7 @@
             "indices": [
               {
                 "key": 9,
-                "value": 33
+                "value": 34
               }
             ]
           },
@@ -453,13 +484,13 @@
           {
             "kind": "union",
             "types": [
-              38,
               39,
               40,
               41,
               42,
               43,
-              44
+              44,
+              45
             ]
           },
           {
@@ -500,12 +531,12 @@
               },
               {
                 "name": "const",
-                "type": 46,
+                "type": 47,
                 "optional": true
               },
               {
                 "name": "default",
-                "type": 33,
+                "type": 34,
                 "optional": true
               },
               {
@@ -515,27 +546,27 @@
               },
               {
                 "name": "enum",
-                "type": 47,
-                "optional": true
-              },
-              {
-                "name": "examples",
-                "type": 33,
-                "optional": true
-              },
-              {
-                "name": "items",
                 "type": 48,
                 "optional": true
               },
               {
-                "name": "oneOf",
+                "name": "examples",
+                "type": 34,
+                "optional": true
+              },
+              {
+                "name": "items",
                 "type": 49,
                 "optional": true
               },
               {
-                "name": "properties",
+                "name": "oneOf",
                 "type": 50,
+                "optional": true
+              },
+              {
+                "name": "properties",
+                "type": 51,
                 "optional": true
               },
               {
@@ -550,7 +581,7 @@
               },
               {
                 "name": "type",
-                "type": 57,
+                "type": 58,
                 "optional": false
               }
             ],
@@ -561,13 +592,13 @@
             "types": [
               2,
               9,
-              27,
-              36
+              13,
+              37
             ]
           },
           {
             "kind": "array",
-            "element": 46
+            "element": 47
           },
           {
             "kind": "object",
@@ -579,12 +610,12 @@
               },
               {
                 "name": "const",
-                "type": 46,
+                "type": 47,
                 "optional": true
               },
               {
                 "name": "default",
-                "type": 33,
+                "type": 34,
                 "optional": true
               },
               {
@@ -594,27 +625,27 @@
               },
               {
                 "name": "enum",
-                "type": 47,
-                "optional": true
-              },
-              {
-                "name": "examples",
-                "type": 33,
-                "optional": true
-              },
-              {
-                "name": "items",
                 "type": 48,
                 "optional": true
               },
               {
-                "name": "oneOf",
+                "name": "examples",
+                "type": 34,
+                "optional": true
+              },
+              {
+                "name": "items",
                 "type": 49,
                 "optional": true
               },
               {
-                "name": "properties",
+                "name": "oneOf",
                 "type": 50,
+                "optional": true
+              },
+              {
+                "name": "properties",
+                "type": 51,
                 "optional": true
               },
               {
@@ -629,7 +660,7 @@
               },
               {
                 "name": "type",
-                "type": 51,
+                "type": 52,
                 "optional": true
               }
             ],
@@ -637,7 +668,7 @@
           },
           {
             "kind": "array",
-            "element": 48
+            "element": 49
           },
           {
             "kind": "object",
@@ -645,20 +676,20 @@
             "indices": [
               {
                 "key": 9,
-                "value": 48
+                "value": 49
               }
             ]
           },
           {
             "kind": "union",
             "types": [
-              52,
               53,
               54,
               55,
               56,
               57,
-              58
+              58,
+              59
             ]
           },
           {
@@ -691,19 +722,19 @@
           },
           {
             "kind": "array",
-            "element": 60
+            "element": 61
           },
           {
             "kind": "object",
             "properties": [
               {
                 "name": "check",
-                "type": 61,
+                "type": 62,
                 "optional": false
               },
               {
                 "name": "code",
-                "type": 74,
+                "type": 75,
                 "optional": false
               },
               {
@@ -718,7 +749,7 @@
               },
               {
                 "name": "severity",
-                "type": 93,
+                "type": 95,
                 "optional": false
               },
               {
@@ -732,8 +763,7 @@
           {
             "kind": "union",
             "types": [
-              38,
-              62,
+              39,
               63,
               64,
               65,
@@ -744,7 +774,8 @@
               70,
               71,
               72,
-              73
+              73,
+              74
             ]
           },
           {
@@ -798,7 +829,6 @@
           {
             "kind": "union",
             "types": [
-              75,
               76,
               77,
               78,
@@ -815,8 +845,18 @@
               89,
               90,
               91,
-              92
+              92,
+              93,
+              94
             ]
+          },
+          {
+            "kind": "literal",
+            "value": "MISSING_STOP_HANDOFF"
+          },
+          {
+            "kind": "literal",
+            "value": "NOT_CONSUMED"
           },
           {
             "kind": "literal",
@@ -824,15 +864,19 @@
           },
           {
             "kind": "literal",
+            "value": "SHELL_WRITES_UNCHECKED"
+          },
+          {
+            "kind": "literal",
             "value": "SYNTHESIS_BEFORE_VERIFY"
           },
           {
             "kind": "literal",
-            "value": "VERDICT_UNDECLARED"
+            "value": "BUDGET_EXCEEDED"
           },
           {
             "kind": "literal",
-            "value": "BUDGET_EXCEEDED"
+            "value": "VERDICT_UNDECLARED"
           },
           {
             "kind": "literal",
@@ -852,15 +896,7 @@
           },
           {
             "kind": "literal",
-            "value": "LINEAR_PLAN"
-          },
-          {
-            "kind": "literal",
             "value": "DEPTH_EXCEEDED"
-          },
-          {
-            "kind": "literal",
-            "value": "MISSING_ANCHOR"
           },
           {
             "kind": "literal",
@@ -868,7 +904,7 @@
           },
           {
             "kind": "literal",
-            "value": "MISSING_HUMAN_GATE"
+            "value": "LINEAR_PLAN"
           },
           {
             "kind": "literal",
@@ -876,7 +912,7 @@
           },
           {
             "kind": "literal",
-            "value": "MISSING_STOP_HANDOFF"
+            "value": "MISSING_ANCHOR"
           },
           {
             "kind": "literal",
@@ -884,17 +920,17 @@
           },
           {
             "kind": "literal",
-            "value": "ISOLATED_NODE"
+            "value": "MISSING_HUMAN_GATE"
           },
           {
             "kind": "literal",
-            "value": "NOT_CONSUMED"
+            "value": "ISOLATED_NODE"
           },
           {
             "kind": "union",
             "types": [
-              94,
-              95
+              96,
+              97
             ]
           },
           {
@@ -907,7 +943,7 @@
           },
           {
             "kind": "array",
-            "element": 97
+            "element": 99
           },
           {
             "kind": "object",
@@ -929,7 +965,7 @@
               },
               {
                 "name": "reliability",
-                "type": 98,
+                "type": 100,
                 "optional": false
               }
             ],
@@ -938,8 +974,8 @@
           {
             "kind": "union",
             "types": [
-              99,
-              100
+              101,
+              102
             ]
           },
           {

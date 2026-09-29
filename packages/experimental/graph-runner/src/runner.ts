@@ -10,8 +10,11 @@
  */
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { needSatisfied, nodeFingerprints, runsAsAgent } from '@deepseek-ai/dsh-experimental-graph-contract'
+import { cycleBody, needSatisfied, nodeFingerprints, runsAsAgent } from '@deepseek-ai/dsh-experimental-graph-contract'
 import type {
+  GraphCycleGuard,
+  GraphEdge,
+  GraphEdgeOutcome,
   GraphNode,
   GraphNodeBasis,
   GraphNodeCheck,
@@ -33,8 +36,9 @@ import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools'
 import type { ApprovalOutcome, ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import { metricOf, plateaued, plateauOf, sentBack } from './cycle.ts'
 import { nodePrompt } from './prompt.ts'
-import type { PromptInput } from './prompt.ts'
+import type { PromptFeedback, PromptInput } from './prompt.ts'
 import type { WriteScopes } from './write-scope.ts'
 
 /** The shell operations the runner uses; `ShellExecutor` satisfies it structurally. */
@@ -144,6 +148,8 @@ export interface RunNodeResult {
   readonly output?: JsonValue
   /** Reason of the final status. */
   readonly detail?: string
+  /** Loop iteration of the final status; absent at 0. */
+  readonly iteration?: number
 }
 
 /** Run outcome. */
@@ -176,6 +182,8 @@ interface NodeState {
   attempt: number
   revision: number
   interrupted: boolean
+  iteration: number
+  feedback?: PromptFeedback | undefined
   basis?: GraphNodeBasis | undefined
   output?: JsonValue | undefined
   detail?: string | undefined
@@ -193,6 +201,7 @@ interface Change {
   carriedFrom?: number | undefined
   violations?: string[] | undefined
   detail?: string | undefined
+  iteration?: number | undefined
 }
 
 /**
@@ -247,6 +256,8 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
     attempt: view.attempt,
     revision: view.revision,
     interrupted: false,
+    iteration: view.iteration,
+    feedback: undefined,
     basis: view.basis,
     output: view.output,
     detail: view.detail,
@@ -256,6 +267,19 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
   let dispatches = 0
   // Flags the scheduler reads after node work settles; an object keeps them observable across the closures that set them.
   const stop = { budgetHit: false, humanRefused: false }
+  type CycleEdge = GraphEdge & { readonly cycleGuard: GraphCycleGuard }
+  interface EdgeState { fireCount: number; decided: number | null; metrics: string[] }
+  const edgeKey = (edge: Pick<GraphEdge, 'from' | 'to'>): string => `${edge.from}->${edge.to}`
+  const cycleEdges = plan.edges.filter((edge): edge is CycleEdge => edge.cycleGuard !== undefined)
+  const edges = new Map<string, EdgeState>(task.edges.map(view => [
+    edgeKey(view),
+    { fireCount: view.fireCount, decided: view.decided, metrics: [...view.metrics] },
+  ]))
+  for (const view of task.edges) {
+    if (view.outcome === 'fired') state.set(view.to, { ...must(state, view.to), feedback: { from: view.from, fire: view.fireCount, output: view.output } })
+  }
+  // Cycle decisions in progress, by from node; its dependents wait until the decision settles.
+  const deciding = new Map<GraphNodeId, Promise<void>>()
 
   function change(id: GraphNodeId, next: Change): void {
     const current = must(state, id)
@@ -265,6 +289,8 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
       attempt: next.attempt ?? current.attempt,
       revision: current.revision + 1,
       interrupted: next.status === 'running' ? false : current.interrupted,
+      iteration: next.iteration ?? current.iteration,
+      feedback: current.feedback,
       basis: next.basis,
       output: next.output,
       detail: next.detail,
@@ -280,6 +306,7 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
       attempt: updated.attempt,
       revision: updated.revision,
       fingerprint: must(fingerprints, id),
+      ...updated.iteration > 0 ? { iteration: updated.iteration } : {},
       ...defined({
         basis: next.basis,
         childSession: next.childSession,
@@ -290,19 +317,25 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
         detail: next.detail,
       }),
     })
+    if (updated.status === 'executed') scheduleDecision(id)
   }
 
-  async function runCheck(command: string): Promise<GraphNodeCheck> {
+  async function execute(command: string): Promise<{ check: GraphNodeCheck; stdout: string }> {
     const shell = services.shell
-    if (shell === undefined) return { command, exitCode: null, timedOut: false, outputTail: 'the shell service is not mounted' }
+    if (shell === undefined) return { check: { command, exitCode: null, timedOut: false, outputTail: 'the shell service is not mounted' }, stdout: '' }
     try {
       const spec = shell.resolve({ command, timeoutMs: settings.verifyTimeoutMs, signal: runSignal, ...defined({ workdir: cwd }) })
       const execution = await shell.execute(spec)
       const result = await execution.result()
-      return { command, exitCode: result.exitCode, timedOut: result.timedOut, outputTail: `${result.stdout.text}\n${result.stderr.text}`.slice(-settings.outputTailChars) }
+      const outputTail = `${result.stdout.text}\n${result.stderr.text}`.slice(-settings.outputTailChars)
+      return { check: { command, exitCode: result.exitCode, timedOut: result.timedOut, outputTail }, stdout: result.stdout.text }
     } catch (error) {
-      return { command, exitCode: null, timedOut: false, outputTail: String(error) }
+      return { check: { command, exitCode: null, timedOut: false, outputTail: String(error) }, stdout: '' }
     }
+  }
+
+  async function runCheck(command: string): Promise<GraphNodeCheck> {
+    return (await execute(command)).check
   }
 
   async function verify(commands: readonly string[]): Promise<GraphNodeCheck[]> {
@@ -318,6 +351,70 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
   function failureOf(checks: readonly GraphNodeCheck[]): string | undefined {
     const failed = checks.find(check => check.exitCode !== 0)
     return failed === undefined ? undefined : `verify command failed: ${failed.command}`
+  }
+
+  function undecided(id: GraphNodeId): CycleEdge[] {
+    const node = must(state, id)
+    if (node.status !== 'executed') return []
+    return cycleEdges.filter(edge => edge.from === id && (must(edges, edgeKey(edge)).decided ?? -1) < node.iteration)
+  }
+
+  function scheduleDecision(id: GraphNodeId): void {
+    if (deciding.has(id) || undecided(id).length === 0) return
+    deciding.set(id, decide(id).finally(() => deciding.delete(id)))
+  }
+
+  function decided(
+    edge: CycleEdge,
+    view: EdgeState,
+    iteration: number,
+    outcome: GraphEdgeOutcome,
+    until: GraphNodeCheck,
+    metric: string | undefined,
+    output?: JsonValue,
+  ): void {
+    if (outcome === 'fired') view.fireCount += 1
+    view.decided = iteration
+    if (metric !== undefined) view.metrics.push(metric)
+    agent.session.append('graph/edge', {
+      runId, planId: plan.id, version, from: edge.from, to: edge.to, iteration, fireCount: view.fireCount, outcome, checks: [until],
+      ...defined({ metric, output }),
+    })
+  }
+
+  function reopen(edge: CycleEdge, fire: number, output: JsonValue | undefined): void {
+    for (const id of cycleBody(plan, edge)) {
+      const current = must(state, id)
+      change(id, { status: 'pending', iteration: current.iteration + 1, attempt: 0, recoveryState: 'pristine', detail: `reopened by the loop ${edgeKey(edge)}, fire ${fire}` })
+    }
+    state.set(edge.to, { ...must(state, edge.to), feedback: { from: edge.from, fire, output } })
+  }
+
+  async function decide(id: GraphNodeId): Promise<void> {
+    for (const edge of undecided(id)) {
+      const view = must(edges, edgeKey(edge))
+      const iteration = must(state, id).iteration
+      const guard = edge.cycleGuard
+      const plateau = plateauOf(guard)
+      const until = await execute(guard.until)
+      const metered = until.check.exitCode === 0 || plateau === undefined
+        ? undefined
+        : { run: await execute(plateau.command), after: plateau.after }
+      if (runSignal.aborted) return
+      const reading = metered === undefined
+        ? undefined
+        : { metric: metricOf(metered.run.stdout, metered.run.check.exitCode), after: metered.after }
+      const metric = reading?.metric
+      if (until.check.exitCode === 0) decided(edge, view, iteration, 'until-met', until.check, metric)
+      else if (view.fireCount >= guard.maxIterations) decided(edge, view, iteration, 'exhausted', until.check, metric)
+      else if (reading !== undefined && plateaued(view.metrics, reading.metric, reading.after)) decided(edge, view, iteration, 'plateau', until.check, metric)
+      else {
+        const output = sentBack(must(state, id).output, edge.allowedFields)
+        decided(edge, view, iteration, 'fired', until.check, metric, output)
+        reopen(edge, view.fireCount, output)
+        return
+      }
+    }
   }
 
   function inputsOf(node: GraphNode): PromptInput[] {
@@ -420,7 +517,7 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
     try {
       child = await services.subagents.start(settings.provider, {
         label: `graph ${plan.id} node ${node.id}`,
-        prompt: [{ type: 'text', text: nodePrompt(plan, version, node, inputsOf(node), interrupted) }],
+        prompt: [{ type: 'text', text: nodePrompt(plan, version, node, inputsOf(node), interrupted, current.feedback) }],
         parent: agent,
         signal: runSignal,
         toolFilter: { allow: [...node.tools] },
@@ -460,7 +557,7 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
     const open = current.status === 'pending' || current.status === 'ready' || current.status === 'cancelled'
     const retry = current.status === 'failed_retryable' && current.attempt <= node.retryBudget
     const status = new Map([...state].map(([id, entry]) => [id, entry.status]))
-    return (open || retry) && node.needs.every(need => needSatisfied(plan, status, node.id, need))
+    return (open || retry) && node.needs.every(need => !deciding.has(need) && needSatisfied(plan, status, node.id, need))
   }
 
   function finished(node: GraphNode): boolean {
@@ -518,6 +615,9 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
     }
   }
 
+  // A run that stopped between a from node's execution and its cycle decision left the decision undone.
+  for (const node of plan.nodes) scheduleDecision(node.id)
+
   const timer = settings.maxWallMs > 0
     ? setTimeout(() => {
       stop.budgetHit = true
@@ -552,8 +652,8 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
           inFlight.set(node.id, work)
         }
       }
-      if (inFlight.size === 0) active = false
-      else await Promise.race(inFlight.values())
+      if (inFlight.size === 0 && deciding.size === 0) active = false
+      else await Promise.race([...inFlight.values(), ...deciding.values()])
     }
   } finally {
     clearTimeout(timer)
@@ -569,7 +669,8 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
     nodes: plan.nodes.map((node) => {
       const final = must(state, node.id)
       const optional = defined({ basis: final.basis, output: final.output, detail: final.detail })
-      return { id: node.id, kind: node.kind, status: final.status, attempt: final.attempt, ...optional }
+      const iteration = final.iteration > 0 ? { iteration: final.iteration } : {}
+      return { id: node.id, kind: node.kind, status: final.status, attempt: final.attempt, ...optional, ...iteration }
     }),
   }
 }

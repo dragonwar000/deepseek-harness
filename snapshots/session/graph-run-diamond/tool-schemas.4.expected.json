@@ -4,7 +4,7 @@
       "name": "structured_output",
       "description": "Report your final structured result. Call this exactly once, when your answer is complete; the arguments must match this tool's parameter schema exactly.",
       "parameters": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
           "summary": {
             "type": "string"
@@ -13,7 +13,7 @@
         "required": [
           "summary"
         ],
-        "type": "object"
+        "additionalProperties": false
       }
     }
   ],

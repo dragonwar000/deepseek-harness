@@ -45,15 +45,15 @@ kind: "package-group"
 | [`tool-agent-team`](tool-agent-team/README.zh.md) | 让模型创建、发消息与协调 teammate 的九个工具 | 按作用域注册工具到 `ctx.tools` |
 | [`webworker-packer`](webworker-packer/README.zh.md) | 构建浏览器 worker 预览所消费的 gzip 压缩虚拟文件系统（VFS）镜像 | 库与 CLI（命令行界面），不使用 ctx key |
 | [`webworker-runtime`](webworker-runtime/README.zh.md) | 在专用浏览器 worker 中运行 harness 插件树 | 库与 worker 入口，不使用 ctx key |
-| [`verifier-gate`](verifier-gate/README.zh.md) | 回合结束前的校验命令门，shadow 或 enforce | 在 `agent/turn-stopping` 上注册监听器 |
+| [`verifier-gate`](verifier-gate/README.zh.md) | 回合结束前的校验命令门与可选的最终回答证据检查，shadow 或 enforce | 在 `agent/turn-stopping` 上注册监听器 |
 | [`infra-snapshot`](infra-snapshot/README.zh.md) | 每个 agent 一条 `infra/snapshot` 事件 | — |
 | [`loop-graph-profile`](loop-graph-profile/README.zh.md) | 从插件页开启的循环护栏组合包 | — |
 | [`stationarity-guard`](stationarity-guard/README.zh.md) | 按步骤签名提醒或停止重复工具步骤的护栏，shadow 或 enforce | 在 `agent/pre-step` 与 `session/event` 上注册监听器 |
 | [`denial-budget`](denial-budget/README.zh.md) | 统计策略拒绝、提示更安全的做法，并在超出预算时请求批准，shadow 或 enforce | 在 `tools/*` 与 `agent/pre-step` 上注册监听器 |
 | [`loop-budget`](loop-budget/README.zh.md) | 按回合与目标限制步数、token、美元与墙钟时间，并带工作量下限，shadow 或 enforce | 在 `agent/pre-step`、`agent/turn-stopping` 与 `session/event` 上注册监听器 |
-| [`graph-contract`](graph-contract/README.zh.md) | 确定性的 `dsh-graph/v1` 计划审计与拒绝记忆，shadow 或 enforce | 注册 `graph_audit` 工具与 `graphPlans` 投影 |
-| [`graph-projection`](graph-projection/README.zh.md) | 已准入计划的任务图与运行器记录的状态，通过 `graph_query` 读取 | 注册 `graph_query` 工具与 `graph` 投影 |
-| [`graph-runner`](graph-runner/README.zh.md) | 前台运行已准入计划的 `graph_run`：每个节点一个新子代理、基于证据的完成、重试、恢复、写入范围 | 注册 `graph_run` 工具与 `fs/write-intent`/`fs/edit-intent` 监听器 |
+| [`graph-contract`](graph-contract/README.zh.md) | 确定性的 `dsh-graph/v1` 计划审计、拒绝记忆、循环边规则与 shell 写入警告，shadow 或 enforce | 注册 `graph_audit` 工具与 `graphPlans` 投影 |
+| [`graph-projection`](graph-projection/README.zh.md) | 从会话日志折叠的任务图、轮次证据与被压缩的历史，提供只读的 `graph_query`、`graph_cite` 与 `history_read` 工具 | 注册 `graph_query`、`graph_cite` 与 `history_read` 工具，以及 `graph`、`graphEvidence` 与 `graphHistory` 投影 |
+| [`graph-runner`](graph-runner/README.zh.md) | 前台运行已准入计划的 `graph_run`：每个节点一个新子代理、基于证据的完成、重试、恢复、写入范围与循环边 | 注册 `graph_run` 工具与 `fs/write-intent`/`fs/edit-intent` 监听器 |
 
 -----
 

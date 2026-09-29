@@ -112,6 +112,29 @@ describe('graph_query', () => {
     })
   })
 
+  it('returns cycle edges with their fire counts and node iterations', async () => {
+    const LOOP = {
+      ...PLAN,
+      edges: [...PLAN.edges, { from: 'second', to: 'first', relation: 'feeds', artifact: 'notes', cycleGuard: { maxIterations: 2, until: 'true' } }],
+    }
+    const { ctx, agent } = await run([
+      { name: 'graph_audit', args: { plan: LOOP } },
+      { name: 'graph_query', args: { scope: 'plan', plan_id: 'ship' } },
+    ])
+    const [, plan] = results(agent)
+    expect(JSON.parse(plan!.text)).toMatchObject({ graph: { edges: [{ from: 'second', to: 'first', fireCount: 0 }] } })
+    const task = taskOf(ctx.sessionProjections.stateOf(agent.session, 'graph')!, graphPlanId('ship'))!
+    const base = { runId: graphRunId('r1'), planId: graphPlanId('ship'), version: 1 }
+    agent.session.append('graph/edge', { ...base, from: graphNodeId('second'), to: graphNodeId('first'), iteration: 0, fireCount: 1, outcome: 'fired', checks: [] })
+    agent.session.append('graph/node', { ...base, nodeId: graphNodeId('first'), status: 'pending', recoveryState: 'pristine', attempt: 0, revision: 1, fingerprint: task.nodes[0]!.fingerprint, iteration: 1 })
+    const query = async (args: Record<string, string>): Promise<unknown> => {
+      const result = await ctx.tools.execute({ callId: ToolCallId(`loop-${args['scope']}`), name: 'graph_query', arguments: args, agent, signal: new AbortController().signal })
+      return JSON.parse(result.content.map(block => (block.type === 'text' ? block.text : '')).join(''))
+    }
+    expect(await query({ scope: 'plan', plan_id: 'ship' })).toMatchObject({ graph: { edges: [{ from: 'second', to: 'first', fireCount: 1, outcome: 'fired' }] } })
+    expect(await query({ scope: 'node', plan_id: 'ship', node_id: 'first' })).toMatchObject({ node: { id: 'first', status: 'ready', iteration: 1 } })
+  })
+
   it('refuses to answer when the task graphs cannot be folded', async () => {
     const { ctx, agent } = await run([])
     agent.session.append('graph/plan', { planId: graphPlanId('ship'), version: 1, sha: 'not-hex', mode: 'enforce', admitted: true, plan: null, rejections: [] })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { graphNodeId, graphPlanId, graphRunId, nodeFingerprints, parsePlan } from '@deepseek-ai/dsh-experimental-graph-contract'
-import type { GraphNodeRecord, GraphPlan, GraphPlanRecord, GraphRunRecord } from '@deepseek-ai/dsh-experimental-graph-contract'
+import type { GraphEdgeRecord, GraphNodeRecord, GraphPlan, GraphPlanRecord, GraphRunRecord } from '@deepseek-ai/dsh-experimental-graph-contract'
 import { applyGraphEvent, emptyGraph, graphProjection, taskOf } from '../src/projection.ts'
 import type { GraphState } from '../src/types.ts'
 
@@ -42,7 +42,7 @@ const runRecord = (phase: 'start' | 'stop', overrides: Partial<GraphRunRecord> =
   runId: graphRunId('r1'), planId: graphPlanId('ship'), version: 1, phase, mode: 'enforce', ...overrides,
 })
 
-type Entry = ['graph/plan', GraphPlanRecord] | ['graph/node', GraphNodeRecord] | ['graph/run', GraphRunRecord]
+type Entry = ['graph/plan', GraphPlanRecord] | ['graph/node', GraphNodeRecord] | ['graph/run', GraphRunRecord] | ['graph/edge', GraphEdgeRecord]
 
 function fold(entries: Entry[]): GraphState {
   const session = Session.create(SessionId('graph'))
@@ -50,15 +50,16 @@ function fold(entries: Entry[]): GraphState {
   for (const entry of entries) {
     const event = entry[0] === 'graph/plan' ? session.append('graph/plan', entry[1])
       : entry[0] === 'graph/node' ? session.append('graph/node', entry[1])
-        : session.append('graph/run', entry[1])
+        : entry[0] === 'graph/run' ? session.append('graph/run', entry[1])
+          : session.append('graph/edge', entry[1])
     state = applyGraphEvent(state, event)
   }
   return state
 }
 
 describe('graph projection v2', () => {
-  it('declares state version 2', () => {
-    expect(graphProjection).toMatchObject({ key: 'graph', stateVersion: 2 })
+  it('declares state version 3', () => {
+    expect(graphProjection).toMatchObject({ key: 'graph', stateVersion: 3 })
     expect(graphProjection.init()).toEqual({ graphs: [] })
   })
 
@@ -163,5 +164,82 @@ describe('graph projection v2', () => {
     const session = Session.create(SessionId('other'))
     const state = emptyGraph()
     expect(applyGraphEvent(state, session.append('turn/start', { turn: 1 }))).toBe(state)
+  })
+})
+
+function loopPlan(): GraphPlan {
+  const parsed = parsePlan({
+    format: 'dsh-graph/v1', id: 'ship', level: 'L2', goal: 'Ship',
+    nodes: [
+      { id: 'build', kind: 'execution', instruction: 'Build it' },
+      { id: 'check', kind: 'verification', instruction: 'Check it', needs: ['build'], contextScope: 'fresh-independent', output: VERDICT },
+    ],
+    edges: [
+      { from: 'build', to: 'check', relation: 'verifies', artifact: 'src/' },
+      { from: 'check', to: 'build', relation: 'feeds', artifact: 'notes', cycleGuard: { maxIterations: 2, until: 'pnpm test', plateauAfter: 1, metricCommand: 'count' } },
+    ],
+    deliverable: 'Shipped', acceptance: ['tests pass'],
+  })
+  if (!parsed.ok) throw new Error('loop plan must parse')
+  return parsed.plan
+}
+
+function withoutOutput(record: GraphEdgeRecord): GraphEdgeRecord {
+  const { output: _output, ...rest } = record
+  return rest
+}
+
+function withoutMetric(record: GraphEdgeRecord): GraphEdgeRecord {
+  const { metric: _metric, ...rest } = record
+  return rest
+}
+
+const edgeRecord = (overrides: Partial<GraphEdgeRecord> = {}): GraphEdgeRecord => ({
+  runId: graphRunId('r1'), planId: graphPlanId('ship'), version: 1, from: graphNodeId('check'), to: graphNodeId('build'),
+  iteration: 0, fireCount: 1, outcome: 'fired', checks: [{ command: 'pnpm test', exitCode: 1, timedOut: false, outputTail: 'FAIL' }],
+  metric: '4', output: { verdict: 'fail' }, ...overrides,
+})
+
+describe('graph projection v3 loops', () => {
+  it('seeds one view per cycle edge and folds decisions and node iterations', () => {
+    const graph = loopPlan()
+    const seeded = taskOf(fold([['graph/plan', planRecord(1, graph)]]), graphPlanId('ship'))
+    expect(seeded?.edges).toEqual([{ from: 'check', to: 'build', fireCount: 0, decided: null, metrics: [] }])
+    expect(seeded?.nodes.map(node => node.iteration)).toEqual([0, 0])
+    const state = fold([
+      ['graph/plan', planRecord(1, graph)],
+      ['graph/edge', edgeRecord()],
+      ['graph/node', nodeRecord(graph, 1, 'build', 1, { status: 'pending', attempt: 0, iteration: 1 })],
+      ['graph/edge', withoutOutput(edgeRecord({ iteration: 1, outcome: 'plateau' }))],
+    ])
+    const task = taskOf(state, graphPlanId('ship'))
+    expect(task?.edges).toEqual([{ from: 'check', to: 'build', fireCount: 1, decided: 1, outcome: 'plateau', metrics: ['4', '4'] }])
+    expect(task?.nodes.find(node => node.id === 'build')).toMatchObject({ iteration: 1, status: 'ready', attempt: 0 })
+  })
+
+  it('keeps the output of a fire and leaves metrics unchanged without a metric', () => {
+    const graph = loopPlan()
+    const task = taskOf(fold([['graph/plan', planRecord(1, graph)], ['graph/edge', withoutMetric(edgeRecord())]]), graphPlanId('ship'))
+    expect(task?.edges[0]).toEqual({ from: 'check', to: 'build', fireCount: 1, decided: 0, outcome: 'fired', metrics: [], output: { verdict: 'fail' } })
+  })
+
+  it('updates only the decided edge of a plan with several loops', () => {
+    const graph = loopPlan()
+    const guard = { maxIterations: 1, until: 'true' }
+    graph.edges.push(
+      { from: graphNodeId('check'), to: graphNodeId('check'), relation: 'feeds', artifact: 'self', cycleGuard: guard },
+      { from: graphNodeId('build'), to: graphNodeId('build'), relation: 'feeds', artifact: 'self', cycleGuard: guard },
+    )
+    const task = taskOf(fold([['graph/plan', planRecord(1, graph)], ['graph/edge', edgeRecord()]]), graphPlanId('ship'))
+    expect(task?.edges.map(edge => [edge.from, edge.to, edge.fireCount])).toEqual([['check', 'build', 1], ['check', 'check', 0], ['build', 'build', 0]])
+  })
+
+  it.each<[string, GraphEdgeRecord, RegExp]>([
+    ['an undecodable record', { ...edgeRecord(), outcome: 'looped' as never }, /graph\/edge at seq \d+ does not decode/],
+    ['a version without a task', edgeRecord({ version: 2 }), /plan ship version 2 has no admitted task/],
+    ['an edge without cycleGuard', edgeRecord({ from: graphNodeId('build'), to: graphNodeId('check') }), /build->check is not a cycle edge/],
+  ])('fails terminally on %s', (_label, record, message) => {
+    const state = fold([['graph/plan', planRecord(1, loopPlan())], ['graph/edge', record]])
+    expect(state.failure).toMatch(message)
   })
 })

@@ -45,15 +45,15 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`tool-agent-team`](tool-agent-team/README.md) | Nine tools that let the model create, message, and coordinate teammates | registers scoped tools on `ctx.tools` |
 | [`webworker-packer`](webworker-packer/README.md) | Builds the gzip-compressed VFS image consumed by the browser worker preview | library and CLI — no ctx key |
 | [`webworker-runtime`](webworker-runtime/README.md) | Runs the harness plugin tree inside a dedicated browser worker | library and worker entry — no ctx key |
-| [`verifier-gate`](verifier-gate/README.md) | Turn-stopping verify-command gate, shadow or enforce | registers listeners on `agent/turn-stopping` |
+| [`verifier-gate`](verifier-gate/README.md) | Turn-stopping verify-command gate and an opt-in evidence check of the final answer, shadow or enforce | registers listeners on `agent/turn-stopping` |
 | [`infra-snapshot`](infra-snapshot/README.md) | One `infra/snapshot` event per agent | — |
 | [`loop-graph-profile`](loop-graph-profile/README.md) | Loop guards bundle switched on from the Plugins page | — |
 | [`stationarity-guard`](stationarity-guard/README.md) | Step-signature guard that reminds or stops repeated tool steps, shadow or enforce | registers listeners on `agent/pre-step` and `session/event` |
 | [`denial-budget`](denial-budget/README.md) | Counts policy denials, advises a safer approach, and asks approval past a budget, shadow or enforce | registers listeners on `tools/*` and `agent/pre-step` |
 | [`loop-budget`](loop-budget/README.md) | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor, shadow or enforce | registers listeners on `agent/pre-step`, `agent/turn-stopping`, and `session/event` |
-| [`graph-contract`](graph-contract/README.md) | Deterministic `dsh-graph/v1` plan audit with rejection memory, shadow or enforce | registers the `graph_audit` tool and the `graphPlans` projection |
-| [`graph-projection`](graph-projection/README.md) | Task graphs of admitted plans with runner-recorded status, read through `graph_query` | registers the `graph_query` tool and the `graph` projection |
-| [`graph-runner`](graph-runner/README.md) | Foreground `graph_run` for admitted plans: fresh subagent per node, proof-based completion, retries, resume, write scopes | registers the `graph_run` tool and `fs/write-intent`/`fs/edit-intent` listeners |
+| [`graph-contract`](graph-contract/README.md) | Deterministic `dsh-graph/v1` plan audit with rejection memory, loop-edge rules, and a shell-write warning, shadow or enforce | registers the `graph_audit` tool and the `graphPlans` projection |
+| [`graph-projection`](graph-projection/README.md) | Task graphs, turn evidence, and compacted history folded from the session log, with the read-only `graph_query`, `graph_cite`, and `history_read` tools | registers the `graph_query`, `graph_cite`, and `history_read` tools and the `graph`, `graphEvidence`, and `graphHistory` projections |
+| [`graph-runner`](graph-runner/README.md) | Foreground `graph_run` for admitted plans: fresh subagent per node, proof-based completion, retries, resume, write scopes, and loop edges | registers the `graph_run` tool and `fs/write-intent`/`fs/edit-intent` listeners |
 
 -----
 

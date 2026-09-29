@@ -3,41 +3,41 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/graph-projection/README.md
 /:
-  en: 3e49cac200de2857
-  zh: a73e5253c42ca983
+  en: 8c669675c8d4a840
+  zh: 27151efa8475694c
 /deepseek-ai-dsh-experimental-graph-projection:
   en: 671947a743e2bb40
   zh: e01b54b0e9d8ab11
 /deepseek-ai-dsh-experimental-graph-projection/summary:
-  en: cd271dd302b2bd47
-  zh: 8cfa2889720634ca
+  en: 5c65d572c4bda140
+  zh: 874dd4b5cba3387e
 /deepseek-ai-dsh-experimental-graph-projection/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-experimental-graph-projection/use-this-package:
-  en: 822245785ba6ce3d
-  zh: 00b310abaa1dcfa1
+  en: 17bcbd9acabbcabb
+  zh: f94d546ae0493782
 /deepseek-ai-dsh-experimental-graph-projection/use-this-package/when-to-choose-it:
-  en: dae000c00e5b3ed3
-  zh: 2cf49ab9219660a8
+  en: 9a1ec0978035d91b
+  zh: bfbbacfb29bae32a
 /deepseek-ai-dsh-experimental-graph-projection/use-this-package/minimal-configuration:
-  en: 7e32fdf2571d190c
-  zh: 0e14b8c3b29a8617
+  en: b30a9bef28918393
+  zh: 8da9d668d9e74531
 /deepseek-ai-dsh-experimental-graph-projection/use-this-package/what-you-get:
-  en: 65bde5b6c77e77de
-  zh: c85843be4f72d8c2
+  en: 3443c9c387c8b977
+  zh: 172caf14affde569
 /deepseek-ai-dsh-experimental-graph-projection/understand-the-implementation:
-  en: 26b31e43ea6ce090
-  zh: 13316bb3a2aae0c4
+  en: eb63edca74380cbc
+  zh: e831f3b59eaaf234
 /deepseek-ai-dsh-experimental-graph-projection/understand-the-implementation/design-notes:
-  en: 6f238658c18f0876
-  zh: 5d9f3b88c4b81926
+  en: 625ce1e5f2518a29
+  zh: a5653dc331d9f442
 /deepseek-ai-dsh-experimental-graph-projection/understand-the-implementation/source-map:
-  en: 273d19015f351d79
-  zh: 0d3f8230b14d10e4
+  en: a0df8b04e4285c5d
+  zh: 00108ac3590aba89
 /deepseek-ai-dsh-experimental-graph-projection/further-exploration:
-  en: 132f76242fe7bf59
-  zh: 01cde815e6d1f92c
+  en: 1836db891a85acaf
+  zh: b462f91b1c4d9398
 /deepseek-ai-dsh-experimental-graph-projection/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -45,20 +45,50 @@
   en: a23068e6e7a8856a
   zh: bba0f88b6f6c2100
 /deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/what-the-model-sees:
-  en: 701a6eba9e5a8ab9
-  zh: b3287a84e8a57bb4
+  en: 8078168e645ee131
+  zh: 592e0e8b4be0c0d3
 /deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/what-the-model-sees/verbatim-text-for-this-field:
   en: f310d13f2c5a4d6a
   zh: 3a3795590b110e06
 /deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/token-effect:
-  en: 7823a08e4a2e29f3
-  zh: 9ca2c96ae5ee8756
+  en: b2c38918536f8c86
+  zh: 6b71c80dcad600c3
 /deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/kv-cache-effect:
   en: 17a63238826eea08
   zh: e7a86dc3c68f1ba2
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-cite-tool:
+  en: 5e27a1487c6c5d67
+  zh: f5fab712c6fa9cc0
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-cite-tool/what-the-model-sees:
+  en: df047936fa196ca9
+  zh: 1e69d2bc20ef3be4
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-cite-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-cite-tool/token-effect:
+  en: c0d88716fc584e9d
+  zh: 20c0f2620accc5d4
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-cite-tool/kv-cache-effect:
+  en: 0e946bb21c5151ca
+  zh: b2882306c458cca5
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-history-read-tool:
+  en: 7c8f5d505376df18
+  zh: 28ed17528470fef2
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-history-read-tool/what-the-model-sees:
+  en: a883b2cd81469f7b
+  zh: af52e3481c56a13d
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-history-read-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-history-read-tool/token-effect:
+  en: 0b5270fca848ee46
+  zh: 9671ef8b6df2f6a1
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-history-read-tool/kv-cache-effect:
+  en: fd31a4ce31f24f5c
+  zh: 83714779c367480f
 /deepseek-ai-dsh-experimental-graph-projection/known-limitations-and-deferred-work:
-  en: 4340bf39a8e53026
-  zh: ddceeb2df41cd994
+  en: ce05549bf354c175
+  zh: a1ecaa3122e171ce
 /deepseek-ai-dsh-experimental-graph-projection/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 9c6918ce849f6c93

@@ -1,0 +1,13 @@
+version: 1
+scenario: graph-run-cycle
+profile: headless
+composition: graph-run-cycle
+recording: live
+header:
+  class: graph-run-cycle
+  pin: true
+  systemPromptSource: text-turn
+  childSystemPrompts: [1, 2, 3, 4, 5]
+  childToolSchemas: [1, 2, 3, 4, 5]
+workspace:
+  final: true

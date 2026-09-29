@@ -6,7 +6,7 @@
       "kind": "event",
       "event": "graph/node",
       "surface": false,
-      "digest": "6d27af626def7a874a97e4f750bbd96d015195fd1a8472286d10095c77e16803",
+      "digest": "f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa",
       "schema": {
         "root": 0,
         "nodes": [
@@ -78,6 +78,11 @@
                 "name": "fingerprint",
                 "type": 11,
                 "optional": false
+              },
+              {
+                "name": "iteration",
+                "type": 2,
+                "optional": true
               },
               {
                 "name": "nodeId",

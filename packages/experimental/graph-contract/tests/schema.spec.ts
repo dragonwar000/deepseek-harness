@@ -44,11 +44,11 @@ describe('parsePlan', () => {
     expect(parsed.rejections[0]?.detail).toMatch(/status/)
   })
 
-  it('rejects a plan-level version field and a cycleGuard on an edge', () => {
+  it('rejects a plan-level version field and a cycleGuard without until', () => {
     const parsed = parsePlan(minimal({ version: 2, edges: [{ from: 'build', to: 'build', relation: 'feeds', artifact: 'x', cycleGuard: { maxIterations: 2 } }] }))
     expect(parsed.ok).toBe(false)
     if (parsed.ok) return
-    expect(parsed.rejections.map(entry => entry.subject)).toEqual(expect.arrayContaining(['plan', 'plan.edges[0]']))
+    expect(parsed.rejections.map(entry => entry.subject)).toEqual(expect.arrayContaining(['plan', 'plan.edges[0].cycleGuard.until']))
   })
 
   it.each([
@@ -65,6 +65,22 @@ describe('parsePlan', () => {
     expect(parsed.ok).toBe(false)
     if (parsed.ok) return
     expect(parsed.rejections.map(entry => entry.subject)).toContain(subject)
+  })
+
+  it('names the path and reason of each unsupported output schema keyword', () => {
+    const output = { type: 'object', properties: { verdict: { enum: ['pass', 'fail'] }, score: { type: 'number', minimum: 0 } }, required: ['verdict'] }
+    const parsed = parsePlan(minimal({ nodes: [{ id: 'build', kind: 'execution', instruction: 'x', output }] }))
+    expect(parsed.ok).toBe(false)
+    if (parsed.ok) return
+    expect(parsed.rejections.map(entry => [entry.subject, entry.detail])).toEqual([
+      ['plan.nodes[0].output', 'unsupported output schema: output.properties.verdict.enum requires type or oneOf'],
+      ['plan.nodes[0].output', 'unsupported output schema: output.properties.score.minimum is not a supported keyword (subset: type/oneOf/properties/required/additionalProperties/items/enum/const + annotations)'],
+    ])
+  })
+
+  it('names a non-object output root', () => {
+    const parsed = parsePlan(minimal({ nodes: [{ id: 'build', kind: 'execution', instruction: 'x', output: { type: 'string' } }] }))
+    expect(parsed.ok ? [] : parsed.rejections.map(entry => entry.detail)).toEqual(['unsupported output schema: output.type must be "object" (structured output is object-rooted)'])
   })
 
   it('reads no plan id from input without a valid one', () => {

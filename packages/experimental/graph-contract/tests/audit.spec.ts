@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { auditPlan, planOrder, planWaves, REJECTION_RULES, routesFor, runsAsAgent, scopesOverlap } from '../src/audit.ts'
+import { auditPlan, cycleBody, planOrder, planWaves, REJECTION_RULES, routesFor, runsAsAgent, scopesOverlap } from '../src/audit.ts'
 import type { AuditEnvironment } from '../src/audit.ts'
-import { parsePlan } from '../src/schema.ts'
+import { graphNodeId, parsePlan } from '../src/schema.ts'
 import type { GraphPlan, GraphRejection, GraphRejectionCode } from '../src/types.ts'
 
 interface NodeInput {
@@ -20,7 +20,14 @@ interface NodeInput {
   mayFail?: boolean
   category?: string
 }
-interface EdgeInput { from: string; to: string; relation: string; artifact: string; allowedFields?: string[] }
+interface EdgeInput {
+  from: string
+  to: string
+  relation: string
+  artifact: string
+  allowedFields?: string[]
+  cycleGuard?: Record<string, unknown>
+}
 interface PlanInput {
   format: string
   id: string
@@ -85,6 +92,13 @@ function chain(): PlanInput {
   }
 }
 
+/** The diamond with a review loop: check feeds back to build until `pnpm test` passes. */
+function looped(guard: Record<string, unknown> = { maxIterations: 3, until: 'pnpm test' }): PlanInput {
+  const plan = diamond()
+  plan.edges.push({ from: 'check', to: 'build', relation: 'feeds', artifact: 'review notes', cycleGuard: guard })
+  return plan
+}
+
 function node(plan: PlanInput, id: string): NodeInput {
   const found = plan.nodes.find(entry => entry.id === id)
   if (found === undefined) throw new Error(`no node ${id}`)
@@ -93,11 +107,13 @@ function node(plan: PlanInput, id: string): NodeInput {
 
 const ENV: AuditEnvironment = {
   allowedTools: new Set(['read', 'edit']),
+  shellTools: new Set(),
   isRegisteredTool: () => true,
   runBudget: { steps: 0, tokens: 0, wallMs: 0 },
   depth: { current: 0, max: 1 },
   frozenAcceptance: undefined,
   routes: new Map(),
+  maxCycleIterations: 8,
 }
 
 function parsed(input: PlanInput): GraphPlan {
@@ -310,6 +326,31 @@ describe('auditPlan rejections', () => {
     expect(audit(plan)).toEqual([])
   })
 
+  it('warns SHELL_WRITES_UNCHECKED for every agent node that declares a shell tool, without blocking', () => {
+    const plan = diamond()
+    node(plan, 'build').tools = ['read', 'edit', 'bash']
+    node(plan, 'check').tools = ['read', 'bash']
+    const found = audit(plan, { allowedTools: new Set(['read', 'edit', 'bash']), shellTools: new Set(['bash']) })
+    expect(found).toEqual([
+      expect.objectContaining({
+        code: 'SHELL_WRITES_UNCHECKED', check: 'writes', severity: 'warn', subject: 'build:bash',
+        detail: 'bash can modify files outside the fs write seam, so writes outside src are not checked',
+        remedy: REJECTION_RULES.SHELL_WRITES_UNCHECKED.remedy,
+      }),
+      expect.objectContaining({
+        code: 'SHELL_WRITES_UNCHECKED', subject: 'check:bash',
+        detail: 'bash can modify files outside the fs write seam, and the node declares no write scope',
+      }),
+    ])
+  })
+
+  it('does not warn for a shell tool on a node that runs no agent', () => {
+    const plan = diamond()
+    node(plan, 'spec').tools = ['bash']
+    const codes = audit(plan, { allowedTools: new Set(['read', 'edit', 'bash']), shellTools: new Set(['bash']) }).map(entry => entry.code)
+    expect(codes).toEqual(['CAPABILITY_UNVERIFIED'])
+  })
+
   it('orders findings by rule order, then by subject', () => {
     const plan = diamond()
     plan.level = 'L3'
@@ -343,5 +384,57 @@ describe('graph helpers', () => {
     expect(scopesOverlap('src/api', 'src')).toBe(true)
     expect(scopesOverlap('src', 'src')).toBe(true)
     expect(scopesOverlap('src', 'srcx')).toBe(false)
+  })
+})
+
+describe('cycle edges', () => {
+  it('admits a loop edge that is not a need and computes its body', () => {
+    const plan = parsed(looped())
+    expect(auditPlan(plan, ENV).rejections).toEqual([])
+    expect(cycleBody(plan, { from: graphNodeId('check'), to: graphNodeId('build') })).toEqual(['build', 'check'])
+    expect(cycleBody(plan, { from: graphNodeId('build'), to: graphNodeId('build') })).toEqual(['build'])
+  })
+
+  it.each<[string, (plan: PlanInput) => void, string, string]>([
+    ['a relation other than feeds', (plan) => { plan.edges.at(-1)!.relation = 'hands_off' }, 'edges[5].cycleGuard', 'a cycle edge must have relation feeds'],
+    ['an edge that points forward', (plan) => { plan.edges.at(-1)!.from = 'docs' }, 'edges[5].cycleGuard', 'docs does not depend on build; a cycle edge must point back to the node itself or to a node it depends on'],
+    ['a loop edge listed in needs', (plan) => { node(plan, 'build').needs = ['spec', 'check'] }, 'edges[5].cycleGuard', 'build lists check in needs; a cycle edge is not a need'],
+  ])('rejects %s as SCHEMA_INVALID', (_label, mutate, subject, detail) => {
+    const plan = looped()
+    mutate(plan)
+    expect(audit(plan)).toContainEqual(expect.objectContaining({ code: 'SCHEMA_INVALID', subject, detail }))
+  })
+
+  it('walks past an undeclared need while checking a loop edge', () => {
+    const plan = looped()
+    node(plan, 'check').needs = ['ghost', 'build', 'docs']
+    expect(audit(plan).map(entry => [entry.code, entry.subject])).toEqual([['SCHEMA_INVALID', 'check.needs']])
+  })
+
+  it('rejects a loop body that feeds a node outside the loop before its from node', () => {
+    const plan = looped()
+    plan.nodes.push({ id: 'notes', kind: 'execution', instruction: 'Write release notes', needs: ['build'], tools: ['read'], budget: { ...BUDGET } })
+    plan.edges.push({ from: 'build', to: 'notes', relation: 'feeds', artifact: 'summary' })
+    node(plan, 'report').needs = ['check', 'notes']
+    plan.edges.push({ from: 'notes', to: 'report', relation: 'feeds', artifact: 'notes' })
+    expect(audit(plan)).toContainEqual(expect.objectContaining({
+      code: 'SCHEMA_INVALID', subject: 'build->notes', detail: 'leaves the loop check->build before check; only check may feed nodes outside the loop',
+    }))
+  })
+
+  it('rejects a guard without until, and a plateau without its metric', () => {
+    expect(parsePlan(looped({ maxIterations: 2 })).ok).toBe(false)
+    const plateau = parsePlan(looped({ maxIterations: 2, until: 'true', plateauAfter: 2 }))
+    expect(plateau.ok ? [] : plateau.rejections.map(entry => entry.detail)).toContain('plateauAfter and metricCommand must be set together')
+    expect(parsePlan(looped({ maxIterations: 2, until: 'true', plateauAfter: 2, metricCommand: 'wc -l < out.txt' })).ok).toBe(true)
+  })
+
+  it('caps iterations by the deployment and multiplies the loop body budget', () => {
+    expect(audit(looped({ maxIterations: 9, until: 'true' }))).toContainEqual(expect.objectContaining({
+      code: 'BUDGET_EXCEEDED', subject: 'check->build.cycleGuard.maxIterations', detail: '9 iterations exceed the deployment limit 8',
+    }))
+    const env = { runBudget: { steps: 150, tokens: 0, wallMs: 0 } }
+    expect(audit(diamond(), env).filter(entry => entry.code === 'BUDGET_EXCEEDED')).toEqual([])
+    expect(audit(looped(), env)).toContainEqual(expect.objectContaining({ code: 'BUDGET_EXCEEDED', subject: 'budget.steps', detail: 'worst case 200 steps exceeds the run limit 150' }))
   })
 })

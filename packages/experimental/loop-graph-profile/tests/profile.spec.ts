@@ -11,6 +11,7 @@ import * as yaml from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import { Config as DenialBudgetConfig } from '@deepseek-ai/dsh-experimental-denial-budget'
 import { Config as GraphContractConfig } from '@deepseek-ai/dsh-experimental-graph-contract'
+import { Config as GraphProjectionConfig } from '@deepseek-ai/dsh-experimental-graph-projection'
 import { Config as GraphRunnerConfig } from '@deepseek-ai/dsh-experimental-graph-runner'
 import { Config as LoopBudgetConfig } from '@deepseek-ai/dsh-experimental-loop-budget'
 import { Config as StationarityConfig } from '@deepseek-ai/dsh-experimental-stationarity-guard'
@@ -78,12 +79,18 @@ describe('loop guards bundle', () => {
 
   it('starts the graph contract with no node tools and no run limits', () => {
     const row = inserted.find(entry => entry.id === 'graph-contract')
-    expect(row?.config).toMatchObject({ mode: 'shadow', allowedTools: [], runBudget: { steps: 0, tokens: 0, wallMs: 0 } })
+    expect(row?.config).toMatchObject({ mode: 'shadow', allowedTools: [], runBudget: { steps: 0, tokens: 0, wallMs: 0 }, shellTools: ['bash', 'pwsh'], maxCycleIterations: 8 })
   })
 
-  it('mounts the graph projection without config', () => {
+  it('mounts the graph projection with history limits its Config accepts', () => {
     const row = inserted.find(entry => entry.id === 'graph-projection')
-    expect(row).toEqual({ id: 'graph-projection', name: '@deepseek-ai/dsh-experimental-graph-projection' })
+    expect(row?.config).toEqual({ history: { maxChars: 8000, maxListed: 20, readWindow: 50 } })
+    expect(() => GraphProjectionConfig(row?.config)).not.toThrow()
+  })
+
+  it('starts the verifier gate evidence check in shadow mode', () => {
+    const row = inserted.find(entry => entry.id === 'verifier-gate')
+    expect(row?.config).toMatchObject({ mode: 'shadow', evidence: { mode: 'shadow', require: 'every', maxClaims: 32 } })
   })
 
   it('starts the graph runner on the spawn provider with no run limits', () => {

@@ -1,0 +1,10 @@
+version: 1
+scenario: graph-history-read
+profile: headless
+composition: graph-history-read
+recording: live
+header:
+  class: graph-history-read
+  pin: true
+  systemPromptSource: compaction-recovery
+  changes: 1

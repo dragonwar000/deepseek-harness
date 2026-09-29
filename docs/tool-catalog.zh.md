@@ -46,8 +46,8 @@
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 9 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
 | `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit`、`graph_capabilities` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.subagents for the depth check` | `tool/call`、`graph/plan`、`tool/result` | - | 实验性。`mode: off` 不注册任何东西；`shadow` 与 `enforce` 注册相同的两个工具，只在准入上不同。`assumption` 是没有默认值的必填项，因此本目录提供了一个；`allowedTools` 与 `routes` 默认为空，这只影响审计与能力结果，不影响 schema。 |
-| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_query` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session` | `tool/call`、`tool/result` | - | 实验性且只读：它折叠由 @deepseek-ai/dsh-experimental-graph-contract 写入的 graph/plan 事件，自身不写入任何会话事件。 |
-| `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`、`ctx.sessionProjections`、`ctx.subagents`、`graph-contract and graph-projection mounted`、`owning Agent session` | `tool/call`、`graph/run`、`graph/node`、`subagent/catalog`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。 |
+| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`、`graph_query`、`history_read` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.sessionQuery for history_read` | `tool/call`、`tool/result` | - | 实验性且只读：它折叠 graph/plan、graph/node、graph/run 与 graph/edge 事件、当前轮次的工具记录以及压缩片段，自身不写入任何会话事件。 |
+| `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`、`ctx.sessionProjections`、`ctx.subagents`、`graph-contract and graph-projection mounted`、`owning Agent session` | `tool/call`、`graph/run`、`graph/node`、`graph/edge`、`subagent/catalog`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2525,15 +2525,15 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 ### `graph_audit`
 
-在一个 dsh-graph/v1 计划的任何部分运行之前审计它。审计是确定性的，不运行任何内容。它检查：无环的 needs，且每个依赖都有一条声明的边与 artifact；每个节点的输出都被消费；从 L2 起，需要带 verify 命令的锚点与全新的验证节点；在 L3，需要 human_gate 与 stop_handoff；可一起运行的节点写入范围互不相交；允许的工具；运行预算；来自可能失败节点的输入需有回退值；委派深度；以及自第一个版本以来未改变的 acceptance。
+在一个 dsh-graph/v1 计划的任何部分运行之前审计它。审计是确定性的，不运行任何内容。它检查：无环的 needs，且每个依赖都有一条声明的边与 artifact；每个节点的输出都被消费；从 L2 起，需要带 verify 命令的锚点与全新的验证节点；在 L3，需要 human_gate 与 stop_handoff；可一起运行的节点写入范围互不相交；允许的工具；运行预算；来自可能失败节点的输入需有回退值；委派深度；以及自第一个版本以来未改变的 acceptance。当节点声明了可以通过 shell 写入文件的工具时，它会发出警告。
 
 每次带有有效计划 id 的调用都会记录该计划的一个新版本。修复它报告的每个拒绝，然后再次调用。警告不会阻止准入。
 
 计划：format "dsh-graph/v1"；id（小写，跨版本稳定）；level L1|L2|L3；goal；runInputs（名称）；nodes；edges；deliverable；acceptance（非空列表，第一个版本之后冻结）。
 
-节点：id；kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff；instruction；needs（节点 id）；inputs [{name, from: "run" 或所需节点 id, field, fallback?}]；output（object JSON Schema；验证节点要求带 enum ["pass","fail"] 的 verdict）；tools；writes（相对工作区的路径前缀）；verify（shell 命令，锚点必填）；每次尝试的 budget {steps?, tokens?, wallMs?}；retryBudget；contextScope execution-only|fresh-independent；mayFail；category（可选；graph_capabilities 列出的类别之一）。
+节点：id；kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff；instruction；needs（节点 id）；inputs [{name, from: "run" 或所需节点 id, field, fallback?}]；output（只使用 type、properties、required、additionalProperties、items、enum、const、oneOf 与注解的 object JSON Schema；每个属性都声明 type；验证节点要求 "verdict": {"type": "string", "enum": ["pass", "fail"]}）；tools；writes（相对工作区的路径前缀）；verify（shell 命令，锚点必填）；每次尝试的 budget {steps?, tokens?, wallMs?}；retryBudget；contextScope execution-only|fresh-independent；mayFail；category（可选；graph_capabilities 列出的类别之一）。
 
-边：from；to；relation feeds|verifies|constrains|vetoes|anchors|hands_off；artifact（跨越该边的内容）；allowedFields（可选）。
+边：from；to；relation feeds|verifies|constrains|vetoes|anchors|hands_off；artifact（跨越该边的内容）；allowedFields（可选）；cycleGuard（可选）{maxIterations, until, plateauAfter?, metricCommand?} 标记一条循环边：关系为 feeds，从一个节点指回自身或它依赖的某个节点，且不列在 needs 中。当 from 完成时，循环会再次运行，除非 until shell 命令以 0 退出、达到 maxIterations，或 metricCommand 的输出在 plateauAfter 次决策中保持不变。只有循环的 from 节点可以供给循环之外的节点。
 
 status、basis 与 version 属于 harness，出现在计划中会被拒绝。
 
@@ -2572,9 +2572,30 @@ status、basis 与 version 属于 harness，出现在计划中会被拒绝。
 
 ## `@deepseek-ai/dsh-experimental-graph-projection`
 
+### `graph_cite`
+
+检查当前轮次的哪些工具调用与工具结果提到了你即将在回答中提及的文件路径或 shell 命令。每条支持记录是 tool-record（某个工具调用参数提到它）、observed（某个成功的工具结果提到它）或 absence（某个失败的工具结果提到它）。没有记录的声明是 parametric：本轮次中没有任何内容显示它。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "claim": {
+      "type": "string",
+      "description": "One file path or one shell command from your answer."
+    }
+  },
+  "required": [
+    "claim"
+  ]
+}
+```
+
+来源：[`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
 ### `graph_query`
 
-读取本会话已准入的任务图。scope "plans" 列出每个已准入计划及其版本、节点数、就绪数与已执行数。scope "plan" 加 plan_id 返回其节点（needs、状态、依据、尝试次数、恢复状态）、可以一起运行的节点波次，以及其运行。scope "node" 加 plan_id 与 node_id 返回一个节点及其输出、子会话与记录的原因。状态由 harness 根据会话日志记录，无法设置。
+读取本会话已准入的任务图。scope "plans" 列出每个已准入计划及其版本、节点数、就绪数与已执行数。scope "plan" 加 plan_id 返回其节点（needs、状态、依据、尝试次数、恢复状态、循环迭代）、可以一起运行的节点波次、其运行，以及每条循环边的触发次数。scope "node" 加 plan_id 与 node_id 返回一个节点及其输出、子会话与记录的原因。状态由 harness 根据会话日志记录，无法设置。
 
 ```json
 {
@@ -2606,7 +2627,29 @@ status、basis 与 version 属于 harness，出现在计划中会被拒绝。
 
 来源：[`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
 
-实验性且只读：它折叠由 @deepseek-ai/dsh-experimental-graph-contract 写入的 graph/plan 事件，自身不写入任何会话事件。
+### `history_read`
+
+读回压缩在你的上下文中替换或缩短的对话。不带 seq 时，按最新优先列出本会话被压缩的片段：每个片段有一个 seq、一个类型（summary：被检查点替换的片段；prune：被原地缩短的工具结果）、其首尾事件编号以及其条目数。带上该列表中的 seq 时，从 offset 开始把该片段作为转录返回；提前停止的页面会给出下一个 offset。转录作为本工具结果到达；你上下文中更早的内容都不会改变。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "description": "Seq of a compacted span from the listing; omit to list spans."
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Item to start at inside the span; default 0."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+实验性且只读：它折叠 graph/plan、graph/node、graph/run 与 graph/edge 事件、当前轮次的工具记录以及压缩片段，自身不写入任何会话事件。
 
 <a id="deepseek-aidsh-experimental-graph-runner"></a>
 
@@ -2616,7 +2659,7 @@ status、basis 与 version 属于 harness，出现在计划中会被拒绝。
 
 运行一个 dsh-graph/v1 计划的最新准入版本，并等待它停止。每个代理节点作为一个新的子代理运行，只看到自己的指令、输入与声明的工具，并返回声明的输出。锚点与 verify 命令作为 shell 命令运行；human_gate 会询问用户。
 
-只有带证据时节点才算已执行：其 verify 命令通过、某个验证节点为它返回 verdict "pass"，或用户批准了它的关口。没有证据的结果保持 unverified。失败的节点最多按其 retryBudget 重试。
+只有带证据时节点才算已执行：其 verify 命令通过、某个验证节点为它返回 verdict "pass"，或用户批准了它的关口。没有证据的结果保持 unverified。失败的节点最多按其 retryBudget 重试。当 from 节点完成且其 until 命令失败时，循环边会再次运行其循环，至多 maxIterations 次；重新打开的目标会看到该边回传的输出。
 
 结果给出停止原因与每个节点的状态。遇到 NO_PROGRESS 时，修正计划并用 graph_audit 审计一个新版本；未改变的已完成节点会被携带过去。遇到 BUDGET 时，再次调用 graph_run 继续。
 

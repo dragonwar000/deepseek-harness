@@ -1,6 +1,6 @@
 /**
  * The `graph` projection: the task graph of the latest admitted version of
- * each plan with the runner's recorded node states and runs. `pending` and
+ * each plan with the runner's recorded node states, runs, and cycle-edge decisions. `pending` and
  * `ready` are derived from needs after every change; every other status is
  * the latest `graph/node` record.
  * @module @deepseek-ai/dsh-experimental-graph-projection/projection
@@ -8,6 +8,8 @@
 
 import { z } from 'zod'
 import {
+  edgeOutcomeSchema,
+  graphEdgeRecordSchema,
   graphNodeIdSchema,
   graphNodeRecordSchema,
   graphPlanIdSchema,
@@ -29,7 +31,7 @@ import {
 import type { GraphPlanId } from '@deepseek-ai/dsh-experimental-graph-contract'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import type { GraphCarry, GraphState, GraphTask, GraphTaskNode } from './types.ts'
+import type { GraphCarry, GraphEdgeView, GraphState, GraphTask, GraphTaskNode } from './types.ts'
 
 const count = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 
@@ -49,6 +51,7 @@ export const graphStateSchema = z.object({
       attempt: count,
       revision: count,
       fingerprint: z.string(),
+      iteration: count,
       basis: nodeBasisSchema.optional(),
       output: jsonValueSchema.optional(),
       childSession: sessionIdSchema.optional(),
@@ -64,6 +67,15 @@ export const graphStateSchema = z.object({
       }).strict()),
     }).strict().nullable(),
     runs: z.array(z.object({ runId: graphRunIdSchema, stopReason: stopReasonSchema.optional() }).strict()),
+    edges: z.array(z.object({
+      from: graphNodeIdSchema,
+      to: graphNodeIdSchema,
+      fireCount: count,
+      decided: count.nullable(),
+      outcome: edgeOutcomeSchema.optional(),
+      metrics: z.array(z.string()),
+      output: jsonValueSchema.optional(),
+    }).strict()),
   }).strict()),
   failure: z.string().optional(),
 }).strict() as z.ZodType<GraphState>
@@ -113,6 +125,21 @@ function withTask(state: GraphState, task: GraphTask): GraphState {
   return { graphs: state.graphs.map(entry => (entry.planId === task.planId ? task : entry)) }
 }
 
+/**
+ * The admitted task a runner record names.
+ * @param state - current state.
+ * @param type - event type named in the failure.
+ * @param seq - event seq named in the failure.
+ * @param record - the record's plan id and version.
+ * @returns the task, or the failure text when the version is not the admitted one.
+ */
+function recordTask(state: GraphState, type: string, seq: number, record: { planId: GraphPlanId; version: number }): GraphTask | string {
+  const task = taskOf(state, record.planId)
+  return task === undefined || task.version !== record.version
+    ? `${type} at seq ${seq}: plan ${record.planId} version ${record.version} has no admitted task`
+    : task
+}
+
 function applyPlan(state: GraphState, event: SessionEvent<'graph/plan'>): GraphState {
   const decoded = graphPlanRecordSchema.safeParse(event.data)
   if (!decoded.success) return { ...state, failure: `graph/plan at seq ${event.seq} does not decode: ${decoded.error.message}` }
@@ -136,8 +163,12 @@ function applyPlan(state: GraphState, event: SessionEvent<'graph/plan'>): GraphS
     attempt: 0,
     revision: 0,
     fingerprint: fingerprints.get(node.id) ?? '',
+    iteration: 0,
   }))
-  const task = derive({ planId: plan.id, version: record.version, plan, waves: planWaves(plan), nodes, carry, runs: [] })
+  const edges = plan.edges.flatMap(edge => (edge.cycleGuard === undefined
+    ? []
+    : [{ from: edge.from, to: edge.to, fireCount: 0, decided: null, metrics: [] }]))
+  const task = derive({ planId: plan.id, version: record.version, plan, waves: planWaves(plan), nodes, carry, runs: [], edges })
   return { graphs: [...state.graphs.filter(entry => entry.planId !== plan.id), task] }
 }
 
@@ -145,10 +176,8 @@ function applyNode(state: GraphState, event: SessionEvent<'graph/node'>): GraphS
   const decoded = graphNodeRecordSchema.safeParse(event.data)
   if (!decoded.success) return { ...state, failure: `graph/node at seq ${event.seq} does not decode: ${decoded.error.message}` }
   const record = decoded.data
-  const task = taskOf(state, record.planId)
-  if (task === undefined || task.version !== record.version) {
-    return { ...state, failure: `graph/node at seq ${event.seq}: plan ${record.planId} version ${record.version} has no admitted task` }
-  }
+  const task = recordTask(state, 'graph/node', event.seq, record)
+  if (typeof task === 'string') return { ...state, failure: task }
   if (!task.nodes.some(node => node.id === record.nodeId)) {
     return { ...state, failure: `graph/node at seq ${event.seq}: unknown node ${record.nodeId}` }
   }
@@ -161,6 +190,7 @@ function applyNode(state: GraphState, event: SessionEvent<'graph/node'>): GraphS
     attempt: record.attempt,
     revision: record.revision,
     fingerprint: node.fingerprint,
+    iteration: record.iteration ?? 0,
     ...record.basis === undefined ? {} : { basis: record.basis },
     ...record.output === undefined ? {} : { output: record.output },
     ...record.childSession === undefined ? {} : { childSession: record.childSession },
@@ -173,10 +203,8 @@ function applyRun(state: GraphState, event: SessionEvent<'graph/run'>): GraphSta
   const decoded = graphRunRecordSchema.safeParse(event.data)
   if (!decoded.success) return { ...state, failure: `graph/run at seq ${event.seq} does not decode: ${decoded.error.message}` }
   const record = decoded.data
-  const task = taskOf(state, record.planId)
-  if (task === undefined || task.version !== record.version) {
-    return { ...state, failure: `graph/run at seq ${event.seq}: plan ${record.planId} version ${record.version} has no admitted task` }
-  }
+  const task = recordTask(state, 'graph/run', event.seq, record)
+  if (typeof task === 'string') return { ...state, failure: task }
   if (record.phase === 'start') return withTask(state, { ...task, runs: [...task.runs, { runId: record.runId }] })
   if (!task.runs.some(run => run.runId === record.runId && run.stopReason === undefined)) {
     return { ...state, failure: `graph/run at seq ${event.seq}: run ${record.runId} stops with no started run` }
@@ -184,6 +212,27 @@ function applyRun(state: GraphState, event: SessionEvent<'graph/run'>): GraphSta
   const stopped = { runId: record.runId, ...record.stopReason === undefined ? {} : { stopReason: record.stopReason } }
   const runs = task.runs.map(run => (run.runId === record.runId ? stopped : run))
   return withTask(state, { ...task, runs })
+}
+
+function applyEdge(state: GraphState, event: SessionEvent<'graph/edge'>): GraphState {
+  const decoded = graphEdgeRecordSchema.safeParse(event.data)
+  if (!decoded.success) return { ...state, failure: `graph/edge at seq ${event.seq} does not decode: ${decoded.error.message}` }
+  const record = decoded.data
+  const task = recordTask(state, 'graph/edge', event.seq, record)
+  if (typeof task === 'string') return { ...state, failure: task }
+  if (!task.edges.some(edge => edge.from === record.from && edge.to === record.to)) {
+    return { ...state, failure: `graph/edge at seq ${event.seq}: ${record.from}->${record.to} is not a cycle edge` }
+  }
+  const edges = task.edges.map((edge): GraphEdgeView => (edge.from !== record.from || edge.to !== record.to ? edge : {
+    from: edge.from,
+    to: edge.to,
+    fireCount: record.fireCount,
+    decided: record.iteration,
+    outcome: record.outcome,
+    metrics: record.metric === undefined ? edge.metrics : [...edge.metrics, record.metric],
+    ...record.output === undefined ? {} : { output: record.output },
+  }))
+  return withTask(state, { ...task, edges })
 }
 
 /**
@@ -199,6 +248,7 @@ export function applyGraphEvent(state: GraphState, event: SessionEvent): GraphSt
     case 'graph/plan': return applyPlan(state, event)
     case 'graph/node': return applyNode(state, event)
     case 'graph/run': return applyRun(state, event)
+    case 'graph/edge': return applyEdge(state, event)
     // SessionEventMap is merge-extensible; every other event leaves the task graphs unchanged.
     default: return state
   }
@@ -207,7 +257,7 @@ export function applyGraphEvent(state: GraphState, event: SessionEvent): GraphSt
 /** Host-only projection unit registered by the graph-projection plugin. */
 export const graphProjection = {
   key: 'graph',
-  stateVersion: 2,
+  stateVersion: 3,
   stateSchema: graphStateSchema,
   init: emptyGraph,
   apply: applyGraphEvent,

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package defines the `dsh-graph/v1` plan format and registers the `graph_audit` and `graph_capabilities` tools. `graph_audit` parses one plan, audits it without running anything, returns every finding with a fixed remedy, and appends a `graph/plan` event when the plan id is readable, so versions, rejection memory, admission, and capability routes are rebuilt from the log. `enforce` admits a version only without a `reject` finding; `shadow` admits every version. The package also declares the `graph/node` and `graph/run` events and the node lifecycle rules the graph runner and projection share. It is experimental.
+This package defines the `dsh-graph/v1` plan format and registers the `graph_audit` and `graph_capabilities` tools. `graph_audit` parses one plan, audits it without running anything, returns every finding with a fixed remedy, and appends a `graph/plan` event when the plan id is readable, so versions, rejection memory, admission, and capability routes are rebuilt from the log. `enforce` admits a version only without a `reject` finding; `shadow` admits every version. The package also declares the `graph/node`, `graph/run`, and `graph/edge` events and the node lifecycle and loop rules the graph runner and projection share. It is experimental.
 
 ## Table of Contents
 
@@ -48,12 +48,14 @@ Choose it when plans need a checked structure before any of them runs: no cycles
 | `mode` | `shadow` | `off` registers nothing; `shadow` admits every version and still reports findings; `enforce` admits a version only when no finding has severity `reject` |
 | `assumption` | required outside `off` | The assumption about the model that this audit encodes; a blank value fails the load |
 | `allowedTools` | `[]` | Global tools a graph node may declare; `run_code` fails the load |
+| `shellTools` | `[]` | Tools a node may declare that run shell commands; each declaration on an agent node draws a `SHELL_WRITES_UNCHECKED` warning |
 | `runBudget.steps` | `0` | Limit on the summed worst-case steps of agent nodes (per-attempt budget × (retryBudget + 1)); `0` is unlimited |
 | `runBudget.tokens` | `0` | Same for tokens |
 | `runBudget.wallMs` | `0` | Limit on the critical path of worst-case wall time through the needs; `0` is unlimited |
+| `maxCycleIterations` | `8` | Highest `cycleGuard.maxIterations` a plan may declare; a higher value draws `BUDGET_EXCEEDED` |
 | `routes` | `[]` | Capability routes `{category, provider, model, reliability}`; a node's `category` must be routed. `reliability` is a deployment label, `unverified` by default |
 
-Loading fails with a `graph-contract:` error when `assumption` is blank, `allowedTools` names `run_code`, a `runBudget` field is not an integer of at least 0, a route has a blank category, provider, or model, or a category is routed twice.
+Loading fails with a `graph-contract:` error when `assumption` is blank, `allowedTools` names `run_code`, a `runBudget` field is not an integer of at least 0, a `shellTools` entry is blank, `maxCycleIterations` is not an integer of at least 1, a route has a blank category, provider, or model, or a category is routed twice.
 
 ### What you get
 
@@ -61,8 +63,8 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 
 | Code | Check | Severity | Rejected when |
 |---|---|---|---|
-| `SCHEMA_INVALID` | `schema` | reject | The plan does not parse (unknown keys such as `status`, `basis`, or `version` included), or ids repeat, needs or edges name undeclared nodes, an edge is not a need, or an input binds an undeclared run input, a node outside `needs`, an undeclared output property, or a field the edge does not allow |
-| `CYCLE` | `structure` | reject | The needs contain a cycle |
+| `SCHEMA_INVALID` | `schema` | reject | The plan does not parse (unknown keys such as `status`, `basis`, or `version` included), or ids repeat, needs or edges name undeclared nodes, an edge is neither a need nor a well-formed cycle edge, a loop body feeds a node outside the loop before its `from` node, an output schema uses an unsupported keyword or omits a property type (the detail names the path and reason), or an input binds an undeclared run input, a node outside `needs`, an undeclared output property, or a field the edge does not allow |
+| `CYCLE` | `structure` | reject | The needs contain a cycle; a loop is declared only by a `cycleGuard` edge that is not a need |
 | `ISOLATED_NODE` | `closeness` | reject | A node in a plan of two or more nodes has no needs and no dependents |
 | `NOT_CONSUMED` | `closeness` | reject | A node's output reaches no node, and it is not a `synthesis` or `stop_handoff` node (a plan without one may end in one sink) |
 | `MISSING_ANCHOR` | `anchor` | reject | An anchor declares no `verify` command, or an L2 or L3 plan has no anchor with commands and an outgoing `anchors` edge |
@@ -72,8 +74,9 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 | `MISSING_HUMAN_GATE` | `gates` | reject | An L3 plan has no `human_gate` node |
 | `MISSING_STOP_HANDOFF` | `gates` | reject | An L3 plan has no `stop_handoff` node |
 | `WRITE_SCOPE_OVERLAP` | `writes` | reject | Two nodes that can run in the same wave have overlapping write prefixes |
+| `SHELL_WRITES_UNCHECKED` | `writes` | warn | An agent node declares a tool listed in `shellTools`; writes through it bypass the fs write seam, so the runner cannot hold them to the node's write scopes |
 | `CAPABILITY_UNVERIFIED` | `capability` | reject | A tool is `run_code`, is not in `allowedTools`, or is not a registered global tool; an `anchor` or `human_gate` node declares tools or a category; an agent node's category has no configured route; or agent nodes exist and no subagent service is mounted |
-| `BUDGET_EXCEEDED` | `budget` | reject | A run limit is set and an agent node declares no budget of that kind, or the worst case exceeds the limit |
+| `BUDGET_EXCEEDED` | `budget` | reject | A run limit is set and an agent node declares no budget of that kind, the worst case exceeds the limit (a loop body node counts `maxIterations + 1` times), or a `cycleGuard` exceeds `maxCycleIterations` |
 | `INPUT_MAY_BE_ABSENT` | `inputs` | reject | An input binds to a node with `mayFail: true` and declares no `fallback` |
 | `EDGE_WITHOUT_ARTIFACT` | `structure` | reject | A need has no declared edge, or an edge artifact is blank |
 | `DEPTH_EXCEEDED` | `depth` | reject | Agent nodes would run deeper than the subagent depth limit |
@@ -96,10 +99,11 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 - **Rejection memory lives in the session log.** `graph_audit` reports every earlier version with its codes, and `repeatOf` names the latest earlier version with the same digest. A plan that does not parse is still recorded, with `plan: null`, when its id is readable.
 - **Write scopes are path prefixes.** They are normalized like Agent Teams write scopes; two nodes may share a wave only when neither is a transitive need of the other, and then their prefixes must not overlap.
 - **Budgets have no USD.** `ctx.llm` exposes no price, so the run budget covers steps, tokens (summed over attempts), and wall time (critical path, because a wave runs in parallel).
-- **DAG only.** Edges carry no cycle guard in this format version; every cycle is rejected.
+- **Loops are back edges.** A cycle in `needs` is rejected. A loop is an edge with `cycleGuard` that is not a need: relation `feeds`, from a node back to itself or to one of its transitive needs. Its body (`cycleBody`) is every node on a needs path from `to` to `from`; only `from` may feed nodes outside the body, so waves, fingerprints, and carry-over keep one acyclic order. The worst-case budget of each body node is multiplied by `maxIterations + 1`. `graph/edge` records each decision; `canReopen` names the statuses a fired loop may reopen.
 - **Routes are recorded, not looked up later.** A node's `category` selects the provider and model of its subagent, and a model choice reaches the model request, so `graph_audit` records the configured routes of the categories an admitted plan uses on its `graph/plan` record; the graph runner reads routes only from that record. `graph_capabilities` lists the configured routes with `available` (the model appears in `ctx.llm.listModels` at call time), the allowed tools that are registered, and the delegation depth. The routes carry no price because `ctx.llm` exposes none.
-- **Runner vocabulary lives here.** `graph/node` and `graph/run` are declared in this package, with `NODE_TRANSITIONS`, `needSatisfied`, and `nodeFingerprints`, so the runner and the projection share one definition without depending on each other. A need is satisfied when it is `executed`, `failed` with `mayFail`, or `unverified` across a `verifies` edge. A node fingerprint digests the node and its needs' fingerprints, so a changed node changes every dependent.
-- **Output schemas match subagents.** `output` is the object-rooted JSON Schema subset that `ctx.subagents.start` accepts.
+- **Runner vocabulary lives here.** `graph/node`, `graph/run`, and `graph/edge` are declared in this package, with `NODE_TRANSITIONS`, `needSatisfied`, and `nodeFingerprints`, so the runner and the projection share one definition without depending on each other. A need is satisfied when it is `executed`, `failed` with `mayFail`, or `unverified` across a `verifies` edge. A node fingerprint digests the node and its needs' fingerprints, so a changed node changes every dependent.
+- **Output schemas match subagents.** `output` is the object-rooted JSON Schema subset that `ctx.subagents.start` accepts; a `SCHEMA_INVALID` finding names each violation's path under `output` and its reason.
+- **Shell writes are warned, not checked.** Tool definitions carry no side-effect class, so the deployment names its shell tools in `shellTools`; the audit warns and never blocks for them.
 - **Invariant companion.** `./invariant` checks that versions are contiguous, that admission agrees with the mode and the findings, that `plan: null` carries `SCHEMA_INVALID`, and that changed acceptance carries `ACCEPTANCE_CHANGED`. A composition mounts the companion together with `@deepseek-ai/dsh-invariants`.
 
 ### Source map
@@ -107,12 +111,12 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config`, load-time validation, the `graph_audit` and `graph_capabilities` tools, and result rendering |
-| [`src/types.ts`](src/types.ts) | Plan, route, finding, `graph/plan`, `graph/node`, and `graph/run` event, and `graphPlans` state types |
+| [`src/types.ts`](src/types.ts) | Plan, route, finding, `graph/plan`, `graph/node`, `graph/run`, and `graph/edge` event, and `graphPlans` state types |
 | [`src/schema.ts`](src/schema.ts) | Zod parser of model-written plans and schemas of records and state |
-| [`src/audit.ts`](src/audit.ts) | Rejection rules, waves, order, and the audit |
+| [`src/audit.ts`](src/audit.ts) | Rejection rules, waves, order, loop bodies, and the audit |
 | [`src/digest.ts`](src/digest.ts) | Canonical JSON and plan digests |
 | [`src/projection.ts`](src/projection.ts) | The `graphPlans` projection |
-| [`src/run.ts`](src/run.ts) | Node transition table, need satisfaction, and node fingerprints |
+| [`src/run.ts`](src/run.ts) | Node transition table, need satisfaction, node fingerprints, and loop reopening |
 | [`src/invariant.ts`](src/invariant.ts) | Invariant companion for versions and admission |
 
 </details>
@@ -126,6 +130,7 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 - [Graph runner package](../graph-runner/README.md) — the `graph_run` tool that executes admitted plans on the recorded routes.
 - [Loop graph profile](../loop-graph-profile/README.md) — the optional bundle that mounts the graph packages.
 - [Experimental group map](../README.md) — sibling experimental packages and the publication policy.
+- [Loop edges note](../../../.agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.md) — why loops are back edges that reopen their body with a recorded iteration.
 
 -----
 
@@ -141,22 +146,22 @@ When the plugin is mounted (any mode except `off`), the model is offered one too
 ##### Verbatim text for this field
 
 ```markdown
-Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version.
+Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version. It warns when a node declares a tool that can write files through a shell.
 
 Every call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.
 
 Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).
 
-Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
+Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema using only type, properties, required, additionalProperties, items, enum, const, oneOf, and annotations; every property declares a type; verification nodes require "verdict": {"type": "string", "enum": ["pass", "fail"]}); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
 
-Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).
+Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional); cycleGuard (optional) {maxIterations, until, plateauAfter?, metricCommand?} marks a loop edge: relation feeds, from a node back to itself or to a node it depends on, not listed in needs. When from finishes, the loop runs again unless the until shell command exits 0, maxIterations is reached, or the metricCommand output stayed the same for plateauAfter decisions. Only the from node of a loop may feed nodes outside it.
 
 Status, basis, and version belong to the harness and are rejected inside a plan.
 ```
 
 #### Token effect
 
-Always-on while mounted: the tool definition is about 450 tokens in every request.
+Always-on while mounted: the tool definition is about 620 tokens in every request.
 
 #### KV Cache effect
 
@@ -218,7 +223,7 @@ These limits are current package constraints.
 
 - **Rejection memory is per session** — a new session starts with no history; storage-backed memory is deferred.
 - **No cost in USD** — `runBudget` has steps, tokens, and wall time.
-- **DAG only** — cycles with a guard are not part of this format version.
+- **Shell writes are warned, not checked** — a node that declares a tool in `shellTools` can write outside its write scopes; the audit reports `SHELL_WRITES_UNCHECKED` and the runner cannot detect such writes.
 - **Tool registration is read at audit time** — a tool registered later (for example by MCP) is judged by the registry at the moment of the call.
 
 <a id="dev-note"></a>

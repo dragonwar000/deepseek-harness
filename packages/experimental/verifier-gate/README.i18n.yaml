@@ -9,8 +9,8 @@
   en: 55035618f1ae4ca6
   zh: 675d4713c38d73e8
 /deepseek-ai-dsh-experimental-verifier-gate/summary:
-  en: 7df9f462cb7991ee
-  zh: d5a0c19d7b88b42b
+  en: 6818dcf079a5697b
+  zh: 7b83d0768ca643ff
 /deepseek-ai-dsh-experimental-verifier-gate/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
@@ -21,23 +21,23 @@
   en: bbee12b8b242de07
   zh: 400e26dee832947b
 /deepseek-ai-dsh-experimental-verifier-gate/use-this-package/minimal-configuration:
-  en: 3c24329fb650c16b
-  zh: d8a535fa5e02a429
+  en: d2061b1e50914611
+  zh: 452169aead62f2a1
 /deepseek-ai-dsh-experimental-verifier-gate/use-this-package/what-you-get:
-  en: c53f5ba0ca90df98
-  zh: 316bd671d0c33c28
+  en: 6cab5ee5efed13c5
+  zh: 3856f06a4c554c72
 /deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation:
   en: 930e7ed6e0f4cdcd
   zh: 04d3765bbed2ca68
 /deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation/design-notes:
-  en: 3cb59047e1b3e4a8
-  zh: 06cc85a38ccd1648
+  en: 3d13d00daef1eb96
+  zh: 9186719ec400a109
 /deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation/source-map:
-  en: d3a61f47685bcc3c
-  zh: 633753f49f0663f5
+  en: 88085a798cf4bbce
+  zh: 8f3ed11340bbca98
 /deepseek-ai-dsh-experimental-verifier-gate/further-exploration:
-  en: e86414ae081f28b4
-  zh: 4e74cc134316bdee
+  en: 0c809ed4aa03dbcc
+  zh: 35d071827f8870fa
 /deepseek-ai-dsh-experimental-verifier-gate/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -101,9 +101,24 @@
 /deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-an-evaluator-objection/kv-cache-effect:
   en: 5eafb9c18d210b94
   zh: 5e146e3652c7aa19
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/the-evidence-steer:
+  en: 6f5c1e0083d18320
+  zh: 3c7f2fa3719dc08f
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/the-evidence-steer/what-the-model-sees:
+  en: 63916a6f2b2f7754
+  zh: dd43d78d31d98587
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/the-evidence-steer/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/the-evidence-steer/token-effect:
+  en: fec5e40794cc5482
+  zh: f78b1fe6e22f683a
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/the-evidence-steer/kv-cache-effect:
+  en: 50bd8e0efb1a23d1
+  zh: 2a331fdc947efb45
 /deepseek-ai-dsh-experimental-verifier-gate/known-limitations-and-deferred-work:
-  en: d96f07c89aec9b4f
-  zh: 02fd55c626fb1fc7
+  en: 8a84d8d62296341d
+  zh: 63cccbaa7824849d
 /deepseek-ai-dsh-experimental-verifier-gate/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 9c6918ce849f6c93

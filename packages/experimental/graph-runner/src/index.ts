@@ -1,7 +1,9 @@
 /**
  * Graph runner. Registers `graph_run`, which executes the latest admitted
  * version of one `dsh-graph/v1` plan inside the calling tool call and returns
- * the stop reason with every node's state. The plugin also checks every write
+ * the stop reason with every node's state. When a loop edge's from node
+ * finishes, the runner decides the edge with its `until` command and reopens
+ * the loop body on a fire. The plugin also checks every write
  * and edit made by a running node's subagent against the node's write scopes:
  * `enforce` refuses a write outside them, `shadow` only records it.
  * @module @deepseek-ai/dsh-experimental-graph-runner
@@ -29,8 +31,9 @@ import { WriteScopes } from './write-scope.ts'
 
 export { runGraph, STOP_DETAILS } from './runner.ts'
 export type { RunApproval, RunNodeResult, RunOutcome, RunRequest, RunServices, RunSettings, RunShell, RunSubagents } from './runner.ts'
-export { INTERRUPTED_NOTE, nodePrompt } from './prompt.ts'
-export type { PromptInput } from './prompt.ts'
+export { metricOf, plateaued, plateauOf, sentBack } from './cycle.ts'
+export { INTERRUPTED_NOTE, LOOP_FEEDBACK_NOTE, nodePrompt } from './prompt.ts'
+export type { PromptFeedback, PromptInput } from './prompt.ts'
 export { WriteScopes, writeViolation } from './write-scope.ts'
 
 /** Cordis plugin name. */
@@ -79,7 +82,7 @@ export const Config: z<Config> = z.object({
 /** Model-facing description of `graph_run`. */
 export const GRAPH_RUN_DESCRIPTION = [
   'Run the latest admitted version of one dsh-graph/v1 plan and wait for it to stop. Each agent node runs as a fresh subagent that sees only its instruction, its inputs, and its declared tools, and returns its declared output. Anchors and verify commands run as shell commands; a human_gate asks the user.',
-  'A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget.',
+  'A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget. A loop edge runs its loop again when its from node finishes and its until command fails, at most maxIterations times; the reopened target sees the output the edge sends back.',
   'The result names the stop reason and every node\'s status. After NO_PROGRESS, fix the plan and audit a new version with graph_audit; unchanged finished nodes are carried over. After BUDGET, call graph_run again to continue.',
 ].join('\n\n')
 
@@ -91,6 +94,7 @@ const NODE_RESULT_SCHEMA = {
     kind: { type: 'string', required: true },
     status: { type: 'string', required: true },
     attempt: { type: 'integer', required: true },
+    iteration: { type: 'integer' },
     basis: { type: 'string' },
     output: { type: 'json' },
     detail: { type: 'string' },
@@ -126,7 +130,8 @@ export function renderRun(value: GraphRunValue): string {
   for (const node of value.nodes) {
     const basis = node.basis === undefined ? '' : ` (${node.basis})`
     const detail = node.detail === undefined ? '' : ` — ${node.detail}`
-    lines.push(`- ${node.id}: ${node.status}${basis}, attempt ${node.attempt}${detail}`)
+    const iteration = node.iteration === undefined ? '' : `, iteration ${node.iteration}`
+    lines.push(`- ${node.id}: ${node.status}${basis}, attempt ${node.attempt}${iteration}${detail}`)
   }
   for (const node of value.nodes) {
     if ((node.kind === 'synthesis' || node.kind === 'stop_handoff') && node.output !== undefined) {

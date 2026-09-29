@@ -9,7 +9,7 @@ kind: "package-bundle"
 
 ## 概述
 
-`dsh-experimental-loop-graph-profile` 通过一个组合包启用 [`verifier-gate`](../verifier-gate/README.zh.md)、[`stationarity-guard`](../stationarity-guard/README.zh.md)、[`denial-budget`](../denial-budget/README.zh.md)、[`loop-budget`](../loop-budget/README.zh.md)、[`infra-snapshot`](../infra-snapshot/README.zh.md)、[`graph-contract`](../graph-contract/README.zh.md)、[`graph-projection`](../graph-projection/README.zh.md) 与 [`graph-runner`](../graph-runner/README.zh.md)，并在你把 `stationarity-guard` 切换到 `enforce` 之前，让 `repeat-tool-reminder` 继续运行。每个护栏、graph contract 与 graph runner 都以 `shadow` 模式启动：启用本组合包会记录每个护栏本会做什么，不会改变任何步骤或目标；对模型请求的唯一改变是 `graph_audit`、`graph_capabilities`、`graph_query` 与 `graph_run` 的工具定义。本包随 dsh 安装提供，默认关闭；可在插件页开启，或添加到已初始化的 profile。
+`dsh-experimental-loop-graph-profile` 通过一个组合包启用 [`verifier-gate`](../verifier-gate/README.zh.md)、[`stationarity-guard`](../stationarity-guard/README.zh.md)、[`denial-budget`](../denial-budget/README.zh.md)、[`loop-budget`](../loop-budget/README.zh.md)、[`infra-snapshot`](../infra-snapshot/README.zh.md)、[`graph-contract`](../graph-contract/README.zh.md)、[`graph-projection`](../graph-projection/README.zh.md) 与 [`graph-runner`](../graph-runner/README.zh.md)，并在你把 `stationarity-guard` 切换到 `enforce` 之前，让 `repeat-tool-reminder` 继续运行。每个护栏、graph contract 与 graph runner 都以 `shadow` 模式启动：启用本组合包会记录每个护栏本会做什么，不会改变任何步骤或目标；对模型请求的唯一改变是 `graph_audit`、`graph_capabilities`、`graph_query`、`graph_cite`、`history_read` 与 `graph_run` 的工具定义。本包随 dsh 安装提供，默认关闭；可在插件页开启，或添加到已初始化的 profile。
 
 ## 目录
 
@@ -39,7 +39,7 @@ profile 必须已经包含 `@deepseek-ai/dsh-base`，本层各行都会用到其
 
 ### 获得的功能
 
-本层插入八行，不改变任何 `dsh-base` 行。`infra-snapshot` 记录主机信息。`graph-contract` 以 `shadow` 模式提供 `graph_audit` 与 `graph_capabilities` 工具：每个被审计的计划版本追加一条 `graph/plan` 记录，且每个版本都被准入；`allowedTools` 初始为空，因此在你的 profile patch 指定图节点可用的工具之前，计划节点声明的每个工具都会被报告为 `CAPABILITY_UNVERIFIED`。`graph-projection` 提供针对已准入计划的只读 `graph_query` 工具。`graph-runner` 以 `shadow` 模式提供 `graph_run` 工具：它在 `spawn` 提供方上为每个代理节点启动一个新子代理来运行已准入计划，并记录节点在写入范围之外的写入而不拒绝它们；未配置能力路由，因此每个节点都使用调用方代理的模型。四个护栏都以 `shadow` 模式启动，并写入 `loop/verdict`、`loop/stationarity`、`loop/denial` 或 `loop/budget` 记录；`loop-budget` 出厂时每项限额都是 `0`（关闭），`verifier-gate` 出厂时没有校验命令，因此在配置之前 `loop-budget` 不会记录任何内容，而 `verifier-gate` 只会记录 `no-commands` 或 `blank-response` 判定。请在你自己的 profile patch 中针对某一行的 id 切换到 `enforce`：
+本层插入八行，不改变任何 `dsh-base` 行。`infra-snapshot` 记录主机信息。`graph-contract` 以 `shadow` 模式提供 `graph_audit` 与 `graph_capabilities` 工具：每个被审计的计划版本追加一条 `graph/plan` 记录，且每个版本都被准入；`allowedTools` 初始为空，因此在你的 profile patch 指定图节点可用的工具之前，计划节点声明的每个工具都会被报告为 `CAPABILITY_UNVERIFIED`。当节点声明 `bash` 或 `pwsh`（其写入绕过写入范围检查）时，`graph-contract` 还会以 `SHELL_WRITES_UNCHECKED` 发出警告，并接受至多 8 次迭代的循环边。`graph-projection` 提供针对已准入计划的只读 `graph_query` 工具、列出当前 turn 中提到某个路径或命令的工具记录的 `graph_cite`，以及把被压缩片段作为新工具结果读回到上下文末尾的 `history_read`（上限 `history.maxChars` 8000、`maxListed` 20、`readWindow` 50）。`verifier-gate` 以 `shadow` 模式记录每个最终回答的证据检查（`loop/verdict` 的 `evidence`）。`graph-runner` 以 `shadow` 模式提供 `graph_run` 工具：它在 `spawn` 提供方上为每个代理节点启动一个新子代理来运行已准入计划，并记录节点在写入范围之外的写入而不拒绝它们；未配置能力路由，因此每个节点都使用调用方代理的模型。四个护栏都以 `shadow` 模式启动，并写入 `loop/verdict`、`loop/stationarity`、`loop/denial` 或 `loop/budget` 记录；`loop-budget` 出厂时每项限额都是 `0`（关闭），`verifier-gate` 出厂时没有校验命令，因此在配置之前 `loop-budget` 不会记录任何内容，而 `verifier-gate` 只会记录 `no-commands` 或 `blank-response` 判定。请在你自己的 profile patch 中针对某一行的 id 切换到 `enforce`：
 
 ```yaml
 - id: stationarity-guard
@@ -56,6 +56,17 @@ profile 必须已经包含 `@deepseek-ai/dsh-base`，本层各行都会用到其
     mode: enforce
     assumption: the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them
     allowedTools: [read, grep, edit]
+    runBudget: { steps: 0, tokens: 0, wallMs: 0 }
+    shellTools: [bash, pwsh]
+    maxCycleIterations: 8
+- id: verifier-gate   # a config patch replaces the whole row config
+  config:
+    mode: enforce
+    assumption: the model declares a task done before its verify commands pass
+    verify: { commands: ["pnpm test"], timeoutMs: 300000, stdoutTailChars: 2000 }
+    blankResponse: { maxSteers: 1 }
+    evidence: { mode: enforce, require: every, maxClaims: 32 }
+    maxContinuations: 8
 ```
 
 当 `stationarity-guard` 仍处于 `shadow` 模式时，`repeat-tool-reminder` 依然会发送其提示性提醒；启用 `stationarity-guard` 的 `enforce` 时，请如上所示一并禁用它。
@@ -122,7 +133,7 @@ Web preset 在各自的 preset group 中带有自己的 `compaction-basic` 与 `
 
 #### KV Cache 影响
 
-与本组合包自身的 composition 无关：每个护栏的消息都是仅追加式的，具体见各自 README；`infra-snapshot` 是仅记录型的；`graph_audit`、`graph_capabilities`、`graph_query` 与 `graph_run` 的定义在组合包加载时一次性加入稳定的工具前缀。
+与本组合包自身的 composition 无关：每个护栏的消息都是仅追加式的，具体见各自 README；`infra-snapshot` 是仅记录型的；`graph_audit`、`graph_capabilities`、`graph_query`、`graph_cite`、`history_read` 与 `graph_run` 的定义在组合包加载时一次性加入稳定的工具前缀；`history_read` 的结果追加在末尾，从不改写更早的上下文。
 
 ## 已知限制与延期工作
 
@@ -130,7 +141,7 @@ Web preset 在各自的 preset group 中带有自己的 `compaction-basic` 与 `
 
 - **仅显式启用**——本包随安装提供但默认关闭；随附 CLI、Web、SDK、ACP 与 Python profile 都不会启用它。
 - **默认 shadow**——每个护栏、`graph-contract` 与 `graph-runner` 都需要针对自己的行显式添加 `mode: enforce` patch；`verifier-gate` 还需要 `verify.commands`，`loop-budget` 还需要限额，`graph-contract` 还需要 `allowedTools`。
-- **graph 工具在每个请求中消耗 token**——启用本组合包期间，无论模型是否用图来规划，`graph_audit`、`graph_capabilities`、`graph_query` 与 `graph_run` 的定义都会为每个请求增加约 920 个 token。
+- **graph 工具在每个请求中消耗 token**——启用本组合包期间，无论模型是否用图来规划，`graph_audit`、`graph_capabilities`、`graph_query`、`graph_cite`、`history_read` 与 `graph_run` 的定义都会为每个请求增加约 1,400 个 token。
 - **需要 base profile**——本 patch 依赖 `dsh-base` 提供的 `agent/turn-stopping`、`agent/pre-step` 与 `agent/created` 事件，各行都会用到；它不是独立 profile。
 - **不含 invariant 行**——挂载 `@deepseek-ai/dsh-invariants` 的 composition 需要自行添加 `verifier-gate/invariant`、`stationarity-guard/invariant`、`denial-budget/invariant`、`loop-budget/invariant`、`graph-contract/invariant` 与 `graph-runner/invariant` 伴生条目；本组合包不添加，与 `dsh-base` 一致。
 - **shadow 模式下没有重复提醒的替代**——当 `stationarity-guard` 仍处于 `shadow` 模式时，`repeat-tool-reminder` 依然会发送其提示性提醒；启用 `stationarity-guard` 的 `enforce` 时，请在你自己的 profile patch 中一并禁用它。

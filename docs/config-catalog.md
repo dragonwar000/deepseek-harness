@@ -1022,7 +1022,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-graph-contract`
 
 - `inject`: `tools` · `sessionProjections`
-- `source`: [`packages/experimental/graph-contract/src/index.ts:104`](../packages/experimental/graph-contract/src/index.ts)
+- `source`: [`packages/experimental/graph-contract/src/index.ts:109`](../packages/experimental/graph-contract/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1039,10 +1039,14 @@ export interface Config {
   assumption?: string
   /** Global tools a graph node may declare; default none. */
   allowedTools?: string[]
+  /** Tools a node may declare that run shell commands; the audit warns for each such declaration. Default none. */
+  shellTools?: string[]
   /** Run limits per kind for one plan's worst case; 0 (default) is unlimited. */
   runBudget?: GraphNodeBudget
   /** Capability routes: a node's category selects the provider and model of its subagent. */
   routes?: GraphRouteConfig[]
+  /** Highest `cycleGuard.maxIterations` a plan may declare (default 8). */
+  maxCycleIterations?: number
 }
 
 /** Worst-case spend of one attempt of an agent node; an absent field is unbounded. */
@@ -1069,13 +1073,40 @@ export interface GraphRouteConfig {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-contract -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-projection -->
+<a id="deepseek-aidsh-experimental-graph-projection"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-projection`
+
+- `inject`: `tools` · `sessionProjections`
+- `source`: [`packages/experimental/graph-projection/src/index.ts:51`](../packages/experimental/graph-projection/src/index.ts)
+
+```ts config-catalog
+/** Plugin config. The package constrains nothing, so it has no mode or assumption. */
+export interface Config {
+  /** history_read limits. */
+  history?: HistoryConfig
+}
+
+/** Limits of history_read. */
+export interface HistoryConfig {
+  /** Characters of transcript per history_read page (default 8000). */
+  maxChars?: number
+  /** Spans a listing returns, newest first (default 20). */
+  maxListed?: number
+  /** Events after the target in one session query read; at most the query service's readWindowMax (default 50). */
+  readWindow?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-projection -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-runner -->
 <a id="deepseek-aidsh-experimental-graph-runner"></a>
 
 ## `@deepseek-ai/dsh-experimental-graph-runner`
 
 - `inject`: `tools` · `sessionProjections` · `subagents`
-- `source`: [`packages/experimental/graph-runner/src/index.ts:42`](../packages/experimental/graph-runner/src/index.ts)
+- `source`: [`packages/experimental/graph-runner/src/index.ts:45`](../packages/experimental/graph-runner/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config. `assumption` is mandatory outside `off`. */
@@ -1460,7 +1491,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-verifier-gate`
 
-- `source`: [`packages/experimental/verifier-gate/src/index.ts:145`](../packages/experimental/verifier-gate/src/index.ts)
+- `source`: [`packages/experimental/verifier-gate/src/index.ts:168`](../packages/experimental/verifier-gate/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1478,6 +1509,8 @@ export interface Config {
   blankResponse?: BlankResponseConfig
   /** Evaluator settings. */
   evaluator?: EvaluatorConfig
+  /** Evidence settings. */
+  evidence?: EvidenceConfig
   /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
   maxContinuations?: number
 }
@@ -1526,6 +1559,19 @@ export interface EvaluatorConfig {
   maxRuns?: number
   /** Seed of each evaluator's order of criteria and verify results when `count` is above 1 (default 0). */
   seed?: number
+}
+
+/** Evidence settings; the check runs only outside `off`. */
+export interface EvidenceConfig {
+  /**
+   * `off` skips the check; `shadow` records it on every verdict; `enforce` also steers an unsupported answer and needs
+   * gate `mode: enforce`. Default `off`.
+   */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** `every`: each claim needs a record; `any`: at least one claim does (default `every`). */
+  require?: 'every' | 'any'
+  /** Claims recorded and checked per answer, in answer order (default 32). */
+  maxClaims?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->
@@ -4731,7 +4777,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-experimental-client-ui-agent-team` | — | [`packages/experimental/client-ui-agent-team/src/index.ts`](../packages/experimental/client-ui-agent-team/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | — | [`packages/experimental/client-ui-voice-input/src/index.ts`](../packages/experimental/client-ui-voice-input/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
-| `@deepseek-ai/dsh-experimental-graph-projection` | `tools` · `sessionProjections` | [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |
 | `@deepseek-ai/dsh-fs-ssh` | `ssh` · `sandboxPolicy` | [`packages/ssh/fs-ssh/src/index.ts`](../packages/ssh/fs-ssh/src/index.ts) |
 | `@deepseek-ai/dsh-goal-round-driver` | `agents` · `goals` · `sessions` | [`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts) |

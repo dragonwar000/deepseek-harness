@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package checks the agent's work before a turn ends. It runs the verify commands you configure, such as a test suite, and records each decision in the session log. In `enforce` mode a failing command sends the model back to work with the command and its output tail, up to a per-turn limit; in `shadow` mode the gate only records what it would have done. Every check costs one shell run per turn boundary. It is experimental and carries no stability promise.
+This package checks the agent's work before a turn ends. It runs the verify commands you configure, such as a test suite, and records each decision in the session log. In `enforce` mode a failing command sends the model back to work with the command and its output tail, up to a per-turn limit; in `shadow` mode the gate only records what it would have done. Each check costs one shell run per turn boundary. An opt-in evidence check compares the paths and commands the final answer names with the turn's tool records. It is experimental.
 
 ## Table of Contents
 
@@ -63,9 +63,12 @@ Choose it when a deterministic command can tell whether the agent's work is done
 | `evaluator.count` | `1` | Independent evaluators per round, run one after another; above 1 needs `evaluator.rubric` |
 | `evaluator.maxRuns` | `3` | With `count` above 1, the ceiling on evaluator runs per turn; loading fails when `count × maxRounds` exceeds it |
 | `evaluator.seed` | `0` | Seed of each evaluator's order of criteria and verify results when `count` is above 1 |
+| `evidence.mode` | `off` | `off` skips the evidence check; `shadow` records it on every verdict after the verify commands pass; `enforce` also steers an unsupported answer and needs `mode: enforce` |
+| `evidence.require` | `every` | `every`: each claim needs a record of the turn; `any`: at least one claim does |
+| `evidence.maxClaims` | `32` | Claims of the final answer recorded and checked, in answer order |
 | `maxContinuations` | `8` | Steers per turn before the gate records `budget-exhausted` and lets the turn end |
 
-Loading fails with a `verifier-gate:` error when `assumption` is blank, when `maxContinuations` is not an integer at or above 0, when `verify.timeoutMs` or `verify.stdoutTailChars` is not an integer at or above 1, or when `verify.commands` is non-empty and no `shell` service is mounted.
+Loading fails with a `verifier-gate:` error when `assumption` is blank, when `maxContinuations` is not an integer at or above 0, when `verify.timeoutMs` or `verify.stdoutTailChars` is not an integer at or above 1, when `verify.commands` is non-empty and no `shell` service is mounted, when `evidence.maxClaims` is not an integer at or above 1, when `evidence.mode` is `enforce` and `mode` is not, or when `evidence.mode` is not `off` and no `sessionProjections` service is mounted.
 
 Loading also fails when an `evaluator` number is not an integer at or above 1, when an `evaluator.rubric` line is blank, or, with `evaluator.enabled`, when the named provider starts children with the parent conversation or lacks structured output, tool scoping, personas, or (with `maxOutputTokens`) Agent options. A provider that registers after the gate is checked the same way, and its registration fails. With `evaluator.count` above 1, loading also fails without an `evaluator.rubric` and when `count × maxRounds` exceeds `evaluator.maxRuns`; `count` and `maxRuns` must be integers at or above 1 and `seed` an integer at or above 0.
 
@@ -76,6 +79,8 @@ Each turn boundary appends one `loop/verdict` session event with the turn number
 With `evaluator.enabled`, a boundary whose verify commands passed, or that has none, starts one fresh evaluator child through `ctx.subagents`. The child receives the latest human request, the active goal objective, the criteria, and the verify results; it never receives the conversation or the model's final message. It reports `ok`, `not-ok`, `impossible`, or `unverifiable` through `structured_output`, and the verdict records the round, whether the criteria were frozen, the criteria, and the run (`evaluation`). In `enforce` mode `not-ok` steers the model with the unmet criteria and the criteria already met; `impossible` and `unverifiable` let the turn end and block the active goal (codes `verifier-impossible`, `verifier-unverifiable`); a run without a usable report records `grader-error` and blocks the active goal with code `verifier-grader-error`; after `evaluator.maxRounds` rounds or `maxContinuations` steers the gate records `budget-exhausted` and blocks the active goal with code `verifier-budget-exhausted`.
 
 With `evaluator.count` above 1, the gate starts that many evaluators one after another, and each sees the criteria and verify results in its own seeded order, recorded as `runs[].order`. The round passes only when every evaluator reports `ok`, and `impossible` or `unverifiable` stands only when every evaluator reports it; otherwise the round is `not-ok` with every criterion any evaluator found unmet, or `grader-error` when the evaluators disagree without naming an unmet criterion. `evaluation.disagreement` records whether the verdicts differed and which criteria split. The first run without a usable report ends the round as `grader-error`.
+
+With `evidence.mode` other than `off`, a boundary whose verify commands passed, or that has none, also checks the final answer before any evaluator runs. A claim is a file path or shell command the answer names, as the `graphEvidence` projection of `@deepseek-ai/dsh-experimental-graph-projection` defines it, and it is supported when a tool call or tool result of the same turn mentions it. Every verdict of that boundary carries `evidence` (`mode`, `status` `supported`, `unsupported`, `no-claims`, or `unavailable`, the recorded `claims` with their leaves, the `unsupported` claim texts, and `truncated` when the answer had more than `maxClaims` claims). In `enforce` mode an `unsupported` answer is steered with reason `evidence-unsupported`, sharing `maxContinuations`; when the budget is spent the gate records `budget-exhausted` and blocks the active goal. Without the projection the verdict is `not-ok` with reason `evidence-unavailable`, no steer, and the active goal is blocked with code `verifier-evidence-unavailable`. `shadow` only records.
 
 -----
 
@@ -93,7 +98,8 @@ The gate listens on `agent/turn-stopping`, which agent-loop awaits only after a 
 - **No fail-open.** A failing, timed-out, or signal-killed command is `not-ok`. A shell infrastructure failure or a `shell` service that disappeared after load rejects the listener and ends the turn with reason `error`.
 - **The steer never names a way to disable the gate.** It names the failing command, its exit status, and the output tail.
 - **Verdicts are log-only.** `loop/verdict` is declared in `SessionEventMap`, required on read, and never enters derived history; only the steer message is model-visible.
-- **Invariant companion.** `./invariant` checks that every `loop/verdict` with `continued: true` is followed by a `verifier-gate` user message before its turn ends `completed` or `max-tokens`; aborted, errored, and blocked turns may discard pending steering. A composition mounts the companion together with `@deepseek-ai/dsh-invariants`.
+- **Invariant companion.** `./invariant` checks that every `loop/verdict` with `continued: true` is followed by a `verifier-gate` user message before its turn ends `completed` or `max-tokens`; aborted, errored, and blocked turns may discard pending steering. It also checks that a verdict's `evidence` equals the `graphEvidence` claims of its turn: the recorded claims are the first ones of the answer, `truncated` is set exactly when claims were dropped, `unsupported` lists the claims without leaves, `no-claims` means no claims, and `evidence-unsupported` carries status `unsupported`. A composition mounts the companion together with `@deepseek-ai/dsh-invariants`.
+- **Evidence runs between the commands and the evaluator.** The order at a boundary is blank response, verify commands, evidence, evaluator; the gate reads the claims from `graphEvidence` and never splits them itself.
 - **Blank responses are the reachable idle case.** A completion with no content blocks never reaches the gate: both DeepSeek adapters classify it as `EMPTY_RESPONSE`, which the retry policy repeats and which otherwise errors the turn. The gate handles the remaining case, a completed response with only reasoning or whitespace text, folded from `assistant/message` events.
 - **The evaluator is a consumer of `ctx.subagents`.** It adds no service: each evaluator run is one one-shot `start()` with `toolFilter: { allow: evaluator.tools }`, the report `outputSchema`, and the evaluator persona. `src/fresh-run.ts` holds the provider check and the start, await, and dispose sequence without any gate type.
 - **The gate never judges its own evaluator.** A child is exempt only when its `subagent/descriptor` carries the evaluator label and the configured provider and its parent is waiting on an evaluator. Every other child, including a worker started by the model, is judged by the gate.
@@ -108,7 +114,7 @@ The gate listens on `agent/turn-stopping`, which agent-loop awaits only after a 
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config`, load-time validation, turn-stopping and pre-step listeners |
 | [`src/types.ts`](src/types.ts) | `loop/verdict` session-event declaration and its payload types |
-| [`src/invariant.ts`](src/invariant.ts) | Invariant companion for continued verdicts and their steers |
+| [`src/invariant.ts`](src/invariant.ts) | Invariant companion for continued verdicts, their steers, and verdict evidence |
 | [`src/evaluator.ts`](src/evaluator.ts) | Evaluator report schema, prompt, report checks, steer text, seeded order, and consensus |
 | [`src/fresh-run.ts`](src/fresh-run.ts) | One fresh structured child run over `ctx.subagents`: provider check, start, await, dispose |
 
@@ -123,6 +129,7 @@ The gate listens on `agent/turn-stopping`, which agent-loop awaits only after a 
 - [Shell package](../../shell/shell/README.md) — the executor contract that runs verify commands.
 - [Experimental group map](../README.md) — sibling experimental packages and the publication policy.
 - [Subagent package](../../subagent/subagent/README.md) — the `ctx.subagents` start contract the evaluator uses.
+- [Final-answer evidence note](../../../.agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.md) — why the evidence check reads heuristic claims from `graphEvidence`.
 
 -----
 
@@ -241,13 +248,35 @@ Zero in `shadow` mode and without `evaluator.enabled`. Each steer adds one retai
 
 Append-only: the steer is a new trailing user message after the reusable request prefix.
 
+### The evidence steer
+
+#### What the model sees
+
+In `enforce` mode, when the final answer names paths or commands that no tool call or tool result of the turn mentions, the gate appends one `user/message` with source `verifier-gate`: the head line, one `- <claim>` line per unsupported claim, and the tail line below.
+
+##### Verbatim text for this field
+
+```markdown
+Your answer names files or commands that no tool call or tool result in this turn shows:
+- <claim>
+Check each one with a tool now, or remove it from the answer, then finish.
+```
+
+#### Token effect
+
+Only when it steers: about 30 tokens plus the claim lines; it counts against `maxContinuations`.
+
+#### KV Cache effect
+
+Append-only after the settled answer, like every gate steer.
+
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 These limits are current package constraints.
 
-- **No evidence check** — claims in the final assistant message are not compared against tool results; only the configured commands decide.
+- **Evidence is heuristic** — it checks that a named path or command appears in the turn's tool records, not that the record proves the statement around it; a command claim is satisfied by a call that ran it whatever its exit status (verify commands own the outcome).
 - **Budget exhaustion ends the turn normally** — after `budget-exhausted` the turn ends `completed`; in `enforce` mode an active goal becomes `blocked` (code `verifier-budget-exhausted`), a paused goal is left as is, and `shadow` mode never changes a goal.
 - **No sandbox of its own** — verify commands run under whatever policy the mounted `shell` provider applies.
 - **Budget is in memory** — a resumed session starts with a fresh continuation counter.

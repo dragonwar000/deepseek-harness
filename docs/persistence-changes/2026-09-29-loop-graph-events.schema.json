@@ -101,7 +101,7 @@
       "kind": "event",
       "event": "loop/verdict",
       "surface": false,
-      "digest": "bf8e92bb0c4c730845aa82729f21e6769c5524b467ed92d3428e3d36f4d35aab",
+      "digest": "7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a",
       "schema": {
         "root": 0,
         "nodes": [
@@ -115,7 +115,7 @@
               },
               {
                 "name": "ignorable",
-                "type": 48,
+                "type": 51,
                 "optional": true
               },
               {
@@ -130,7 +130,7 @@
               },
               {
                 "name": "type",
-                "type": 49,
+                "type": 68,
                 "optional": false
               }
             ],
@@ -160,13 +160,18 @@
                 "optional": true
               },
               {
-                "name": "mode",
+                "name": "evidence",
                 "type": 31,
+                "optional": true
+              },
+              {
+                "name": "mode",
+                "type": 43,
                 "optional": false
               },
               {
                 "name": "reason",
-                "type": 34,
+                "type": 52,
                 "optional": false
               },
               {
@@ -176,7 +181,7 @@
               },
               {
                 "name": "verdict",
-                "type": 45,
+                "type": 65,
                 "optional": false
               }
             ],
@@ -421,6 +426,10 @@
           },
           {
             "kind": "literal",
+            "value": "impossible"
+          },
+          {
+            "kind": "literal",
             "value": "not-ok"
           },
           {
@@ -432,14 +441,126 @@
             "value": "unverifiable"
           },
           {
-            "kind": "literal",
-            "value": "impossible"
+            "kind": "object",
+            "properties": [
+              {
+                "name": "claims",
+                "type": 32,
+                "optional": false
+              },
+              {
+                "name": "mode",
+                "type": 43,
+                "optional": false
+              },
+              {
+                "name": "status",
+                "type": 46,
+                "optional": false
+              },
+              {
+                "name": "truncated",
+                "type": 51,
+                "optional": true
+              },
+              {
+                "name": "unsupported",
+                "type": 13,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "array",
+            "element": 33
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 34,
+                "optional": false
+              },
+              {
+                "name": "leaves",
+                "type": 37,
+                "optional": false
+              },
+              {
+                "name": "text",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
           },
           {
             "kind": "union",
             "types": [
-              32,
-              33
+              35,
+              36
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "path"
+          },
+          {
+            "kind": "literal",
+            "value": "command"
+          },
+          {
+            "kind": "array",
+            "element": 38
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 39,
+                "optional": false
+              },
+              {
+                "name": "seq",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "tool",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              40,
+              41,
+              42
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "observed"
+          },
+          {
+            "kind": "literal",
+            "value": "tool-record"
+          },
+          {
+            "kind": "literal",
+            "value": "absence"
+          },
+          {
+            "kind": "union",
+            "types": [
+              44,
+              45
             ]
           },
           {
@@ -453,17 +574,68 @@
           {
             "kind": "union",
             "types": [
-              35,
-              36,
-              37,
-              38,
-              39,
-              40,
-              41,
-              42,
-              43,
-              44
+              47,
+              48,
+              49,
+              50
             ]
+          },
+          {
+            "kind": "literal",
+            "value": "no-claims"
+          },
+          {
+            "kind": "literal",
+            "value": "supported"
+          },
+          {
+            "kind": "literal",
+            "value": "unavailable"
+          },
+          {
+            "kind": "literal",
+            "value": "unsupported"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "union",
+            "types": [
+              53,
+              54,
+              55,
+              56,
+              57,
+              58,
+              59,
+              60,
+              61,
+              62,
+              63,
+              64
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "evaluator-passed"
+          },
+          {
+            "kind": "literal",
+            "value": "evaluator-unverifiable"
+          },
+          {
+            "kind": "literal",
+            "value": "evidence-unavailable"
+          },
+          {
+            "kind": "literal",
+            "value": "evidence-unsupported"
+          },
+          {
+            "kind": "literal",
+            "value": "all-passed"
           },
           {
             "kind": "literal",
@@ -494,31 +666,15 @@
             "value": "evaluator-impossible"
           },
           {
-            "kind": "literal",
-            "value": "all-passed"
-          },
-          {
-            "kind": "literal",
-            "value": "evaluator-passed"
-          },
-          {
-            "kind": "literal",
-            "value": "evaluator-unverifiable"
-          },
-          {
             "kind": "union",
             "types": [
               27,
               28,
               29,
               30,
-              46,
-              47
+              66,
+              67
             ]
-          },
-          {
-            "kind": "literal",
-            "value": "skipped"
           },
           {
             "kind": "literal",
@@ -526,7 +682,7 @@
           },
           {
             "kind": "literal",
-            "value": true
+            "value": "skipped"
           },
           {
             "kind": "literal",

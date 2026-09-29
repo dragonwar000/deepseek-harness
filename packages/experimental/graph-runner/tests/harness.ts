@@ -16,7 +16,7 @@ import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import * as GraphContract from '@deepseek-ai/dsh-experimental-graph-contract'
-import type { GraphNodeRecord, GraphRunRecord } from '@deepseek-ai/dsh-experimental-graph-contract'
+import type { GraphEdgeRecord, GraphNodeRecord, GraphRunRecord } from '@deepseek-ai/dsh-experimental-graph-contract'
 import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
 import * as GraphRunner from '../src/index.ts'
 import type { Config } from '../src/index.ts'
@@ -74,28 +74,44 @@ export function l2Plan(options: PlanOptions = {}): Record<string, unknown> {
   }
 }
 
+/** The L2 fixture with a review loop from check back to build. */
+export function loopPlan(guard: Record<string, unknown>): Record<string, unknown> {
+  const plan = l2Plan()
+  ;(plan['edges'] as Record<string, unknown>[]).push({ from: 'check', to: 'build', relation: 'feeds', artifact: 'review verdict', allowedFields: ['verdict'], cycleGuard: guard })
+  return plan
+}
+
 export const audit = (id: string, plan: Record<string, unknown>): StreamChunk[] => toolCallResponse(id, 'graph_audit', { plan })
 export const run = (id: string, args: object = { plan_id: 'ship' }): StreamChunk[] => toolCallResponse(id, 'graph_run', args)
 export const structured = (id: string, value: object): StreamChunk[] => toolCallResponse(id, STRUCTURED_OUTPUT_TOOL, value)
 
-/** A shell whose commands exit with the scripted code (default 0), recording each command. */
+/** A shell whose commands exit with the scripted code (default 0) and print the scripted stdout, per call; records each command. */
 export interface ScriptedShell extends RunShell {
   readonly commands: string[]
 }
 
-export function scriptedShell(exitCodes: Readonly<Record<string, number>>): ScriptedShell {
+export function scriptedShell(
+  exitCodes: Readonly<Record<string, number | readonly number[]>>,
+  stdout: Readonly<Record<string, readonly string[]>> = {},
+): ScriptedShell {
   const commands: string[] = []
+  const pick = <T>(entry: T | readonly T[] | undefined, call: number, fallback: T): T => {
+    if (entry === undefined) return fallback
+    if (!Array.isArray(entry)) return entry as T
+    return (entry as readonly T[])[Math.min(call, entry.length - 1)] ?? fallback
+  }
   return {
     commands,
     resolve(request: ShellExecRequest): ShellExecSpec {
       return { command: request.command, workdir: request.workdir ?? '/work', timeoutMs: request.timeoutMs ?? 1000, onExpiry: 'kill', stdoutMaxBytes: 65536, sandboxPolicy: undefined }
     },
     async execute(spec: ShellExecSpec) {
+      const call = commands.filter(command => command === spec.command).length
       commands.push(spec.command)
-      const exitCode = exitCodes[spec.command] ?? 0
+      const exitCode = pick(exitCodes[spec.command], call, 0)
       const result: ShellRunResult = {
         exitCode, signal: null, timedOut: false, aborted: false, timeoutMs: spec.timeoutMs,
-        stdout: { text: `ran ${spec.command}`, truncated: false },
+        stdout: { text: pick(stdout[spec.command], call, `ran ${spec.command}`), truncated: false },
         stderr: { text: exitCode === 0 ? '' : 'FAIL', truncated: false },
       }
       return { result: async () => result }
@@ -106,7 +122,8 @@ export function scriptedShell(exitCodes: Readonly<Record<string, number>>): Scri
 export interface HarnessOptions {
   runner?: Partial<Config>
   approval?: ApprovalOutcome | 'none'
-  shell?: Readonly<Record<string, number>>
+  shell?: Readonly<Record<string, number | readonly number[]>>
+  stdout?: Readonly<Record<string, readonly string[]>>
   contract?: boolean
   contractMode?: 'shadow' | 'enforce'
   routes?: { category: string; provider: string; model: string }[]
@@ -144,7 +161,7 @@ export async function harness(script: StreamChunk[][], options: HarnessOptions =
       return [{ type: 'text', text: 'wrote site/out.txt' }]
     },
   }))
-  const shell = scriptedShell(options.shell ?? {})
+  const shell = scriptedShell(options.shell ?? {}, options.stdout ?? {})
   ctx.provide('shell', shell)
   const approval = options.approval
   if (approval !== undefined) {
@@ -187,4 +204,8 @@ export function toolTexts(agent: Agent): string[] {
 
 export function trail(agent: Agent): string[] {
   return nodeRecords(agent).map(record => `${record.nodeId}:${record.status}${record.basis === undefined ? '' : `(${record.basis})`}`)
+}
+
+export function edgeRecords(agent: Agent): GraphEdgeRecord[] {
+  return agent.session.snapshotEvents().flatMap(event => (event.type === 'graph/edge' ? [event.data] : []))
 }

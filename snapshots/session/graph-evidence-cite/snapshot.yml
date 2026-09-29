@@ -1,0 +1,9 @@
+version: 1
+scenario: graph-evidence-cite
+profile: headless
+composition: graph-evidence-cite
+recording: live
+header:
+  class: graph-evidence-cite
+  pin: true
+  systemPromptSource: text-turn

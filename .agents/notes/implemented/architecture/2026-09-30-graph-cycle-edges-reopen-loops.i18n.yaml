@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-09-30-graph-cycle-edges-reopen-loops.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.md
+/agent-note-loop-edges-reopen-their-body-with-a-recorded-iteration:
+  en: b0373db2dddb2eda
+  zh: a498392ddba60a56
+/agent-note-loop-edges-reopen-their-body-with-a-recorded-iteration/problem:
+  en: 0eeac2d88b775f2a
+  zh: c9f10340d3d9ef3e
+/agent-note-loop-edges-reopen-their-body-with-a-recorded-iteration/decision:
+  en: efddd9b8ece1c057
+  zh: 786606c391bcee5b
+/agent-note-loop-edges-reopen-their-body-with-a-recorded-iteration/alternatives-considered:
+  en: df7d8edef281a6ca
+  zh: 76b839fec5e29a05
+/agent-note-loop-edges-reopen-their-body-with-a-recorded-iteration/consequences:
+  en: e39e63787606f245
+  zh: 54d2d05e31a4d3bd

@@ -17,6 +17,13 @@
 # plans with a fresh subagent per node and records node writes outside a node's
 # write scopes (graph/node violations) without refusing them. No capability route
 # is configured, so every node runs on the calling agent's model.
+# graph-projection also adds the read-only graph_cite and history_read tools.
+# graph_cite checks which tool records of the turn mention a path or command;
+# history_read reads compacted spans back as a new tool result at the end of
+# the context, so the cached prompt prefix is unchanged. verifier-gate records
+# the evidence check of each final answer (loop/verdict evidence) in shadow
+# mode. graph-contract warns when a node declares bash or pwsh, whose writes
+# bypass the write-scope check, and caps loop edges at 8 iterations.
 
 - insert:
     - id: infra-snapshot
@@ -33,6 +40,10 @@
           stdoutTailChars: 2000
         blankResponse:
           maxSteers: 1
+        evidence:
+          mode: shadow
+          require: every
+          maxClaims: 32
         maxContinuations: 8
 
     - id: stationarity-guard
@@ -69,9 +80,13 @@
         assumption: "the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them"
         allowedTools: []
         runBudget: { steps: 0, tokens: 0, wallMs: 0 }
+        shellTools: [bash, pwsh]
+        maxCycleIterations: 8
 
     - id: graph-projection
       name: '@deepseek-ai/dsh-experimental-graph-projection'
+      config:
+        history: { maxChars: 8000, maxListed: 20, readWindow: 50 }
 
     - id: graph-runner
       name: '@deepseek-ai/dsh-experimental-graph-runner'

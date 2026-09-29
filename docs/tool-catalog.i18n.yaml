@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 7fbde5c368e722a0
-  zh: 5f87efd89de888e6
+  en: 1e2f22610573baf0
+  zh: ea8adfb16b773a26
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -288,23 +288,29 @@
   en: 6b95f709d4b4c657
   zh: 6b95f709d4b4c657
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-contract/graph-audit:
-  en: 03c0e57d91ea3bba
-  zh: 17a29cd780e582af
+  en: 54dfd637d395e283
+  zh: f4101df0d01a1c5f
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-contract/graph-capabilities:
   en: 4a23d33f7fa024f9
   zh: 57a935938f48675e
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-projection:
   en: 4f8c78d03c26040b
   zh: 4f8c78d03c26040b
+/tool-schema-catalog/deepseek-ai-dsh-experimental-graph-projection/graph-cite:
+  en: f23fc30377f8447e
+  zh: f58d0e358d7f5de0
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-projection/graph-query:
-  en: 8326ae2066f57a02
-  zh: 08bdb03b23e92e87
+  en: 5a11a45ab2ed1494
+  zh: 15253484eda8db44
+/tool-schema-catalog/deepseek-ai-dsh-experimental-graph-projection/history-read:
+  en: e1b8e0b4dfb9904f
+  zh: 662248e0d66e500d
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-runner:
   en: 2e99c9c30ab16d4e
   zh: 2e99c9c30ab16d4e
 /tool-schema-catalog/deepseek-ai-dsh-experimental-graph-runner/graph-run:
-  en: cc6afcf28ae7f303
-  zh: 8372cf52feec2f5c
+  en: a79043d71604055f
+  zh: e3f760c4bcad6089
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo:
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68

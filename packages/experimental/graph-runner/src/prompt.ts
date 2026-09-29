@@ -1,12 +1,13 @@
 /**
  * The brief a node's fresh subagent receives: its role, the plan goal, its
  * instruction, its resolved inputs, its tool and write limits, and for a
- * verification node the artifacts, acceptance criteria, and verdict rule.
- * Earlier failure traces are never included.
+ * verification node the artifacts, acceptance criteria, and verdict rule. A
+ * node reopened by a fired cycle edge also sees the output the edge sent
+ * back. Earlier failure traces are never included.
  * @module @deepseek-ai/dsh-experimental-graph-runner/prompt
  */
 
-import type { GraphNode, GraphPlan } from '@deepseek-ai/dsh-experimental-graph-contract'
+import type { GraphNode, GraphNodeId, GraphPlan } from '@deepseek-ai/dsh-experimental-graph-contract'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 
 /** One resolved input line. */
@@ -22,6 +23,19 @@ export interface PromptInput {
 /** Added to the brief of the first attempt after an interrupted one. */
 export const INTERRUPTED_NOTE = 'A previous attempt of this node stopped before it finished; inspect the workspace for partial changes before acting.'
 
+/** Output a fired cycle edge sent back to this node. */
+export interface PromptFeedback {
+  /** Node the edge leaves. */
+  readonly from: GraphNodeId
+  /** Fire count of the edge after that fire. */
+  readonly fire: number
+  /** The output sent back, or undefined when `from` produced none. */
+  readonly output: JsonValue | undefined
+}
+
+/** Follows the loop feedback in a reopened node's brief. */
+export const LOOP_FEEDBACK_NOTE = 'Revise your result using this feedback.'
+
 /**
  * Build one node brief.
  * @param plan - the admitted plan.
@@ -29,6 +43,7 @@ export const INTERRUPTED_NOTE = 'A previous attempt of this node stopped before 
  * @param node - the node to brief.
  * @param inputs - resolved inputs in binding order.
  * @param interrupted - whether the previous attempt was interrupted.
+ * @param feedback - output a fired cycle edge sent back, for a reopened node.
  * @returns the prompt text.
  */
 export function nodePrompt(
@@ -37,6 +52,7 @@ export function nodePrompt(
   node: GraphNode,
   inputs: readonly PromptInput[],
   interrupted: boolean,
+  feedback?: PromptFeedback,
 ): string {
   const lines = [
     `You are node "${node.id}" (${node.kind}) of graph plan "${plan.id}" version ${version}.`,
@@ -52,6 +68,9 @@ export function nodePrompt(
     for (const input of inputs) {
       lines.push(`- ${input.name} (from ${input.source}): ${input.value === undefined ? 'not provided' : JSON.stringify(input.value)}`)
     }
+  }
+  if (feedback !== undefined) {
+    lines.push(`Loop feedback from ${feedback.from} (fire ${feedback.fire}): ${feedback.output === undefined ? 'none' : JSON.stringify(feedback.output)}`, LOOP_FEEDBACK_NOTE)
   }
   lines.push(node.tools.length === 0 ? 'Tools: none; work from the inputs.' : `Tools: use only ${node.tools.join(', ')}.`)
   lines.push(node.writes.length === 0 ? 'Writes: do not modify any file.' : `Writes: modify only paths under ${node.writes.join(', ')}.`)

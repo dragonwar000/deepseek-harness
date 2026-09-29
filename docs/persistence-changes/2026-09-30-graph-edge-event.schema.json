@@ -1,0 +1,221 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:graph/edge",
+      "kind": "event",
+      "event": "graph/edge",
+      "surface": false,
+      "digest": "a84af717c367337f8538f5208528b01805f55bbb7acb6da5ea4d7b163cb3d30d",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 17,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 18,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "checks",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "fireCount",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "from",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "iteration",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "metric",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "outcome",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "output",
+                "type": 14,
+                "optional": true
+              },
+              {
+                "name": "planId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "runId",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "to",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 7,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "command",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "exitCode",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "outputTail",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "timedOut",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              6,
+              7
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              11,
+              12,
+              13
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "fired"
+          },
+          {
+            "kind": "literal",
+            "value": "plateau"
+          },
+          {
+            "kind": "literal",
+            "value": "until-met"
+          },
+          {
+            "kind": "literal",
+            "value": "exhausted"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              6,
+              7,
+              8,
+              15,
+              16
+            ]
+          },
+          {
+            "kind": "array",
+            "element": 14
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 4,
+                "value": 14
+              }
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "graph/edge"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包在 turn 结束前检查 agent 的工作。它运行你配置的 verify 命令（例如测试套件），并把每次判定记录到会话日志。在 `enforce` 模式下，失败的命令会把命令本身与输出尾部交给模型，让它继续工作，每个 turn 有次数上限；在 `shadow` 模式下，本门控只记录它本来会做什么。每个 turn 边界的每次检查都消耗一次 shell 运行。本包是实验性的，不承诺稳定性。
+本包在 turn 结束前检查 agent 的工作。它运行你配置的 verify 命令（例如测试套件），并把每次判定记录到会话日志。在 `enforce` 模式下，失败的命令会把命令本身与输出尾部交给模型，让它继续工作，每个 turn 有次数上限；在 `shadow` 模式下，本门控只记录它本来会做什么。每个 turn 边界的每次检查都消耗一次 shell 运行。可选的证据检查会把最终回答提到的路径与命令同本 turn 的工具记录比对。本包是实验性的。
 
 ## 目录
 
@@ -63,9 +63,12 @@ kind: "package-reference"
 | `evaluator.count` | `1` | 每轮独立评估者的数量，依次运行；大于 1 时需要 `evaluator.rubric` |
 | `evaluator.maxRuns` | `3` | `count` 大于 1 时每个 turn 的评估运行上限；`count × maxRounds` 超过它时加载失败 |
 | `evaluator.seed` | `0` | `count` 大于 1 时每个评估者看到的标准与 verify 结果顺序所用的种子 |
+| `evidence.mode` | `off` | `off` 跳过证据检查；`shadow` 在 verify 命令通过后把它记录在每个判定上；`enforce` 还会引导缺少证据的回答，并要求 `mode: enforce` |
+| `evidence.require` | `every` | `every`：每条声明都需要本 turn 的记录；`any`：至少一条声明需要 |
+| `evidence.maxClaims` | `32` | 按回答顺序记录并检查的最终回答声明数 |
 | `maxContinuations` | `8` | 每个 turn 的引导次数上限，超过后门控记录 `budget-exhausted` 并让 turn 结束 |
 
-以下情况加载会以 `verifier-gate:` 错误失败：`assumption` 为空白；`maxContinuations` 不是不小于 0 的整数；`verify.timeoutMs` 或 `verify.stdoutTailChars` 不是不小于 1 的整数；`verify.commands` 非空但没有挂载 `shell` 服务。
+以下情况加载会以 `verifier-gate:` 错误失败：`assumption` 为空白；`maxContinuations` 不是不小于 0 的整数；`verify.timeoutMs` 或 `verify.stdoutTailChars` 不是不小于 1 的整数；`verify.commands` 非空但没有挂载 `shell` 服务；`evidence.maxClaims` 不是不小于 1 的整数；`evidence.mode` 为 `enforce` 而 `mode` 不是；或 `evidence.mode` 不是 `off` 而没有挂载 `sessionProjections` 服务。
 
 以下情况同样会使加载失败：某个 `evaluator` 数值不是大于等于 1 的整数；某行 `evaluator.rubric` 为空白；或者在 `evaluator.enabled` 下，指定的提供者会带着父对话启动子代理，或缺少结构化输出、工具范围限定、persona 或（设置 `maxOutputTokens` 时）Agent 选项能力。在门控之后注册的提供者按同样方式检查，其注册会失败。当 `evaluator.count` 大于 1 时，缺少 `evaluator.rubric`，或 `count × maxRounds` 超过 `evaluator.maxRuns`，加载同样会失败；`count` 与 `maxRuns` 必须是大于等于 1 的整数，`seed` 必须是大于等于 0 的整数。
 
@@ -76,6 +79,8 @@ kind: "package-reference"
 启用 `evaluator.enabled` 时，verify 命令已通过（或未配置命令）的边界会通过 `ctx.subagents` 启动一个全新的评估者子代理。子代理收到最新的人类请求、active goal 的目标、标准与 verify 结果；它从不接收对话或模型的最终消息。它通过 `structured_output` 报告 `ok`、`not-ok`、`impossible` 或 `unverifiable`，判定会记录轮次、标准是否已冻结、标准与本次运行（`evaluation`）。在 `enforce` 模式下，`not-ok` 会以未满足的标准和已满足的标准引导模型；`impossible` 与 `unverifiable` 让 turn 结束并阻塞 active goal（代码 `verifier-impossible`、`verifier-unverifiable`）；没有可用报告的运行记录为 `grader-error`，并以代码 `verifier-grader-error` 阻塞 active goal；达到 `evaluator.maxRounds` 轮或 `maxContinuations` 次引导后，门控记录 `budget-exhausted` 并以代码 `verifier-budget-exhausted` 阻塞 active goal。
 
 当 `evaluator.count` 大于 1 时，门控依次启动这么多个评估者，每个评估者以自己的种子顺序看到标准与 verify 结果，顺序记录为 `runs[].order`。只有所有评估者都报告 `ok` 时本轮才通过；`impossible` 或 `unverifiable` 也只有在所有评估者都如此报告时才成立；否则本轮为 `not-ok`，并带上任一评估者认为未满足的所有标准，或者在评估者意见不一却没有指出任何未满足标准时记为 `grader-error`。`evaluation.disagreement` 记录判定是否不同以及哪些标准出现分歧。第一次没有可用报告的运行会以 `grader-error` 结束本轮。
+
+当 `evidence.mode` 不是 `off` 时，verify 命令已通过（或未配置命令）的边界还会在任何评估者运行之前检查最终回答。声明是回答提到的文件路径或 shell 命令，其定义来自 `@deepseek-ai/dsh-experimental-graph-projection` 的 `graphEvidence` 投影；当同一 turn 的某个工具调用或工具结果提到它时，该声明有支持。该边界的每个判定都带有 `evidence`（`mode`、`status` 为 `supported`、`unsupported`、`no-claims` 或 `unavailable`、记录的 `claims` 及其叶子、`unsupported` 声明文本，以及回答的声明多于 `maxClaims` 时的 `truncated`）。在 `enforce` 模式下，`unsupported` 的回答会以原因 `evidence-unsupported` 被引导，与 `maxContinuations` 共用预算；预算用尽时门控记录 `budget-exhausted` 并阻塞 active goal。没有该投影时，判定为 `not-ok`、原因 `evidence-unavailable`，不引导，并以代码 `verifier-evidence-unavailable` 阻塞 active goal。`shadow` 只记录。
 
 -----
 
@@ -93,7 +98,8 @@ kind: "package-reference"
 - **不放行失败。** 失败、超时或被信号杀死的命令都是 `not-ok`。shell 基础设施故障，或加载后消失的 `shell` 服务，会让监听器 reject，并以原因 `error` 结束 turn。
 - **引导从不说明如何关闭门控。** 它只写出失败的命令、退出状态与输出尾部。
 - **判定只进日志。** `loop/verdict` 在 `SessionEventMap` 中声明、读取时必需，且从不进入派生历史；只有引导消息对模型可见。
-- **不变量伴随插件。** `./invariant` 检查每个 `continued: true` 的 `loop/verdict` 之后，在其 turn 以 `completed` 或 `max-tokens` 结束前，都有一条 `verifier-gate` user 消息；被中止、出错或被阻塞的 turn 可以丢弃待处理的引导。组合需把伴随插件与 `@deepseek-ai/dsh-invariants` 一起挂载。
+- **不变量伴随插件。** `./invariant` 检查每个 `continued: true` 的 `loop/verdict` 之后，在其 turn 以 `completed` 或 `max-tokens` 结束前，都有一条 `verifier-gate` user 消息；被中止、出错或被阻塞的 turn 可以丢弃待处理的引导。它还检查判定的 `evidence` 与其 turn 的 `graphEvidence` 声明一致：记录的声明是回答的前几条，恰在丢弃了声明时设置 `truncated`，`unsupported` 列出没有叶子的声明，`no-claims` 表示没有声明，且 `evidence-unsupported` 带有状态 `unsupported`。组合需把伴随插件与 `@deepseek-ai/dsh-invariants` 一起挂载。
+- **证据检查位于命令与评估者之间。** 一个边界上的顺序是空白回复、verify 命令、证据、评估者；门控从 `graphEvidence` 读取声明，从不自行拆分。
 - **空白回复才是可达的空转情形。** 没有任何内容块的完成永远不会到达门控：两个 DeepSeek 适配器都把它归类为 `EMPTY_RESPONSE`，由重试策略重复请求，否则 turn 以错误结束。门控处理剩下的情形，即只有推理或空白文本的已完成回复，其状态由 `assistant/message` 事件折叠得到。
 - **评估者是 `ctx.subagents` 的消费方。** 它不新增服务：每次评估运行是一次一次性 `start()`，带 `toolFilter: { allow: evaluator.tools }`、报告的 `outputSchema` 与评估者 persona。`src/fresh-run.ts` 负责提供者检查以及启动、等待、释放的顺序，不含任何门控类型。
 - **门控从不评判自己的评估者。** 只有当子代理的 `subagent/descriptor` 带有评估者标签与配置的提供者、且其父代理正在等待评估者时，才被豁免。其他子代理，包括模型启动的 worker，都会被门控评判。
@@ -108,7 +114,7 @@ kind: "package-reference"
 |---|---|
 | [`src/index.ts`](src/index.ts) | 插件入口：`Config`、加载时校验、turn-stopping 与 pre-step 监听器 |
 | [`src/types.ts`](src/types.ts) | `loop/verdict` 会话事件声明及其载荷类型 |
-| [`src/invariant.ts`](src/invariant.ts) | 针对续跑判定及其引导的不变量伴随插件 |
+| [`src/invariant.ts`](src/invariant.ts) | 针对续跑判定、其引导以及判定证据的不变量伴随插件 |
 | [`src/evaluator.ts`](src/evaluator.ts) | 评估者报告 schema、提示词、报告检查、引导文本、种子顺序与共识 |
 | [`src/fresh-run.ts`](src/fresh-run.ts) | 通过 `ctx.subagents` 的一次全新结构化子代理运行：提供者检查、启动、等待、释放 |
 
@@ -123,6 +129,7 @@ kind: "package-reference"
 - [Shell 包](../../shell/shell/README.zh.md)——运行 verify 命令的执行器契约。
 - [实验性分组地图](../README.zh.md)——同组实验性包与发布策略。
 - [Subagent 包](../../subagent/subagent/README.zh.md)——评估者使用的 `ctx.subagents` 启动契约。
+- [最终回答证据说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.zh.md)——为什么证据检查从 `graphEvidence` 读取启发式声明.
 
 -----
 
@@ -241,13 +248,35 @@ Meet the unmet criteria, check them yourself, and only then finish.
 
 仅追加：引导是可复用请求前缀之后的新尾部 user 消息。
 
+### 证据引导
+
+#### 模型看到什么
+
+在 `enforce` 模式下，当最终回答提到本 turn 没有任何工具调用或工具结果提到的路径或命令时，门控会追加一条 source 为 `verifier-gate` 的 `user/message`：开头一行、每条缺少支持的声明一行 `- <claim>`，以及下面的结尾一行。
+
+##### 该字段的原文
+
+```markdown
+Your answer names files or commands that no tool call or tool result in this turn shows:
+- <claim>
+Check each one with a tool now, or remove it from the answer, then finish.
+```
+
+#### Token 影响
+
+只在引导时产生：约 30 个 token 外加声明行；它计入 `maxContinuations`。
+
+#### KV Cache 影响
+
+与每个门控引导一样，追加在已确定的回答之后。
+
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
 
 这些限制是本包当前的约束。
 
-- **没有证据检查**——最终 assistant 消息中的声明不会与工具结果比对；只有配置的命令做决定。
+- **证据是启发式的**——它检查提到的路径或命令出现在本 turn 的工具记录中，而不检查该记录是否证明了其周围的陈述；只要某个调用运行了命令，无论其退出状态如何，命令声明都算满足（结果由 verify 命令负责）。
 - **预算用尽时 turn 正常结束**——`budget-exhausted` 之后 turn 以 `completed` 结束；在 `enforce` 模式下 active goal 变为 `blocked`（代码 `verifier-budget-exhausted`），paused goal 保持不变，`shadow` 模式从不改变 goal。
 - **自身没有沙箱**——verify 命令运行在挂载的 `shell` 提供者所施加的任何策略之下。
 - **预算只在内存中**——恢复的会话以全新的续跑计数开始。

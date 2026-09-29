@@ -144,6 +144,16 @@ describe('graph_audit', () => {
     expect(results(agent)[0]).not.toContain('rejections (')
   })
 
+  it('admits a plan whose only finding is a shell-write warning', async () => {
+    const ctx = await harness({ ...ENFORCE, allowedTools: ['read', 'edit', 'bash'], shellTools: ['bash'] })
+    ctx.tools.register(defineContentToolFixture({ name: 'bash', description: 'bash', parameters: {}, async execute() { return [{ type: 'text', text: 'ok' }] } }))
+    const plan = diamond()
+    ;((plan['nodes'] as Record<string, unknown>[])[1]!)['tools'] = ['read', 'edit', 'bash']
+    const agent = await audit(ctx, [plan])
+    expect(records(agent)[0]).toMatchObject({ admitted: true, rejections: [expect.objectContaining({ code: 'SHELL_WRITES_UNCHECKED', severity: 'warn', subject: 'build:bash' })] })
+    expect(results(agent)[0]).toContain('warnings (1):\n- [SHELL_WRITES_UNCHECKED] build:bash:')
+  })
+
   it('refuses a call with no owning agent', async () => {
     const ctx = await harness(ENFORCE)
     const result = await ctx.tools.execute({ callId: ToolCallId('direct'), name: 'graph_audit', arguments: { plan: diamond() }, signal: new AbortController().signal })
@@ -158,6 +168,11 @@ describe('graph_audit', () => {
     expect(definition?.presentCall?.({ plan: { id: 3 } })).toMatchObject({ rawInput: 'plan without an id' })
   })
 
+  it('shows the verdict property with its type in the tool description', () => {
+    expect(GraphContract.GRAPH_AUDIT_DESCRIPTION).toContain('verification nodes require "verdict": {"type": "string", "enum": ["pass", "fail"]}')
+    expect(GraphContract.REJECTION_RULES.VERDICT_UNDECLARED.remedy).toContain('{"type": "string", "enum": ["pass", "fail"]}')
+  })
+
   it('registers nothing when off', async () => {
     const ctx = await harness({ mode: 'off' })
     expect(ctx.tools.get('graph_audit')).toBeUndefined()
@@ -168,6 +183,8 @@ describe('graph_audit', () => {
     [{ ...ENFORCE, allowedTools: ['run_code'] }, /allowedTools cannot name run_code/],
     [{ ...ENFORCE, runBudget: { steps: -1 } }, /invalid runBudget\.steps -1/],
     [{ ...ENFORCE, runBudget: { wallMs: 1.5 } }, /invalid runBudget\.wallMs 1\.5/],
+    [{ ...ENFORCE, shellTools: ['bash', ' '] }, /shellTools entries must be non-blank/],
+    [{ ...ENFORCE, maxCycleIterations: 0 }, /invalid maxCycleIterations 0/],
   ])('fails the load on %o', async (config, message) => {
     const ctx = new Context()
     await mountAgentLoopTestDependencies(ctx)

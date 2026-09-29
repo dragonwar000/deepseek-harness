@@ -1,0 +1,30 @@
+# Pressure compaction summarizes the earlier history, then the model reads the
+# compacted span back with history_read from the graph projection. The pruner
+# protects the unanswered tool result so the pressure goes to the summary.
+# Config patches replace whole plugin configs, so the pruner row restates its budgets.
+
+- id: llm-deepseek
+  config:
+    models:
+      - id: deepseek-v4-flash
+        contextWindow: 12000
+        maxTokens: 1000
+
+- id: compaction-basic
+  config:
+    thresholdRatio: 0.8
+    headroomTokens: 1800
+    retainTokens: 20
+
+- id: tool-result-pruner
+  config:
+    thresholdChars: 2048
+    headChars: 512
+    tailChars: 256
+    protectUnseen: true
+
+- insert:
+    - id: graph-projection
+      name: '@deepseek-ai/dsh-experimental-graph-projection'
+      config:
+        history: { maxChars: 3000, maxListed: 20, readWindow: 50 }

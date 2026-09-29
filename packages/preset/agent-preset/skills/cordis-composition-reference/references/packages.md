@@ -190,7 +190,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | no | Experimental computer-use provider embedding the Cua Driver native npm SDK |
 | `@deepseek-ai/dsh-experimental-denial-budget` | yes | Counts policy-denied tool calls, appends fixed safer-approach advice, and asks approval before continuing past a denial budget; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-graph-contract` | yes | dsh-graph/v1 plan contract: deterministic graph_audit admission and graph/plan records with rejection memory; shadow or enforce |
-| `@deepseek-ai/dsh-experimental-graph-projection` | no | Task graphs of admitted dsh-graph/v1 plans folded from the session log, with the read-only graph_query tool |
+| `@deepseek-ai/dsh-experimental-graph-projection` | yes | Task graphs, turn evidence, and compacted history folded from the session log, with the read-only graph_query, graph_cite, and history_read tools |
 | `@deepseek-ai/dsh-experimental-graph-runner` | yes | Runs admitted dsh-graph/v1 plans in the foreground: each agent node a fresh subagent, verify commands and human gates as proof, retries, resume, and write-scope enforcement; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-infra-snapshot` | yes | Appends one infra/snapshot session event per agent: node, platform, cpu, memory, sandbox mode |
 | `@deepseek-ai/dsh-experimental-inspector` | yes | Experimental cross-realm CDP hub for Host debugging and Client Runtime inspection |

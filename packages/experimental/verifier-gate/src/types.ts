@@ -28,6 +28,9 @@ export type LoopVerdictKind = 'ok' | 'not-ok' | 'skipped' | 'impossible' | 'unve
  * Why the gate reached its decision. `blank-response`: the settled response had
  * no tool call and no visible text. `evaluator-*`: an evaluator report decided;
  * `evaluator-error`: no evaluator run produced a usable report.
+ * `evidence-unsupported`: the final answer names paths or commands no record
+ * of the turn mentions; `evidence-unavailable`: the `graphEvidence` projection
+ * is not registered.
  */
 export type LoopVerdictReason =
   | 'all-passed'
@@ -40,6 +43,8 @@ export type LoopVerdictReason =
   | 'evaluator-impossible'
   | 'evaluator-unverifiable'
   | 'evaluator-error'
+  | 'evidence-unsupported'
+  | 'evidence-unavailable'
 
 /** What one evaluator reported about the work. */
 export type EvaluatorVerdict = 'ok' | 'not-ok' | 'impossible' | 'unverifiable'
@@ -116,6 +121,40 @@ export interface EvaluationRecord {
   disagreement?: EvaluationDisagreement
 }
 
+/** One record of the turn that mentions a claimed path or command. */
+export interface LoopEvidenceLeaf {
+  /** `tool-record`: a tool call argument; `observed`: a successful tool result; `absence`: a failed tool result. */
+  kind: 'tool-record' | 'observed' | 'absence'
+  /** Seq of the record's event. */
+  seq: number
+  /** Tool name. */
+  tool: string
+}
+
+/** One path or command the final answer names; no leaf means parametric. */
+export interface LoopEvidenceClaim {
+  /** Path or command. */
+  kind: 'path' | 'command'
+  /** Normalized text. */
+  text: string
+  /** Records of the turn that mention it. */
+  leaves: LoopEvidenceLeaf[]
+}
+
+/** The evidence check of one turn-stopping boundary, as the gate used it. */
+export interface LoopEvidence {
+  /** `evidence.mode` at decision time. */
+  mode: 'shadow' | 'enforce'
+  /** `no-claims`: the answer names nothing checkable; `unavailable`: the graphEvidence projection is not registered. */
+  status: 'supported' | 'unsupported' | 'no-claims' | 'unavailable'
+  /** The first `evidence.maxClaims` claims of the answer, in answer order. */
+  claims: LoopEvidenceClaim[]
+  /** Texts of the recorded claims without a leaf. */
+  unsupported: string[]
+  /** Set when the answer had more claims than `evidence.maxClaims`. */
+  truncated?: true
+}
+
 /**
  * The durable record of one gate decision. `continued: true` means the gate
  * steered the agent (enforce mode, `not-ok`, continuation budget left).
@@ -140,6 +179,8 @@ export interface LoopVerdict {
   continued: boolean
   /** The evaluator's round, criteria, and runs; present when an evaluator round ran. */
   evaluation?: EvaluationRecord
+  /** The evidence check; present when `evidence.mode` is not `off` and the verify commands passed. */
+  evidence?: LoopEvidence
 }
 
 declare module '@deepseek-ai/dsh-session/types' {

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package registers the `graph_run` tool, which executes the latest admitted version of one `dsh-graph/v1` plan inside the calling tool call. Each agent node runs as a fresh subagent with its declared tools and output schema; anchors and verify commands run through the shell seam; human gates ask the user. A node counts as `executed` only with proof. Every status change is a `graph/node` event on the calling session, so a later call resumes from the log. Writes by a node's subagent outside its write scopes are refused in `enforce` mode and recorded in `shadow` mode. It is experimental.
+This package registers the `graph_run` tool, which executes the latest admitted version of one `dsh-graph/v1` plan and waits for it. Each agent node runs as a fresh subagent with its declared tools and output schema; anchors and verify commands run through the shell seam; human gates ask the user. A node counts as `executed` only with proof, and a loop edge reruns its body until `until` passes. Every status change and loop decision is a session event, so a later call resumes from the log. `enforce` refuses a node's writes outside its write scopes; `shadow` records them. It is experimental.
 
 ## Table of Contents
 
@@ -87,6 +87,8 @@ A node status carries a basis:
 
 A need is satisfied when it is `executed`, `failed` with `mayFail` (bindings then receive their `fallback`), or `unverified` across a `verifies` edge. A new admitted version carries executed nodes of the replaced version whose fingerprint (the node and its needs' fingerprints) is unchanged; a node that existed before with a changed fingerprint runs again with recovery state `patched`.
 
+**Loops.** When the `from` node of a `cycleGuard` edge becomes `executed`, the runner decides the edge once for that node's iteration and records a `graph/edge` event: the `until` command exits 0 ⇒ `until-met`; `maxIterations` fires are spent ⇒ `exhausted`; the `metricCommand` value stayed the same for `plateauAfter` decisions ⇒ `plateau`; otherwise ⇒ `fired`. A fire reopens every node of the loop body (`cycleBody`) as `pending` with attempt 0 and the next `iteration`, and the loop target's next brief carries the `from` output limited to the edge's `allowedFields`. Nodes that need the `from` node wait until the decision is recorded. A run that stopped before a decision makes it at the start of the next run; `until-met`, `exhausted`, and `plateau` end the loop without failing a node.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -106,17 +108,18 @@ A need is satisfied when it is `executed`, `failed` with `mayFail` (bindings the
 - **No persona per kind.** The node brief states the node's role; a verification node's brief adds the artifacts to check, the acceptance criteria, and the verdict rule. Earlier failure traces are never included.
 - **Gates ask on the calling agent.** Child subagents reject approval requests. The request names `graph_run` and the call id; `humanTimeoutMs` bounds the wait; only `allowed-once` grants.
 - **Routes come from the log.** A node with a category runs on the route recorded with the admitted version; the provider must support agent options.
-- **Invariant companion.** `./invariant` checks every `graph/node` and `graph/run` against the `graph` projection before it: the record folds onto the prefix, the transition is in `NODE_TRANSITIONS`, the revision follows the previous one, a node that never ran becomes `executed` only with `carriedFrom`, `executed` carries a `predicate`, `verifier`, or `human` basis, and the output matches the node's output schema. A composition mounts the companion together with `@deepseek-ai/dsh-invariants` and the graph projection.
+- **Invariant companion.** `./invariant` checks every `graph/node`, `graph/run`, and `graph/edge` against the `graph` projection before it: the record folds onto the prefix, the transition is in `NODE_TRANSITIONS` or the record is a reopen (`pending`, attempt 0, the next iteration, from a status `canReopen` accepts, inside the body of a fired loop), the revision follows the previous one, a node that never ran becomes `executed` only with `carriedFrom`, `executed` carries a `predicate`, `verifier`, or `human` basis, and the output matches the node's output schema. An edge decision requires its `from` node `executed` at the recorded iteration and undecided, a fire count that follows the previous one, `until-met` exactly when the `until` check passed, no fire beyond `maxIterations`, and `exhausted` only after the last fire. A composition mounts the companion together with `@deepseek-ai/dsh-invariants` and the graph projection.
 
 ### Source map
 
 | File | Role |
 |---|---|
 | [`src/index.ts`](src/index.ts) | Plugin entry: `Config`, load-time validation, the fs write-scope listeners, and the `graph_run` tool |
-| [`src/runner.ts`](src/runner.ts) | `runGraph`: scheduling, dispatch, resolution, retries, resume, carry-over, and stop reasons |
+| [`src/runner.ts`](src/runner.ts) | `runGraph`: scheduling, dispatch, resolution, retries, resume, carry-over, loop decisions, and stop reasons |
+| [`src/cycle.ts`](src/cycle.ts) | Pure loop helpers: metric reading, the plateau rule, and the output a fire sends back |
 | [`src/prompt.ts`](src/prompt.ts) | The node brief |
 | [`src/write-scope.ts`](src/write-scope.ts) | Write-scope checks for tracked child sessions |
-| [`src/invariant.ts`](src/invariant.ts) | Invariant companion for node lifecycle records |
+| [`src/invariant.ts`](src/invariant.ts) | Invariant companion for node lifecycle and loop decision records |
 
 </details>
 
@@ -129,6 +132,7 @@ A need is satisfied when it is `executed`, `failed` with `mayFail` (bindings the
 - [Graph projection package](../graph-projection/README.md) — the task graphs this runner reads and `graph_query`.
 - [Subagent package](../../subagent/subagent/README.md) — the `ctx.subagents` seam that starts each node.
 - [Experimental group map](../README.md) — sibling experimental packages and the publication policy.
+- [Loop edges note](../../../.agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.md) — how the runner decides loop edges and reopens their body.
 
 -----
 
@@ -146,14 +150,14 @@ When the plugin is mounted (any mode except `off`), the model is offered `graph_
 ```markdown
 Run the latest admitted version of one dsh-graph/v1 plan and wait for it to stop. Each agent node runs as a fresh subagent that sees only its instruction, its inputs, and its declared tools, and returns its declared output. Anchors and verify commands run as shell commands; a human_gate asks the user.
 
-A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget.
+A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget. A loop edge runs its loop again when its from node finishes and its until command fails, at most maxIterations times; the reopened target sees the output the edge sends back.
 
 The result names the stop reason and every node's status. After NO_PROGRESS, fix the plan and audit a new version with graph_audit; unchanged finished nodes are carried over. After BUDGET, call graph_run again to continue.
 ```
 
 #### Token effect
 
-Always-on while mounted: the tool definition is about 230 tokens in every request of the calling session.
+Always-on while mounted: the tool definition is about 270 tokens in every request of the calling session.
 
 #### KV Cache effect
 
@@ -163,14 +167,14 @@ The tool definition joins the stable tool prefix once, when the plugin loads.
 
 #### What the model sees
 
-Each call returns text in this form; bracketed parts are filled per call and lines without data are omitted. A missing plan, a missing run input, or an unusable provider is a tool error naming the problem.
+Each call returns text in this form; bracketed parts are filled per call and lines without data are omitted; `iteration` appears only after a loop reopened the node. A missing plan, a missing run input, or an unusable provider is a tool error naming the problem.
 
 ##### Verbatim text for this field
 
 ```markdown
 graph_run: <STOP_REASON> — plan <id> — version <n> — run <run id>
 <fixed guidance for the stop reason>
-- <node>: <status> (<basis>), attempt <n> — <reason>
+- <node>: <status> (<basis>), attempt <n>, iteration <k> — <reason>
 result of <synthesis or stop_handoff node>: <JSON output>
 ```
 
@@ -186,17 +190,24 @@ Append-only: each result is a new tool result after the reusable request prefix.
 
 #### What the model sees
 
-Each agent node's subagent receives one user message built by `nodePrompt`: its role and plan, the plan goal, its instruction, its resolved inputs (`not provided` when absent), its tool and write limits, and, for a verification node, the artifacts to check, the acceptance criteria, and the verdict rule. After an interrupted attempt it also receives:
+Each agent node's subagent receives one user message built by `nodePrompt`: its role and plan, the plan goal, its instruction, its resolved inputs (`not provided` when absent), its tool and write limits, and, for a verification node, the artifacts to check, the acceptance criteria, and the verdict rule. After an interrupted attempt it also receives the interrupted note; a node reopened by a fired loop edge also receives, after its inputs, the loop feedback with the output the edge sent back (`none` when the `from` node produced none).
 
-##### Verbatim text for this field
+##### Verbatim text for the interrupted note
 
 ```markdown
 A previous attempt of this node stopped before it finished; inspect the workspace for partial changes before acting.
 ```
 
+##### Verbatim text for the loop feedback
+
+```markdown
+Loop feedback from <from> (fire <n>): <JSON output>
+Revise your result using this feedback.
+```
+
 #### Token effect
 
-Each node brief is its child's first message, about 80 tokens plus inputs and acceptance.
+Each node brief is its child's first message, about 80 tokens plus inputs and acceptance; a reopened node's brief adds the length of the output its loop edge sent back.
 
 #### KV Cache effect
 
@@ -208,7 +219,8 @@ Node briefs start fresh child sessions and do not touch the calling session's pr
 
 These limits are current package constraints.
 
-- **Shell writes are not scoped** — only writes through the fs seam (`write`, `edit`) pass the write-intent check; a node with a shell tool can write anywhere its sandbox allows.
+- **Shell writes are not scoped** — only writes through the fs seam (`write`, `edit`) pass the write-intent check; a node with a shell tool can write anywhere its sandbox allows, and `graph_audit` warns with `SHELL_WRITES_UNCHECKED` when the deployment lists that tool in `shellTools`.
+- **Loop exits are not failures** — `exhausted` and `plateau` leave the last result in place; a verification downstream decides whether it is good enough.
 - **Loop guards run in every node** — listeners such as `verifier-gate` apply to child sessions too, so root verify commands also run at the end of each node turn.
 - **Foreground only** — the calling turn waits for the run; background runs are deferred.
 - **No token or USD budget per run** — subagent results carry no usage; `maxDispatches` and `maxWallMs` bound a run.

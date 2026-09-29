@@ -17,6 +17,9 @@
     { "path": "../../subagent/subagent" },
     { "path": "../../subagent/subagent-in-process-driver" },
     { "path": "../../core/tools" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    { "path": "../../runtime-diagnostics/invariants" },
+    { "path": "../graph-projection" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../util/values" }
   ]
 }

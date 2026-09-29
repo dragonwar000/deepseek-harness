@@ -153,7 +153,7 @@
     },
     {
       "name": "graph_audit",
-      "description": "Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version.\n\nEvery call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.\n\nPlan: format \"dsh-graph/v1\"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).\n\nNode: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: \"run\" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum [\"pass\",\"fail\"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).\n\nEdge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).\n\nStatus, basis, and version belong to the harness and are rejected inside a plan.",
+      "description": "Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version. It warns when a node declares a tool that can write files through a shell.\n\nEvery call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.\n\nPlan: format \"dsh-graph/v1\"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).\n\nNode: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: \"run\" or a needed node id, field, fallback?}]; output (object JSON Schema using only type, properties, required, additionalProperties, items, enum, const, oneOf, and annotations; every property declares a type; verification nodes require \"verdict\": {\"type\": \"string\", \"enum\": [\"pass\", \"fail\"]}); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).\n\nEdge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional); cycleGuard (optional) {maxIterations, until, plateauAfter?, metricCommand?} marks a loop edge: relation feeds, from a node back to itself or to a node it depends on, not listed in needs. When from finishes, the loop runs again unless the until shell command exits 0, maxIterations is reached, or the metricCommand output stayed the same for plateauAfter decisions. Only the from node of a loop may feed nodes outside it.\n\nStatus, basis, and version belong to the harness and are rejected inside a plan.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -175,8 +175,24 @@
       }
     },
     {
+      "name": "graph_cite",
+      "description": "Check which tool calls and tool results of the current turn mention a file path or a shell command you are about to name in your answer. Each supporting record is tool-record (a tool call argument names it), observed (a successful tool result names it), or absence (a failed tool result names it). A claim with no record is parametric: nothing in this turn shows it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "One file path or one shell command from your answer."
+          }
+        },
+        "required": [
+          "claim"
+        ]
+      }
+    },
+    {
       "name": "graph_query",
-      "description": "Read the admitted task graphs of this session. scope \"plans\" lists each admitted plan with its version, node count, ready count, and executed count. scope \"plan\" with plan_id returns its nodes (needs, status, basis, attempt, recovery state), the waves of nodes that can run together, and its runs. scope \"node\" with plan_id and node_id returns one node with its output, child session, and recorded reason. Status is recorded by the harness from the session log; it cannot be set.",
+      "description": "Read the admitted task graphs of this session. scope \"plans\" lists each admitted plan with its version, node count, ready count, and executed count. scope \"plan\" with plan_id returns its nodes (needs, status, basis, attempt, recovery state, loop iteration), the waves of nodes that can run together, its runs, and the fire count of each loop edge. scope \"node\" with plan_id and node_id returns one node with its output, child session, and recorded reason. Status is recorded by the harness from the session log; it cannot be set.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -225,6 +241,23 @@
         "required": [
           "pattern"
         ]
+      }
+    },
+    {
+      "name": "history_read",
+      "description": "Read back conversation that compaction replaced or shortened in your context. Without seq, list the compacted spans of this session, newest first: each has a seq, a kind (summary: a span replaced by a checkpoint; prune: a tool result shortened in place), its first and last event number, and its item count. With seq from that list, return the span as a transcript starting at offset; a page that stops early names the next offset. The transcript arrives as this tool result; nothing earlier in your context changes.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "description": "Seq of a compacted span from the listing; omit to list spans."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Item to start at inside the span; default 0."
+          }
+        }
       }
     },
     {

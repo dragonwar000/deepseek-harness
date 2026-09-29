@@ -9,6 +9,7 @@ import { RUN_CODE_NAME } from '@deepseek-ai/dsh-tools'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import type {
   GraphCheck,
+  GraphEdge,
   GraphNode,
   GraphNodeBudget,
   GraphNodeId,
@@ -37,11 +38,12 @@ export const REJECTION_RULES: Readonly<Record<GraphRejectionCode, RejectionRule>
   NOT_CONSUMED: { check: 'closeness', severity: 'reject', remedy: 'Add an edge from this node to a node that uses its output, or remove it.' },
   MISSING_ANCHOR: { check: 'anchor', severity: 'reject', remedy: 'Add an anchor node with verify commands and an anchors edge to the work it constrains.' },
   VERIFIER_NOT_FRESH: { check: 'freshness', severity: 'reject', remedy: 'Give each verification node contextScope fresh-independent and reach it through verifies edges, not feeds edges from execution nodes.' },
-  VERDICT_UNDECLARED: { check: 'freshness', severity: 'reject', remedy: 'Declare a required verdict property with enum ["pass", "fail"] in the verification node output.' },
+  VERDICT_UNDECLARED: { check: 'freshness', severity: 'reject', remedy: 'Declare a required verdict property {"type": "string", "enum": ["pass", "fail"]} in the verification node output.' },
   SYNTHESIS_BEFORE_VERIFY: { check: 'order', severity: 'reject', remedy: 'Make the synthesis node depend, directly or transitively, on a verification node.' },
   MISSING_HUMAN_GATE: { check: 'gates', severity: 'reject', remedy: 'Add a human_gate node before the step that is expensive to undo.' },
   MISSING_STOP_HANDOFF: { check: 'gates', severity: 'reject', remedy: 'Add a stop_handoff node that ends the plan with a handoff.' },
   WRITE_SCOPE_OVERLAP: { check: 'writes', severity: 'reject', remedy: 'Make the two write scopes disjoint, or order the two nodes with a dependency.' },
+  SHELL_WRITES_UNCHECKED: { check: 'writes', severity: 'warn', remedy: 'Writes made through this tool are not held to the node write scopes; use file tools for edits, or keep the node read-only and prove its result with verify commands.' },
   CAPABILITY_UNVERIFIED: { check: 'capability', severity: 'reject', remedy: 'Declare only tools and categories this deployment grants to graph nodes; graph_capabilities lists them.' },
   BUDGET_EXCEEDED: { check: 'budget', severity: 'reject', remedy: 'Declare the missing budgets, lower node or retry budgets, or split the plan.' },
   INPUT_MAY_BE_ABSENT: { check: 'inputs', severity: 'reject', remedy: 'Add a fallback to the binding, or set mayFail false on the source node.' },
@@ -67,6 +69,8 @@ export function rejection(code: GraphRejectionCode, subject: string, detail: str
 export interface AuditEnvironment {
   /** Tool names a node may declare (graph-contract `allowedTools`). */
   readonly allowedTools: ReadonlySet<string>
+  /** Declared tools that run shell commands, whose writes bypass the fs write seam (graph-contract `shellTools`). */
+  readonly shellTools: ReadonlySet<string>
   /**
    * Whether a global tool with this name is registered now.
    * @param name - tool name.
@@ -81,6 +85,8 @@ export interface AuditEnvironment {
   readonly frozenAcceptance: readonly string[] | undefined
   /** Configured routes by category. */
   readonly routes: ReadonlyMap<string, GraphRoute>
+  /** Highest `cycleGuard.maxIterations` the deployment accepts. */
+  readonly maxCycleIterations: number
 }
 
 /** Audit outcome; `order` and `waves` are absent when structure errors or a cycle prevent them. */
@@ -173,6 +179,53 @@ export function planOrder(plan: GraphPlan): { readonly order: GraphNodeId[]; rea
 }
 
 /**
+ * Whether `target` is `start` or one of its transitive needs. Undeclared needs end their path.
+ * @param nodes - declared nodes by id.
+ * @param start - node to walk from.
+ * @param target - node looked for.
+ * @returns true when a needs path leads from `start` to `target`.
+ */
+export function reaches(nodes: ReadonlyMap<GraphNodeId, GraphNode>, start: GraphNodeId, target: GraphNodeId): boolean {
+  const queue: GraphNodeId[] = [start]
+  const seen = new Set<GraphNodeId>(queue)
+  for (const id of queue) {
+    if (id === target) return true
+    for (const need of nodes.get(id)?.needs ?? []) {
+      if (!seen.has(need)) {
+        seen.add(need)
+        queue.push(need)
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * The loop body of a cycle edge: every node on a needs path from `edge.to` to `edge.from`, both included.
+ * @param plan - the plan.
+ * @param edge - a cycle edge; `to` is `from` or one of its transitive needs.
+ * @returns body node ids in declaration order.
+ */
+export function cycleBody(plan: GraphPlan, edge: Pick<GraphEdge, 'from' | 'to'>): GraphNodeId[] {
+  const nodes = new Map(plan.nodes.map(node => [node.id, node]))
+  return plan.nodes.filter(node => reaches(nodes, node.id, edge.to) && reaches(nodes, edge.from, node.id)).map(node => node.id)
+}
+
+/**
+ * Why a cycle edge is malformed.
+ * @param nodes - declared nodes by id.
+ * @param edge - an edge with `cycleGuard` whose ends are declared.
+ * @param target - the node the edge points to.
+ * @returns the problem, or undefined for a well-formed loop edge.
+ */
+function cycleEdgeProblem(nodes: ReadonlyMap<GraphNodeId, GraphNode>, edge: GraphEdge, target: GraphNode): string | undefined {
+  if (edge.relation !== 'feeds') return 'a cycle edge must have relation feeds'
+  if (target.needs.includes(edge.from)) return `${edge.to} lists ${edge.from} in needs; a cycle edge is not a need`
+  if (!reaches(nodes, edge.from, edge.to)) return `${edge.from} does not depend on ${edge.to}; a cycle edge must point back to the node itself or to a node it depends on`
+  return undefined
+}
+
+/**
  * Duplicate ids and dangling references; any finding here stops the audit.
  * @param plan - the parsed plan.
  * @returns `SCHEMA_INVALID` findings.
@@ -211,6 +264,9 @@ function structureRejections(plan: GraphPlan): GraphRejection[] {
     const target = nodes.get(edge.to)
     if (!nodes.has(edge.from) || target === undefined) {
       out.push(rejection('SCHEMA_INVALID', subject, `edge ${edge.from}->${edge.to} names an undeclared node`))
+    } else if (edge.cycleGuard !== undefined) {
+      const problem = cycleEdgeProblem(nodes, edge, target)
+      if (problem !== undefined) out.push(rejection('SCHEMA_INVALID', `${subject}.cycleGuard`, problem))
     } else if (!target.needs.includes(edge.from)) {
       out.push(rejection('SCHEMA_INVALID', subject, `edge ${edge.from}->${edge.to} is not listed in ${edge.to}.needs`))
     }
@@ -353,6 +409,48 @@ function writeRejections(plan: GraphPlan, ancestors: ReadonlyMap<GraphNodeId, Re
 }
 
 /**
+ * Loop bodies that leak before their `from` node, and loops above the deployment limit.
+ * @param plan - an acyclic plan with well-formed cycle edges.
+ * @param env - audit environment.
+ * @returns `SCHEMA_INVALID` for each leaking dependency and `BUDGET_EXCEEDED` for each loop over the limit.
+ */
+function cycleRejections(plan: GraphPlan, env: AuditEnvironment): GraphRejection[] {
+  const out: GraphRejection[] = []
+  for (const edge of plan.edges) {
+    const guard = edge.cycleGuard
+    if (guard === undefined) continue
+    const body = new Set(cycleBody(plan, edge))
+    for (const node of plan.nodes) {
+      if (body.has(node.id)) continue
+      for (const need of node.needs) {
+        if (body.has(need) && need !== edge.from) {
+          out.push(rejection('SCHEMA_INVALID', `${need}->${node.id}`, `leaves the loop ${edge.from}->${edge.to} before ${edge.from}; only ${edge.from} may feed nodes outside the loop`))
+        }
+      }
+    }
+    if (guard.maxIterations > env.maxCycleIterations) {
+      out.push(rejection('BUDGET_EXCEEDED', `${edge.from}->${edge.to}.cycleGuard.maxIterations`, `${guard.maxIterations} iterations exceed the deployment limit ${env.maxCycleIterations}`))
+    }
+  }
+  return out
+}
+
+/**
+ * How many times each node can run per attempt budget: the product of `maxIterations + 1` over every loop containing it.
+ * @param plan - an acyclic plan.
+ * @returns node id → factor, 1 outside every loop.
+ */
+function iterationFactors(plan: GraphPlan): ReadonlyMap<GraphNodeId, number> {
+  const factors = new Map<GraphNodeId, number>(plan.nodes.map(node => [node.id, 1]))
+  for (const edge of plan.edges) {
+    const guard = edge.cycleGuard
+    if (guard === undefined) continue
+    for (const id of cycleBody(plan, edge)) factors.set(id, must(factors, id) * (guard.maxIterations + 1))
+  }
+  return factors
+}
+
+/**
  * Why one declared tool cannot be granted.
  * @param tool - tool name.
  * @param env - audit environment.
@@ -382,6 +480,21 @@ function capabilityRejections(plan: GraphPlan, env: AuditEnvironment): GraphReje
     out.push(rejection('CAPABILITY_UNVERIFIED', 'subagents', 'no subagent service is mounted, so no agent node can run'))
   }
   return out
+}
+
+/**
+ * Agent nodes that declare a shell tool: its writes never reach the fs write
+ * seam, so the runner cannot hold them to the node's write scopes.
+ * @param plan - the parsed plan.
+ * @param env - audit environment.
+ * @returns one `SHELL_WRITES_UNCHECKED` warning per node and shell tool.
+ */
+function shellRejections(plan: GraphPlan, env: AuditEnvironment): GraphRejection[] {
+  return plan.nodes.filter(runsAsAgent).flatMap(node => node.tools
+    .filter(tool => env.shellTools.has(tool))
+    .map(tool => rejection('SHELL_WRITES_UNCHECKED', `${node.id}:${tool}`, node.writes.length === 0
+      ? `${tool} can modify files outside the fs write seam, and the node declares no write scope`
+      : `${tool} can modify files outside the fs write seam, so writes outside ${node.writes.join(', ')} are not checked`)))
 }
 
 function depthRejections(plan: GraphPlan, env: AuditEnvironment): GraphRejection[] {
@@ -436,6 +549,7 @@ function criticalPath(plan: GraphPlan, order: readonly GraphNodeId[], cost: Read
 function budgetRejections(plan: GraphPlan, env: AuditEnvironment, order: readonly GraphNodeId[]): GraphRejection[] {
   const out: GraphRejection[] = []
   const agents = plan.nodes.filter(runsAsAgent)
+  const factors = iterationFactors(plan)
   for (const kind of BUDGET_KINDS) {
     const limit = env.runBudget[kind]
     if (limit === 0) continue
@@ -443,7 +557,7 @@ function budgetRejections(plan: GraphPlan, env: AuditEnvironment, order: readonl
     for (const node of agents) {
       const perAttempt = node.budget[kind]
       if (perAttempt === undefined) out.push(rejection('BUDGET_EXCEEDED', `${node.id}.budget.${kind}`, `the run limit is ${limit} ${kind} and the node declares no ${kind} budget`))
-      else cost.set(node.id, perAttempt * (node.retryBudget + 1))
+      else cost.set(node.id, perAttempt * (node.retryBudget + 1) * must(factors, node.id))
     }
     if (cost.size < agents.length) continue
     const worst = kind === 'wallMs' ? criticalPath(plan, order, cost) : [...cost.values()].reduce((sum, value) => sum + value, 0)
@@ -483,6 +597,7 @@ export function auditPlan(plan: GraphPlan, env: AuditEnvironment): AuditResult {
     ...freshnessRejections(plan),
     ...gateRejections(plan),
     ...capabilityRejections(plan, env),
+    ...shellRejections(plan, env),
     ...depthRejections(plan, env),
     ...inputRejections(plan),
     ...freezeRejections(plan, env),
@@ -490,7 +605,12 @@ export function auditPlan(plan: GraphPlan, env: AuditEnvironment): AuditResult {
   ]
   if (!acyclic) return { rejections: sortRejections(rejections), order: undefined, waves: undefined }
   const ancestors = ancestorsOf(plan, order)
-  rejections.push(...orderRejections(plan, ancestors), ...writeRejections(plan, ancestors), ...budgetRejections(plan, env, order))
+  rejections.push(
+    ...orderRejections(plan, ancestors),
+    ...writeRejections(plan, ancestors),
+    ...cycleRejections(plan, env),
+    ...budgetRejections(plan, env, order),
+  )
   return { rejections: sortRejections(rejections), order, waves: planWaves(plan) }
 }
 

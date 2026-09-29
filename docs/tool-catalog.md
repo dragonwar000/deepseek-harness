@@ -42,8 +42,8 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit`, `graph_capabilities` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.subagents for the depth check` | `tool/call`, `graph/plan`, `tool/result` | - | Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same two tools and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` and `routes` default to none, which only changes audit and capability results, not the schemas. |
-| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_query` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session` | `tool/call`, `tool/result` | - | Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own. |
-| `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`, `ctx.sessionProjections`, `ctx.subagents`, `graph-contract and graph-projection mounted`, `owning Agent session` | `tool/call`, `graph/run`, `graph/node`, `subagent/catalog`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema. |
+| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`, `graph_query`, `history_read` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.sessionQuery for history_read` | `tool/call`, `tool/result` | - | Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn's tool records, and compaction spans, and writes no session event of its own. |
+| `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`, `ctx.sessionProjections`, `ctx.subagents`, `graph-contract and graph-projection mounted`, `owning Agent session` | `tool/call`, `graph/run`, `graph/node`, `graph/edge`, `subagent/catalog`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2514,15 +2514,15 @@ All nine tools are scoped to implicit Team Leads and durable teammates. The ship
 
 ### `graph_audit`
 
-Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version.
+Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version. It warns when a node declares a tool that can write files through a shell.
 
 Every call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.
 
 Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).
 
-Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
+Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema using only type, properties, required, additionalProperties, items, enum, const, oneOf, and annotations; every property declares a type; verification nodes require "verdict": {"type": "string", "enum": ["pass", "fail"]}); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
 
-Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).
+Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional); cycleGuard (optional) {maxIterations, until, plateauAfter?, metricCommand?} marks a loop edge: relation feeds, from a node back to itself or to a node it depends on, not listed in needs. When from finishes, the loop runs again unless the until shell command exits 0, maxIterations is reached, or the metricCommand output stayed the same for plateauAfter decisions. Only the from node of a loop may feed nodes outside it.
 
 Status, basis, and version belong to the harness and are rejected inside a plan.
 
@@ -2561,9 +2561,30 @@ Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the
 
 ## `@deepseek-ai/dsh-experimental-graph-projection`
 
+### `graph_cite`
+
+Check which tool calls and tool results of the current turn mention a file path or a shell command you are about to name in your answer. Each supporting record is tool-record (a tool call argument names it), observed (a successful tool result names it), or absence (a failed tool result names it). A claim with no record is parametric: nothing in this turn shows it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "claim": {
+      "type": "string",
+      "description": "One file path or one shell command from your answer."
+    }
+  },
+  "required": [
+    "claim"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
 ### `graph_query`
 
-Read the admitted task graphs of this session. scope "plans" lists each admitted plan with its version, node count, ready count, and executed count. scope "plan" with plan_id returns its nodes (needs, status, basis, attempt, recovery state), the waves of nodes that can run together, and its runs. scope "node" with plan_id and node_id returns one node with its output, child session, and recorded reason. Status is recorded by the harness from the session log; it cannot be set.
+Read the admitted task graphs of this session. scope "plans" lists each admitted plan with its version, node count, ready count, and executed count. scope "plan" with plan_id returns its nodes (needs, status, basis, attempt, recovery state, loop iteration), the waves of nodes that can run together, its runs, and the fire count of each loop edge. scope "node" with plan_id and node_id returns one node with its output, child session, and recorded reason. Status is recorded by the harness from the session log; it cannot be set.
 
 ```json
 {
@@ -2595,7 +2616,29 @@ Read the admitted task graphs of this session. scope "plans" lists each admitted
 
 Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
 
-Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own.
+### `history_read`
+
+Read back conversation that compaction replaced or shortened in your context. Without seq, list the compacted spans of this session, newest first: each has a seq, a kind (summary: a span replaced by a checkpoint; prune: a tool result shortened in place), its first and last event number, and its item count. With seq from that list, return the span as a transcript starting at offset; a page that stops early names the next offset. The transcript arrives as this tool result; nothing earlier in your context changes.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "description": "Seq of a compacted span from the listing; omit to list spans."
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Item to start at inside the span; default 0."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn's tool records, and compaction spans, and writes no session event of its own.
 
 <a id="deepseek-aidsh-experimental-graph-runner"></a>
 
@@ -2605,7 +2648,7 @@ Experimental and read-only: it folds graph/plan events written by @deepseek-ai/d
 
 Run the latest admitted version of one dsh-graph/v1 plan and wait for it to stop. Each agent node runs as a fresh subagent that sees only its instruction, its inputs, and its declared tools, and returns its declared output. Anchors and verify commands run as shell commands; a human_gate asks the user.
 
-A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget.
+A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget. A loop edge runs its loop again when its from node finishes and its until command fails, at most maxIterations times; the reopened target sees the output the edge sends back.
 
 The result names the stop reason and every node's status. After NO_PROGRESS, fix the plan and audit a new version with graph_audit; unchanged finished nodes are carried over. After BUDGET, call graph_run again to continue.
 

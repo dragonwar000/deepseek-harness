@@ -11,7 +11,11 @@
  * conversation or the model's report. In `enforce` mode `not-ok` steers
  * with the unmet and the already-met criteria;
  * `impossible`, `unverifiable`, a run without a usable report, and an
- * exhausted budget block the session's active goal. `shadow` mode only
+ * exhausted budget block the session's active goal. When `evidence.mode` is
+ * not `off`, the claims of the final answer (paths and commands it names) are
+ * checked against the turn's tool records from the `graphEvidence`
+ * projection after the commands pass and recorded on the verdict; in
+ * `enforce` an unsupported answer is steered. `shadow` mode only
  * records what it would have done. A failed step never reaches this gate
  * (agent-loop runs `agent/turn-stopping` only after a completed step), so the
  * gate needs no failed-step guard.
@@ -26,6 +30,8 @@ import type { ContentBlock, ContextFormed } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { ShellExecRequest, ShellExecSpec, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import type {} from '@deepseek-ai/dsh-goal'
+import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@deepseek-ai/dsh-experimental-graph-projection/types'
 import type { SubagentProvider } from '@deepseek-ai/dsh-subagent'
 import { STRUCTURED_OUTPUT_TOOL } from '@deepseek-ai/dsh-subagent-in-process-driver'
 import {
@@ -47,6 +53,7 @@ import type {
   EvaluationRun,
   EvaluatorVerdict,
   GraderErrorCode,
+  LoopEvidence,
   LoopVerdict,
   VerdictCheck,
 } from './types.ts'
@@ -58,6 +65,9 @@ export type {
   EvaluationRun,
   EvaluatorVerdict,
   GraderErrorCode,
+  LoopEvidence,
+  LoopEvidenceClaim,
+  LoopEvidenceLeaf,
   LoopVerdict,
   LoopVerdictKind,
   LoopVerdictReason,
@@ -138,6 +148,19 @@ export interface EvaluatorConfig {
   seed?: number
 }
 
+/** Evidence settings; the check runs only outside `off`. */
+export interface EvidenceConfig {
+  /**
+   * `off` skips the check; `shadow` records it on every verdict; `enforce` also steers an unsupported answer and needs
+   * gate `mode: enforce`. Default `off`.
+   */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** `every`: each claim needs a record; `any`: at least one claim does (default `every`). */
+  require?: 'every' | 'any'
+  /** Claims recorded and checked per answer, in answer order (default 32). */
+  maxClaims?: number
+}
+
 /**
  * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
  * what the gate assumes about the model, so a later model can retire it.
@@ -153,6 +176,8 @@ export interface Config {
   blankResponse?: BlankResponseConfig
   /** Evaluator settings. */
   evaluator?: EvaluatorConfig
+  /** Evidence settings. */
+  evidence?: EvidenceConfig
   /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
   maxContinuations?: number
 }
@@ -184,6 +209,11 @@ export const Config: z<Config> = z.object({
     maxRuns: z.number().default(3),
     seed: z.number().default(0),
   }).default({}),
+  evidence: z.object({
+    mode: z.union(['off', 'shadow', 'enforce']).default('off'),
+    require: z.union(['every', 'any']).default('every'),
+    maxClaims: z.number().default(32),
+  }).default({}),
   maxContinuations: z.number().default(8),
 })
 
@@ -201,6 +231,20 @@ function steerText(check: VerdictCheck): string {
   return `verify command failed (exit ${check.exitCode ?? 'signal'}${check.timedOut ? ', timed out' : ''}): ${check.command}\n`
     + `Output tail:\n${check.outputTail}\n`
     + 'Fix the cause, rerun the failing check yourself, and only then finish.'
+}
+
+/** First line of the evidence steer; the unsupported claims follow, one per line. */
+export const EVIDENCE_STEER_HEAD = 'Your answer names files or commands that no tool call or tool result in this turn shows:'
+/** Last line of the evidence steer. */
+export const EVIDENCE_STEER_TAIL = 'Check each one with a tool now, or remove it from the answer, then finish.'
+
+/**
+ * Model-facing steer for an unsupported answer; it never names a way to disable the check.
+ * @param unsupported - claim texts without a leaf.
+ * @returns the steer text.
+ */
+function evidenceSteerText(unsupported: readonly string[]): string {
+  return [EVIDENCE_STEER_HEAD, ...unsupported.map(claim => `- ${claim}`), EVIDENCE_STEER_TAIL].join('\n')
 }
 
 /**
@@ -285,7 +329,8 @@ function errorRun(code: GraderErrorCode, detail: string, facts: RunFacts): Judge
  * Install the gate.
  * @param ctx - plugin context; listeners dispose with it.
  * @param config - validated {@link Config}; blank `assumption`, invalid numbers, a blank rubric
- * line, commands without a mounted `shell`, and an unfit evaluator provider fail the load.
+ * line, commands without a mounted `shell`, an unfit evaluator provider, `evidence.mode: enforce` outside gate
+ * `enforce`, and an evidence check without `sessionProjections` fail the load.
  */
 export function apply(ctx: Context, config: Config): void {
   // schemastery's .default() guarantees the fields are set after validation.
@@ -299,6 +344,12 @@ export function apply(ctx: Context, config: Config): void {
   const evaluator = config.evaluator as Required<Omit<EvaluatorConfig, 'maxOutputTokens'>> & Pick<EvaluatorConfig, 'maxOutputTokens'>
   const maxContinuations = config.maxContinuations as number
   requireInteger('maxContinuations', maxContinuations, 0)
+  const evidence = config.evidence as Required<EvidenceConfig>
+  requireInteger('evidence.maxClaims', evidence.maxClaims, 1)
+  if (evidence.mode === 'enforce' && mode !== 'enforce') throw new Error('verifier-gate: evidence.mode enforce needs mode enforce')
+  if (evidence.mode !== 'off' && ctx.get('sessionProjections') === undefined) {
+    throw new Error('verifier-gate: evidence.mode needs the sessionProjections service; mount @deepseek-ai/dsh-experimental-graph-projection for the graphEvidence projection')
+  }
   requireInteger('blankResponse.maxSteers', blankResponse.maxSteers, 0)
   requireInteger('verify.timeoutMs', verify.timeoutMs, 1)
   requireInteger('verify.stdoutTailChars', verify.stdoutTailChars, 1)
@@ -368,6 +419,43 @@ export function apply(ctx: Context, config: Config): void {
     const goal = goals?.get(agent)
     if (goals === undefined || goal === undefined || goal.phase !== 'active') return
     goals.block(agent, { id: goal.id, revision: goal.revision }, { code, message })
+  }
+
+  function judgeEvidence(session: Session, turn: number): LoopEvidence {
+    const checkMode = evidence.mode as 'shadow' | 'enforce'
+    const projections = ctx.get('sessionProjections')
+    /* v8 ignore next -- the load check requires sessionProjections whenever the evidence check runs. */
+    const state = projections === undefined ? undefined : projections.stateOf(session, 'graphEvidence')
+    if (state === undefined) return { mode: checkMode, status: 'unavailable', claims: [], unsupported: [] }
+    /* v8 ignore next -- agent-loop appends the turn's assistant/message after turn/start and before agent/turn-stopping. */
+    const all = state.answer !== null && state.answer.turn === turn ? state.answer.claims : []
+    const claims = all.slice(0, evidence.maxClaims)
+    const unsupported = claims.filter(claim => claim.leaves.length === 0).map(claim => claim.text)
+    const failing = evidence.require === 'every' ? unsupported.length > 0 : unsupported.length === claims.length
+    let status: LoopEvidence['status'] = failing ? 'unsupported' : 'supported'
+    if (claims.length === 0) status = 'no-claims'
+    return { mode: checkMode, status, claims, unsupported, ...all.length > claims.length ? { truncated: true } : {} }
+  }
+
+  function enforceEvidence(agent: Agent, budget: Budget, checks: VerdictCheck[], found: LoopEvidence, record: Recorder): boolean {
+    if (found.status === 'unavailable') {
+      record({ verdict: 'not-ok', reason: 'evidence-unavailable', checks, continued: false })
+      blockGoal(agent, 'verifier-evidence-unavailable', 'the graphEvidence projection is not registered, so the evidence of this turn cannot be judged')
+      return true
+    }
+    if (found.status !== 'unsupported') return false
+    if (budget.continuation >= maxContinuations) {
+      record({ verdict: 'not-ok', reason: 'budget-exhausted', checks, continued: false })
+      blockGoal(agent, 'verifier-budget-exhausted', `the answer still names ${found.unsupported.length} claim(s) without evidence after ${maxContinuations} continuation(s)`)
+      return true
+    }
+    record({ verdict: 'not-ok', reason: 'evidence-unsupported', checks, continued: true })
+    budget.continuation += 1
+    agent.steer(createUserMessage({
+      content: [{ type: 'text', text: evidenceSteerText(found.unsupported) }],
+      source: { kind: 'verifier-gate', form: 'notice', summary: boundContextSummary(`evidence: ${found.unsupported.length} unsupported claim(s)`) },
+    }))
+    return true
   }
 
   async function runChecks(signal: AbortSignal): Promise<VerdictCheck[]> {
@@ -573,8 +661,9 @@ export function apply(ctx: Context, config: Config): void {
     // The parent's gate judges its evaluator child; the child's own boundary is not judged again.
     if (evaluatorSessions.has(agent.session)) return
     const budget = budgetOf(agent, turn)
+    let found: LoopEvidence | undefined
     const record: Recorder = (verdict) => {
-      agent.session.append('loop/verdict', { turn, mode, continuation: budget.continuation, ...verdict })
+      agent.session.append('loop/verdict', { turn, mode, continuation: budget.continuation, ...verdict, ...found === undefined ? {} : { evidence: found } })
     }
 
     if (blankTurns.get(agent.session) === turn
@@ -613,6 +702,10 @@ export function apply(ctx: Context, config: Config): void {
         source: { kind: 'verifier-gate', form: 'notice', summary: boundContextSummary(`verify failed: ${failed.command}`) },
       }))
       return
+    }
+    if (evidence.mode !== 'off') {
+      found = judgeEvidence(agent.session, turn)
+      if (evidence.mode === 'enforce' && enforceEvidence(agent, budget, checks, found, record)) return
     }
     if (evaluator.enabled) {
       await judge(agent, turn, budget, checks, signal, record)

@@ -84,3 +84,12 @@ export function nodeFingerprints(plan: GraphPlan): ReadonlyMap<GraphNodeId, stri
   }
   return fingerprints
 }
+
+/**
+ * Whether a node may be reopened for the next loop iteration.
+ * @param status - its current status.
+ * @returns false while it runs or waits for a human; a reopen record starts it `pending` with attempt 0.
+ */
+export function canReopen(status: GraphNodeStatus): boolean {
+  return status !== 'running' && status !== 'waiting_human'
+}

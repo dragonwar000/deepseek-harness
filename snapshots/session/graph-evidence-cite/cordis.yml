@@ -1,0 +1,13 @@
+# The ordinary headless composition plus the graph projection and the verifier
+# gate enforcing its evidence check: the final answer's paths and commands are
+# checked against the turn's tool records, and graph_cite checks them first.
+
+- insert:
+    - id: graph-projection
+      name: '@deepseek-ai/dsh-experimental-graph-projection'
+    - id: verifier-gate
+      name: '@deepseek-ai/dsh-experimental-verifier-gate'
+      config:
+        mode: enforce
+        assumption: "the model names files in its answer that it never looked at"
+        evidence: { mode: enforce }

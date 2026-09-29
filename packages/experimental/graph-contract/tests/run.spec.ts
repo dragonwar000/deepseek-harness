@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { canTransition, needSatisfied, NODE_TRANSITIONS, nodeFingerprints } from '../src/run.ts'
-import { graphNodeId, graphNodeRecordSchema, graphPlanId, graphRunId, graphRunRecordSchema, parsePlan } from '../src/schema.ts'
+import { canReopen, canTransition, needSatisfied, NODE_TRANSITIONS, nodeFingerprints } from '../src/run.ts'
+import { graphEdgeRecordSchema, graphNodeId, graphNodeRecordSchema, graphPlanId, graphRunId, graphRunRecordSchema, parsePlan } from '../src/schema.ts'
 import type { GraphNodeStatus, GraphPlan } from '../src/types.ts'
 
 function plan(overrides: { buildInstruction?: string; reportNeeds?: string[] } = {}): GraphPlan {
@@ -82,5 +82,31 @@ describe('runner records', () => {
     const session = Session.create(SessionId('records'))
     expect(session.append('graph/node', node).type).toBe('graph/node')
     expect(session.append('graph/run', run).type).toBe('graph/run')
+  })
+})
+
+describe('loop records', () => {
+  it('reopens any node that is neither running nor waiting for a human', () => {
+    expect(canReopen('executed')).toBe(true)
+    expect(canReopen('failed')).toBe(true)
+    expect(canReopen('running')).toBe(false)
+    expect(canReopen('waiting_human')).toBe(false)
+  })
+
+  it('decodes edge records and node iterations and appends them as session events', () => {
+    const edge = {
+      runId: graphRunId('r1'), planId: graphPlanId('ship'), version: 1, from: id('check'), to: id('build'), iteration: 0, fireCount: 1,
+      outcome: 'fired' as const, checks: [{ command: 'pnpm test', exitCode: 1, timedOut: false, outputTail: 'FAIL' }], metric: '3', output: { verdict: 'fail' },
+    }
+    expect(graphEdgeRecordSchema.safeParse(edge).success).toBe(true)
+    expect(graphEdgeRecordSchema.safeParse({ ...edge, outcome: 'looped' }).success).toBe(false)
+    const node = {
+      runId: graphRunId('r1'), planId: graphPlanId('ship'), version: 1, nodeId: id('build'), status: 'pending' as const,
+      recoveryState: 'pristine' as const, attempt: 0, revision: 4, fingerprint: 'd'.repeat(64), iteration: 1,
+    }
+    expect(graphNodeRecordSchema.safeParse(node).success).toBe(true)
+    const session = Session.create(SessionId('loop-records'))
+    expect(session.append('graph/edge', edge).type).toBe('graph/edge')
+    expect(session.append('graph/node', node).type).toBe('graph/node')
   })
 })
