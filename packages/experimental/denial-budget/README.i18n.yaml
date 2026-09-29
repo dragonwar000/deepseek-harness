@@ -1,0 +1,64 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/denial-budget/README.md
+/:
+  en: 7367a922f6045e8c
+  zh: 5bf476c63e97543f
+/deepseek-ai-dsh-experimental-denial-budget:
+  en: 89e2d75d92e3095a
+  zh: cf828a47eb801656
+/deepseek-ai-dsh-experimental-denial-budget/summary:
+  en: 8e1ae5f3bf433324
+  zh: 2308d37a1a8fbc89
+/deepseek-ai-dsh-experimental-denial-budget/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-denial-budget/use-this-package:
+  en: 4b66ab6803a1cc6c
+  zh: 3a0bf81d22f34f3b
+/deepseek-ai-dsh-experimental-denial-budget/use-this-package/when-to-choose-it:
+  en: e14e574df4cbd9fa
+  zh: 9101beb9675b649e
+/deepseek-ai-dsh-experimental-denial-budget/use-this-package/minimal-configuration:
+  en: 3a8a46ce97b21732
+  zh: 33f191d5d7f2237d
+/deepseek-ai-dsh-experimental-denial-budget/use-this-package/what-you-get:
+  en: 2a5857102c729c86
+  zh: 30a5ec32514c25fb
+/deepseek-ai-dsh-experimental-denial-budget/understand-the-implementation:
+  en: d0d107079187c085
+  zh: 180cafd86281a1fa
+/deepseek-ai-dsh-experimental-denial-budget/understand-the-implementation/design-notes:
+  en: bf6846fc6863e3bf
+  zh: fcecf086910d3d9f
+/deepseek-ai-dsh-experimental-denial-budget/understand-the-implementation/source-map:
+  en: 7404a19f572ef252
+  zh: 4a27a856c5f0d6f0
+/deepseek-ai-dsh-experimental-denial-budget/further-exploration:
+  en: 791aeaed13c40a76
+  zh: ab33d4fabbce781e
+/deepseek-ai-dsh-experimental-denial-budget/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-denial-budget/model-experience/advice-on-a-denied-tool-call:
+  en: 3941b4b02f6c766d
+  zh: 5b93db4e69821382
+/deepseek-ai-dsh-experimental-denial-budget/model-experience/advice-on-a-denied-tool-call/what-the-model-sees:
+  en: adc3225305ce2886
+  zh: 668c67503d6ec6fc
+/deepseek-ai-dsh-experimental-denial-budget/model-experience/advice-on-a-denied-tool-call/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-denial-budget/model-experience/advice-on-a-denied-tool-call/token-effect:
+  en: 4e85aa00f7d4e60d
+  zh: c0a04d9026ea0759
+/deepseek-ai-dsh-experimental-denial-budget/model-experience/advice-on-a-denied-tool-call/kv-cache-effect:
+  en: a610f68273ac4eea
+  zh: 9087ee7531d5dacd
+/deepseek-ai-dsh-experimental-denial-budget/known-limitations-and-deferred-work:
+  en: 84b7e7ecfac36ac3
+  zh: 66bc163f34db23a7
+/deepseek-ai-dsh-experimental-denial-budget/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

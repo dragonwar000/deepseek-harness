@@ -1,5 +1,5 @@
 ---
-description: "Turn-stopping verify-command gate and a per-agent infrastructure snapshot in one experimental bundle, shipped switched off."
+description: "Verifier gate, stationarity guard, denial budget, loop budget, and a per-agent infrastructure snapshot in one experimental bundle, shipped switched off."
 kind: "package-bundle"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-experimental-loop-graph-profile` enables [`verifier-gate`](../verifier-gate/README.md) and [`infra-snapshot`](../infra-snapshot/README.md) with one bundle. `verifier-gate` runs configured verify commands before a turn may end and, in `enforce` mode, steers the model back to work on a red command; `infra-snapshot` records the host facts a run depended on. The bundle ships with dsh switched off, and `verifier-gate` starts in `shadow` mode: enabling the bundle alone records verdicts without steering. Enable it from the Plugins page or add it to an initialized profile.
+`dsh-experimental-loop-graph-profile` enables [`verifier-gate`](../verifier-gate/README.md), [`stationarity-guard`](../stationarity-guard/README.md), [`denial-budget`](../denial-budget/README.md), [`loop-budget`](../loop-budget/README.md), and [`infra-snapshot`](../infra-snapshot/README.md) with one bundle, and leaves `repeat-tool-reminder` running until you switch `stationarity-guard` to `enforce`. Every guard starts in `shadow` mode: enabling the bundle alone records what each guard would do and changes no model request, step, or goal. The bundle ships with dsh switched off; enable it from the Plugins page or add it to an initialized profile.
 
 ## Table of Contents
 
@@ -33,21 +33,27 @@ Add the package to an initialized profile:
 dsh plugin --profile headless add @deepseek-ai/dsh-experimental-loop-graph-profile
 ```
 
-The profile must already contain `@deepseek-ai/dsh-base`, whose `agent/turn-stopping` and `agent/created` events this layer's rows consume. Removing the package with `dsh plugin --profile <name> remove @deepseek-ai/dsh-experimental-loop-graph-profile` removes both rows from the profile's ordered layer list.
+The profile must already contain `@deepseek-ai/dsh-base`, whose `agent/turn-stopping` and `agent/created` events this layer's rows consume. Removing the package with `dsh plugin --profile <name> remove @deepseek-ai/dsh-experimental-loop-graph-profile` removes all five rows from the profile's ordered layer list.
 
-Enable Loop guards on the Web or Desktop Plugins page to switch on both rows at once. The Plugins page reads the bundle's [icon](icon.svg) from its `package.json.icon` declaration, including while the bundle is disabled.
+Enable Loop guards on the Web or Desktop Plugins page to switch on all five rows at once. The Plugins page reads the bundle's [icon](icon.svg) from its `package.json.icon` declaration, including while the bundle is disabled.
 
 ### What you get
 
-The layer inserts `infra-snapshot` with its shipped default (every session-start source) and `verifier-gate` in `shadow` mode with an empty `verify.commands` list, so enabling the bundle alone changes nothing observable yet: `verifier-gate` records `loop/verdict{verdict: 'skipped', reason: 'no-commands'}` at every turn boundary until a profile patch supplies commands. Configure the gate and flip it to `enforce` from your own profile patch, targeting the `verifier-gate` row id:
+The layer inserts five rows and changes no `dsh-base` row. `infra-snapshot` records host facts. The four guards start in `shadow` mode and append `loop/verdict`, `loop/stationarity`, `loop/denial`, or `loop/budget` records; `loop-budget` ships with every limit at `0` (off) and `verifier-gate` with no verify commands, so those two record nothing until configured. Flip a guard to `enforce` from your own profile patch, targeting its row id:
 
 ```yaml
-- id: verifier-gate
+- id: stationarity-guard
   config:
     mode: enforce
-    verify:
-      commands: [pnpm test]
+- id: repeat-tool-reminder   # stationarity-guard now owns repeat reminders
+  disabled: true
+- id: loop-budget
+  config:
+    mode: enforce
+    turn: { maxSteps: 64 }
 ```
+
+While `stationarity-guard` stays in `shadow` mode, `repeat-tool-reminder` still sends its advisory reminders; disable it when you enforce `stationarity-guard`, as above.
 
 -----
 
@@ -57,15 +63,16 @@ The layer inserts `infra-snapshot` with its shipped default (every session-start
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-The package's runtime content is [`cordis.patch.yml`](cordis.patch.yml). Applied after `dsh-base`, it inserts `infra-snapshot` and `verifier-gate` with stable row ids and no disables, so both rows compose over the shipped Web layers without touching an existing id.
+Applied after `dsh-base`, the patch inserts five rows with stable ids and changes no `dsh-base` row. Row order is listener order: `verifier-gate` registers its `agent/turn-stopping` listener before `loop-budget`, so the work floor yields when the gate has already steered.
 
-The patch carries no `verifier-gate/invariant` row: `dsh-base` deliberately does not mount `@deepseek-ai/dsh-invariants`, and this bundle layers over `dsh-base` without adding one either. A composition that does mount the registry, such as [`packages/bundle/sdk-minimal/cordis.patch.yml`](../../bundle/sdk-minimal/cordis.patch.yml), adds `- id: verifier-gate-invariant` / `name: '@deepseek-ai/dsh-experimental-verifier-gate/invariant'` itself, next to its other core invariant companions.
+The patch carries no invariant rows: `dsh-base` deliberately does not mount `@deepseek-ai/dsh-invariants`. A composition that mounts the registry adds each companion itself — `verifier-gate/invariant`, `stationarity-guard/invariant`, `denial-budget/invariant`, `loop-budget/invariant` — next to its other core companions.
 
 | File | Role |
 |---|---|
-| [`cordis.patch.yml`](cordis.patch.yml) | Ordered patch inserting `infra-snapshot` and `verifier-gate` over `dsh-base` |
+| [`cordis.patch.yml`](cordis.patch.yml) | Ordered patch inserting five rows over `dsh-base` |
 | [`src/index.ts`](src/index.ts) | Empty module entry; the patch is the runtime content |
-| — | No runtime invariant companion is published; the package carries only a static profile patch. `verifier-gate` and `infra-snapshot` each own their own invariant story. |
+| [`tests/profile.spec.ts`](tests/profile.spec.ts) | Parses the patch and validates every guard row against its package `Config` |
+| — | No runtime invariant companion is published; the package carries only a static profile patch. Each row package owns its own invariant story. |
 
 </details>
 
@@ -78,26 +85,30 @@ The patch carries no `verifier-gate/invariant` row: `dsh-base` deliberately does
 - [Verifier gate](../verifier-gate/README.md) — the turn-stopping gate this bundle enables.
 - [Infra snapshot](../infra-snapshot/README.md) — the per-agent host-facts event this bundle enables.
 - [Base bundle](../../bundle/base/README.md) — the profile layer this patch extends.
+- [Stationarity guard](../stationarity-guard/README.md) — the step-repetition guard this bundle enables.
+- [Denial budget](../denial-budget/README.md) — the policy-denial guard this bundle enables.
+- [Loop budget](../loop-budget/README.md) — the turn/goal spend guard this bundle enables.
 
 -----
 
 <a id="model-experience"></a>
 ## Model Experience
 
-Indirectly, through `verifier-gate`, which owns every model-visible steer this bundle can produce; `infra-snapshot` never enters a model request.
+Indirectly, through `verifier-gate`, `stationarity-guard`, `denial-budget`, and `loop-budget`, which own every model-visible message this bundle can produce; `infra-snapshot` never enters a model request.
 
 #### KV Cache effect
 
-Independent of this bundle's own composition: `infra-snapshot` is log-only, and `verifier-gate`'s KV-cache effect is append-only, as documented in its own README.
+Independent of this bundle's own composition: every guard message is append-only, as documented in each guard's README, and `infra-snapshot` is log-only.
 
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 - **Opt-in only** — the package ships with the installation switched off; no shipped CLI, Web, SDK, ACP, or Python profile enables it.
-- **Shadow by default** — enabling the bundle alone changes no model-visible behavior; `verify.commands` and `mode: enforce` require an explicit profile patch on the `verifier-gate` row.
+- **Shadow by default** — every guard needs an explicit `mode: enforce` patch on its row; `verifier-gate` also needs `verify.commands` and `loop-budget` needs limits.
 - **Base profile required** — the patch depends on `dsh-base` supplying the `agent/turn-stopping`, `agent/pre-step`, and `agent/created` events both rows consume; it is not a standalone profile.
-- **No invariant row** — a composition that mounts `@deepseek-ai/dsh-invariants` must add the `verifier-gate/invariant` companion itself; this bundle does not, matching `dsh-base`.
+- **No invariant row** — a composition that mounts `@deepseek-ai/dsh-invariants` must add the `verifier-gate/invariant`, `stationarity-guard/invariant`, `denial-budget/invariant`, and `loop-budget/invariant` companions itself; this bundle does not, matching `dsh-base`.
+- **No repeat reminders in shadow** — while `stationarity-guard` stays in `shadow` mode, `repeat-tool-reminder` keeps sending its advisory reminders; disable it in your own profile patch when you enforce `stationarity-guard`.
 
 <a id="dev-note"></a>
 ### Dev Note

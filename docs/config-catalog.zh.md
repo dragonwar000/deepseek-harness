@@ -965,6 +965,31 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-denial-budget -->
+<a id="deepseek-aidsh-experimental-denial-budget"></a>
+
+## `@deepseek-ai/dsh-experimental-denial-budget`
+
+- `source`: [`packages/experimental/denial-budget/src/index.ts:34`](../packages/experimental/denial-budget/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the budget assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records only; `enforce` advises, asks, and stops. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Denied calls in a row that trip the budget (default 3). */
+  maxConsecutive?: number
+  /** Denied calls since the last human message that trip the budget (default 20). */
+  maxTotal?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-denial-budget -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
 <a id="deepseek-aidsh-experimental-infra-snapshot"></a>
 
@@ -1049,6 +1074,71 @@ export interface InspectorOptions {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-loop-budget -->
+<a id="deepseek-aidsh-experimental-loop-budget"></a>
+
+## `@deepseek-ai/dsh-experimental-loop-budget`
+
+- `source`: [`packages/experimental/loop-budget/src/index.ts:78`](../packages/experimental/loop-budget/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the budget assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records only; `enforce` rejects, pauses, and steers. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Per-turn limits. */
+  turn?: BudgetLimits
+  /** Per-active-goal limits. */
+  goal?: BudgetLimits
+  /** Per-turn work floor. */
+  floor?: WorkFloor
+  /** Route prices; required when any `maxUsd` is above 0. */
+  prices?: RoutePrice[]
+}
+
+/** Limits for one scope; 0 disables a limit. */
+export interface BudgetLimits {
+  /** Started steps. */
+  maxSteps?: number
+  /** Provider-reported tokens: uncached input, cache read, cache write, and output. */
+  maxTokens?: number
+  /** USD priced through `prices`. */
+  maxUsd?: number
+  /** Milliseconds since the turn started, or since the goal was first tracked. */
+  maxWallMs?: number
+}
+
+/** Minimum work per turn before it may end; 0 disables a floor. */
+export interface WorkFloor {
+  /** Started steps. */
+  minSteps?: number
+  /** Provider-reported tokens. */
+  minTokens?: number
+}
+
+/** USD per million tokens for one exact provider/model route. */
+export interface RoutePrice {
+  /** Provider route as logged in `request/header`. */
+  provider: string
+  /** Model id as logged in `request/header`. */
+  model: string
+  /** Uncached input tokens. */
+  inputPerMTok: number
+  /** Output tokens. */
+  outputPerMTok: number
+  /** Cache-read tokens (default 0). */
+  cacheReadPerMTok?: number
+  /** Cache-write tokens (default 0). */
+  cacheWritePerMTok?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-loop-budget -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
@@ -1195,6 +1285,42 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-speech-to-text-sensevoice -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-stationarity-guard -->
+<a id="deepseek-aidsh-experimental-stationarity-guard"></a>
+
+## `@deepseek-ai/dsh-experimental-stationarity-guard`
+
+- `inject`: `tools`
+- `source`: [`packages/experimental/stationarity-guard/src/index.ts:51`](../packages/experimental/stationarity-guard/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the guard assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records decisions only; `enforce` reminds and stops. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Signature occurrences that add one reminder (default side-effect 4, read-only 8). */
+  remindAt?: TierThresholds
+  /** Signature occurrences that stop the turn (default side-effect 8, read-only 12). */
+  stopAt?: TierThresholds
+  /** Consecutive read-only steps without new evidence that stop the turn (default 4). */
+  noopStopAt?: number
+}
+
+/** Per-tier repeat thresholds. */
+export interface TierThresholds {
+  /** Steps with at least one exclusive (side-effecting) call. */
+  sideEffect?: number
+  /** Steps whose every call is concurrency-safe (read-only). */
+  readOnly?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-stationarity-guard -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
 <a id="deepseek-aidsh-experimental-tool-agent-team"></a>

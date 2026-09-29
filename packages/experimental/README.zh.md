@@ -48,6 +48,9 @@ kind: "package-group"
 | [`verifier-gate`](verifier-gate/README.zh.md) | 回合结束前的校验命令门，shadow 或 enforce | 在 `agent/turn-stopping` 上注册监听器 |
 | [`infra-snapshot`](infra-snapshot/README.zh.md) | 每个 agent 一条 `infra/snapshot` 事件 | — |
 | [`loop-graph-profile`](loop-graph-profile/README.zh.md) | 从插件页开启的循环护栏组合包 | — |
+| [`stationarity-guard`](stationarity-guard/README.zh.md) | 按步骤签名提醒或停止重复工具步骤的护栏，shadow 或 enforce | 在 `agent/pre-step` 与 `session/event` 上注册监听器 |
+| [`denial-budget`](denial-budget/README.zh.md) | 统计策略拒绝、提示更安全的做法，并在超出预算时请求批准，shadow 或 enforce | 在 `tools/*` 与 `agent/pre-step` 上注册监听器 |
+| [`loop-budget`](loop-budget/README.zh.md) | 按回合与目标限制步数、token、美元与墙钟时间，并带工作量下限，shadow 或 enforce | 在 `agent/pre-step`、`agent/turn-stopping` 与 `session/event` 上注册监听器 |
 
 -----
 

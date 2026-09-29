@@ -16,6 +16,15 @@
     },
     {
       "path": "../infra-snapshot"
+    },
+    {
+      "path": "../stationarity-guard"
+    },
+    {
+      "path": "../denial-budget"
+    },
+    {
+      "path": "../loop-budget"
     }
   ]
 }

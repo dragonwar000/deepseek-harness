@@ -1,7 +1,12 @@
-# Experimental loop-engineering guards. Apply after dsh-base. Every row starts in
-# shadow mode: it records what it would do (loop/verdict) and never steers. Flip
-# `mode: enforce` from your profile patch once the shadow record shows zero
-# unwanted blocks over your own turns.
+# Experimental loop-engineering guards. Apply after dsh-base. Every guard row starts
+# in shadow mode: it records what it would do (loop/verdict, loop/stationarity,
+# loop/denial, loop/budget) and never changes a model request, rejects a step, or
+# touches a goal. Flip `mode: enforce` per row from your profile patch once the
+# shadow records show zero unwanted interventions over your own turns.
+# repeat-tool-reminder from dsh-base keeps running while stationarity-guard is in
+# shadow. When you flip stationarity-guard to enforce, disable repeat-tool-reminder
+# in the same profile patch so the model gets one repeat reminder, not two.
+# verifier-gate precedes loop-budget so the work floor sees the gate's steer.
 
 - insert:
     - id: infra-snapshot
@@ -17,3 +22,30 @@
           timeoutMs: 300000
           stdoutTailChars: 2000
         maxContinuations: 8
+
+    - id: stationarity-guard
+      name: '@deepseek-ai/dsh-experimental-stationarity-guard'
+      config:
+        mode: shadow
+        assumption: "the model repeats tool calls that return identical results instead of changing approach"
+        remindAt: { sideEffect: 4, readOnly: 8 }
+        stopAt: { sideEffect: 8, readOnly: 12 }
+        noopStopAt: 4
+
+    - id: denial-budget
+      name: '@deepseek-ai/dsh-experimental-denial-budget'
+      config:
+        mode: shadow
+        assumption: "the model retries denied actions or works around a denial instead of changing approach"
+        maxConsecutive: 3
+        maxTotal: 20
+
+    - id: loop-budget
+      name: '@deepseek-ai/dsh-experimental-loop-budget'
+      config:
+        mode: shadow
+        assumption: "the model does not stop spending on a turn or goal by itself"
+        turn: { maxSteps: 0, maxTokens: 0, maxUsd: 0, maxWallMs: 0 }
+        goal: { maxSteps: 0, maxTokens: 0, maxUsd: 0, maxWallMs: 0 }
+        floor: { minSteps: 0, minTokens: 0 }
+        prices: []

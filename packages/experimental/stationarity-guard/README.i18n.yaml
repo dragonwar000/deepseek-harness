@@ -1,0 +1,64 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/stationarity-guard/README.md
+/:
+  en: 1c69cbbbafd3ced0
+  zh: 788df798e189052c
+/deepseek-ai-dsh-experimental-stationarity-guard:
+  en: dc157de6f7da34f3
+  zh: 975d570fff8fc709
+/deepseek-ai-dsh-experimental-stationarity-guard/summary:
+  en: 49c5d1a27d0d518e
+  zh: 425e5607b2d07dd1
+/deepseek-ai-dsh-experimental-stationarity-guard/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-stationarity-guard/use-this-package:
+  en: 8355b26ec370fa98
+  zh: 46c9ba9bc6aedf44
+/deepseek-ai-dsh-experimental-stationarity-guard/use-this-package/when-to-choose-it:
+  en: 63b94603f6d750f0
+  zh: 1f21863230bb8cae
+/deepseek-ai-dsh-experimental-stationarity-guard/use-this-package/minimal-configuration:
+  en: 4f58a2f710b939be
+  zh: 83595119694befad
+/deepseek-ai-dsh-experimental-stationarity-guard/use-this-package/what-you-get:
+  en: 90c4ea2c87f7a29c
+  zh: e65c97b3011269f1
+/deepseek-ai-dsh-experimental-stationarity-guard/understand-the-implementation:
+  en: 57847883139c22fe
+  zh: f8c8436db77d2403
+/deepseek-ai-dsh-experimental-stationarity-guard/understand-the-implementation/design-notes:
+  en: 4054ade650b8e7f2
+  zh: 9ae8b3bb88a92c35
+/deepseek-ai-dsh-experimental-stationarity-guard/understand-the-implementation/source-map:
+  en: 09f3c223f907b053
+  zh: a196fd0dbb2dc1a0
+/deepseek-ai-dsh-experimental-stationarity-guard/further-exploration:
+  en: 404f866c7f9ca568
+  zh: 68b9e05fee258bbc
+/deepseek-ai-dsh-experimental-stationarity-guard/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-stationarity-guard/model-experience/reminder-after-a-repeated-step:
+  en: c97aa53028367de2
+  zh: 01c23ec8341406d7
+/deepseek-ai-dsh-experimental-stationarity-guard/model-experience/reminder-after-a-repeated-step/what-the-model-sees:
+  en: 299ab430a9a69a25
+  zh: e7a6a100296556e9
+/deepseek-ai-dsh-experimental-stationarity-guard/model-experience/reminder-after-a-repeated-step/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-stationarity-guard/model-experience/reminder-after-a-repeated-step/token-effect:
+  en: 30b1fb0c6f1a6048
+  zh: 489ab7170121964a
+/deepseek-ai-dsh-experimental-stationarity-guard/model-experience/reminder-after-a-repeated-step/kv-cache-effect:
+  en: ae8750eca7b7c385
+  zh: a1779817c6cd33c0
+/deepseek-ai-dsh-experimental-stationarity-guard/known-limitations-and-deferred-work:
+  en: f9780166b28d9082
+  zh: 8117f5117cb98481
+/deepseek-ai-dsh-experimental-stationarity-guard/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-loop-graph-profile",
-  "description": "Loop engineering guards in one experimental bundle: verifier gate and infra snapshot, switched on from the Plugins page",
-  "version": "0.2.0-rc.1",
+  "description": "Loop engineering guards in one experimental bundle: verifier gate, stationarity guard, denial budget, loop budget, and infra snapshot, switched on from the Plugins page",
+  "version": "0.2.0-rc.2",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"
@@ -38,13 +38,18 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-experimental-denial-budget": "workspace:*",
     "@deepseek-ai/dsh-experimental-infra-snapshot": "workspace:*",
+    "@deepseek-ai/dsh-experimental-loop-budget": "workspace:*",
+    "@deepseek-ai/dsh-experimental-stationarity-guard": "workspace:*",
     "@deepseek-ai/dsh-experimental-verifier-gate": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:~"
+    "@deepseek-ai/cordis-plugin-include": "workspace:~",
+    "@deepseek-ai/cordis": "workspace:~",
+    "js-yaml": "^4.2.0"
   }
 }

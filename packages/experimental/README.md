@@ -48,6 +48,9 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`verifier-gate`](verifier-gate/README.md) | Turn-stopping verify-command gate, shadow or enforce | registers listeners on `agent/turn-stopping` |
 | [`infra-snapshot`](infra-snapshot/README.md) | One `infra/snapshot` event per agent | — |
 | [`loop-graph-profile`](loop-graph-profile/README.md) | Loop guards bundle switched on from the Plugins page | — |
+| [`stationarity-guard`](stationarity-guard/README.md) | Step-signature guard that reminds or stops repeated tool steps, shadow or enforce | registers listeners on `agent/pre-step` and `session/event` |
+| [`denial-budget`](denial-budget/README.md) | Counts policy denials, advises a safer approach, and asks approval past a budget, shadow or enforce | registers listeners on `tools/*` and `agent/pre-step` |
+| [`loop-budget`](loop-budget/README.md) | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor, shadow or enforce | registers listeners on `agent/pre-step`, `agent/turn-stopping`, and `session/event` |
 
 -----
 
