@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { ContextFormed } from '@deepseek-ai/dsh-llm'
+import type { ContextFormed, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ShellExecRequest, ShellExecSpec, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import InvariantService from '@deepseek-ai/dsh-invariants'
+import GoalService from '@deepseek-ai/dsh-goal'
 import * as VerifierGate from '../src/index.ts'
 import * as GateInvariant from '../src/invariant.ts'
 import type { Config } from '../src/index.ts'
@@ -282,6 +283,7 @@ describe('config', () => {
     [{ maxContinuations: 1.5 }, 'invalid maxContinuations 1.5'],
     [{ verify: { commands: ['pnpm test'], timeoutMs: 0 } }, 'invalid verify.timeoutMs 0'],
     [{ verify: { commands: ['pnpm test'], stdoutTailChars: 0 } }, 'invalid verify.stdoutTailChars 0'],
+    [{ blankResponse: { maxSteers: -1 } }, 'invalid blankResponse.maxSteers -1'],
   ] satisfies [Config, string][])('fails loud on %j', async (patch, message) => {
     const ctx = new Context()
     await mountAgentLoopTestDependencies(ctx)
@@ -305,5 +307,144 @@ describe('config', () => {
     await prompt(ctx, agent, 'go')
     expect(verdicts(agent).map(v => v.mode)).toEqual(['shadow'])
     expect(steers(agent)).toEqual([])
+  })
+})
+
+async function goalHarness(config: Config, shell: VerifierGate.VerifyShell): Promise<Context> {
+  const ctx = new Context()
+  await mountAgentLoopTestDependencies(ctx)
+  await ctx.plugin(GoalService)
+  ctx.provide('shell', shell)
+  await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(VerifierGate, config)
+  return ctx
+}
+
+describe('goal', () => {
+  it('blocks the active goal when the continuation budget is exhausted', async () => {
+    const ctx = await goalHarness({ ...CONFIG, maxContinuations: 1 }, fakeShell([1, 1]))
+    const agent = await mockAgent(ctx, ['a', 'b'])
+    ctx.goals.create(agent, { objective: 'gate test' })
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => v.reason)).toEqual(['command-failed', 'budget-exhausted'])
+    expect(ctx.goals.get(agent)).toMatchObject({
+      phase: 'blocked',
+      blockedReason: {
+        code: 'verifier-budget-exhausted',
+        message: 'verify command still failing after 1 continuation(s): pnpm test',
+      },
+    })
+  })
+
+  it('leaves a paused goal unchanged', async () => {
+    const ctx = await goalHarness({ ...CONFIG, maxContinuations: 0 }, fakeShell([1]))
+    const agent = await mockAgent(ctx, ['a'])
+    const created = ctx.goals.create(agent, { objective: 'paused goal' })
+    ctx.goals.pause(agent, { id: created.id, revision: created.revision })
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => v.reason)).toEqual(['budget-exhausted'])
+    expect(ctx.goals.get(agent)?.phase).toBe('paused')
+  })
+
+  it('records exhaustion without a goal', async () => {
+    const ctx = await goalHarness({ ...CONFIG, maxContinuations: 0 }, fakeShell([1]))
+    const agent = await mockAgent(ctx, ['a'])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => v.reason)).toEqual(['budget-exhausted'])
+    expect(ctx.goals.get(agent)).toBeUndefined()
+  })
+
+  it('never touches the goal in shadow mode', async () => {
+    const ctx = await goalHarness({ ...CONFIG, mode: 'shadow', maxContinuations: 0 }, fakeShell([1]))
+    const agent = await mockAgent(ctx, ['a'])
+    ctx.goals.create(agent, { objective: 'shadow goal' })
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => [v.mode, v.reason])).toEqual([['shadow', 'command-failed']])
+    expect(ctx.goals.get(agent)?.phase).toBe('active')
+  })
+})
+
+const BLANK_STEER = 'Your last response had no visible text and no tool call, so this turn cannot end on it.\n'
+  + 'Continue the task: take the next action with a tool call, or state the result in text.'
+
+const REASONING_ONLY: StreamChunk[] = [
+  { type: 'block-start', index: 0, blockType: 'reasoning' },
+  { type: 'reasoning-delta', index: 0, text: 'thinking' },
+  { type: 'block-end', index: 0, block: { type: 'reasoning', text: 'thinking' } },
+  { type: 'usage', usage: { inputTokens: 10, outputTokens: 3 } },
+  { type: 'finish', reason: { kind: 'stop' } },
+]
+
+const BLANK_CONFIG = { mode: 'enforce', assumption: 'the model can end a turn with no visible output' } satisfies Config
+
+async function scriptedAgent(ctx: Context, script: StreamChunk[][]): Promise<Agent> {
+  ctx.llm.registerAdapter(['mock'], new MockAdapter(script))
+  return ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+}
+
+describe('blank response', () => {
+  it('steers once after an empty text response, then judges the next boundary', async () => {
+    const ctx = await harness(BLANK_CONFIG, fakeShell([]))
+    const agent = await scriptedAgent(ctx, [textResponse(''), textResponse('done')])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => [v.verdict, v.reason, v.continued, v.continuation])).toEqual([
+      ['not-ok', 'blank-response', true, 0],
+      ['skipped', 'no-commands', false, 1],
+    ])
+    expect(steers(agent)).toEqual([BLANK_STEER])
+  })
+
+  it('treats a reasoning-only response as blank', async () => {
+    const ctx = await harness(BLANK_CONFIG, fakeShell([]))
+    const agent = await scriptedAgent(ctx, [REASONING_ONLY, textResponse('done')])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => v.reason)).toEqual(['blank-response', 'no-commands'])
+  })
+
+  it('steers at most maxSteers times per turn, then runs the verify commands', async () => {
+    const shell = fakeShell([0])
+    const ctx = await harness({ ...BLANK_CONFIG, verify: { commands: ['pnpm test'] } }, shell)
+    const agent = await scriptedAgent(ctx, [textResponse(''), textResponse(' ')])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => [v.reason, v.continued])).toEqual([['blank-response', true], ['all-passed', false]])
+    expect(shell.commands).toEqual(['pnpm test'])
+  })
+
+  it('yields to the verify commands once the continuation budget is spent', async () => {
+    const ctx = await harness({ ...BLANK_CONFIG, maxContinuations: 0 }, fakeShell([]))
+    const agent = await scriptedAgent(ctx, [textResponse('')])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => v.reason)).toEqual(['no-commands'])
+  })
+
+  it('records without steering in shadow mode and runs no command at that boundary', async () => {
+    const shell = fakeShell([1])
+    const ctx = await harness({ ...BLANK_CONFIG, mode: 'shadow', verify: { commands: ['pnpm test'] } }, shell)
+    const agent = await scriptedAgent(ctx, [textResponse('')])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => [v.mode, v.reason, v.continued])).toEqual([['shadow', 'blank-response', false]])
+    expect(steers(agent)).toEqual([])
+    expect(shell.commands).toEqual([])
+  })
+
+  it('is off with maxSteers 0', async () => {
+    const ctx = await harness({ ...BLANK_CONFIG, blankResponse: { maxSteers: 0 } }, fakeShell([]))
+    const agent = await scriptedAgent(ctx, [textResponse('')])
+    await prompt(ctx, agent, 'go')
+    expect(verdicts(agent).map(v => v.reason)).toEqual(['no-commands'])
+  })
+
+  it('satisfies its invariant companion through the real loop', async () => {
+    const ctx = new Context()
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(InvariantService, { enabled: true })
+    await ctx.plugin(GateInvariant)
+    ctx.provide('shell', fakeShell([]))
+    await ctx.plugin(AgentLoop, { agents: [] })
+    await ctx.plugin(VerifierGate, BLANK_CONFIG)
+    const agent = await scriptedAgent(ctx, [textResponse(''), textResponse('done')])
+    await prompt(ctx, agent, 'go')
+    expect(steers(agent)).toEqual([BLANK_STEER])
+    expect(agent.session.snapshotEvents().filter(e => e.type === 'turn/end').map(e => e.type === 'turn/end' ? e.data.reason.kind : '')).toEqual(['completed'])
   })
 })

@@ -49,13 +49,14 @@ Choose it when a deterministic command can tell whether the agent's work is done
 | `verify.commands` | `[]` | Commands run in order at every turn boundary; the first failing command stops the run |
 | `verify.timeoutMs` | `300000` | Per-command timeout handed to the shell provider |
 | `verify.stdoutTailChars` | `2000` | Characters of the stdout and stderr tail kept in the verdict and the steer |
+| `blankResponse.maxSteers` | `1` | Steers per turn after a response with no tool call and no visible text (reasoning only, or empty text); `0` turns the check off. Each steer also spends one continuation |
 | `maxContinuations` | `8` | Steers per turn before the gate records `budget-exhausted` and lets the turn end |
 
 Loading fails with a `verifier-gate:` error when `assumption` is blank, when `maxContinuations` is not an integer at or above 0, when `verify.timeoutMs` or `verify.stdoutTailChars` is not an integer at or above 1, or when `verify.commands` is non-empty and no `shell` service is mounted.
 
 ### What you get
 
-Each turn boundary appends one `loop/verdict` session event with the turn number, mode, verdict (`ok`, `not-ok`, or `skipped`), reason (`all-passed`, `command-failed`, `budget-exhausted`, or `no-commands`), the checks that ran with their exit codes and output tails, the continuations already spent in the turn, and whether this decision steered the agent. In `enforce` mode a `not-ok` verdict with budget left steers the agent with a `notice`-form user message whose source kind is `verifier-gate`; the next step runs, and the gate judges the new boundary. A new human message resets the per-turn budget.
+Each turn boundary appends one `loop/verdict` session event with the turn number, mode, verdict (`ok`, `not-ok`, or `skipped`), reason (`all-passed`, `command-failed`, `budget-exhausted`, `no-commands`, or `blank-response`), the checks that ran with their exit codes and output tails, the continuations already spent in the turn, and whether this decision steered the agent. In `enforce` mode a `not-ok` verdict with budget left steers the agent with a `notice`-form user message whose source kind is `verifier-gate`; the next step runs, and the gate judges the new boundary. A new human message resets the per-turn budget. In `enforce` mode, when the budget is exhausted and the session has an active goal, the gate also blocks that goal with code `verifier-budget-exhausted`, so goal rounds stop instead of re-entering the same red check. Before running any command, the gate checks the response that is about to end the turn; when it has no tool call and no visible text, `enforce` mode steers once (by default) with a fixed notice and runs no command at that boundary.
 
 -----
 
@@ -74,6 +75,7 @@ The gate listens on `agent/turn-stopping`, which agent-loop awaits only after a 
 - **The steer never names a way to disable the gate.** It names the failing command, its exit status, and the output tail.
 - **Verdicts are log-only.** `loop/verdict` is declared in `SessionEventMap`, required on read, and never enters derived history; only the steer message is model-visible.
 - **Invariant companion.** `./invariant` checks that every `loop/verdict` with `continued: true` is followed by a `verifier-gate` user message before its turn ends `completed` or `max-tokens`; aborted, errored, and blocked turns may discard pending steering. A composition mounts the companion together with `@deepseek-ai/dsh-invariants`.
+- **Blank responses are the reachable idle case.** A completion with no content blocks never reaches the gate: both DeepSeek adapters classify it as `EMPTY_RESPONSE`, which the retry policy repeats and which otherwise errors the turn. The gate handles the remaining case, a completed response with only reasoning or whitespace text, folded from `assistant/message` events.
 
 ### Source map
 
@@ -122,6 +124,27 @@ Zero tokens when every check passes, in `shadow` mode, and after the budget is e
 
 Append-only: the steer is a new trailing user message after the reusable request prefix, and the gate changes no earlier request content.
 
+### Steer after a blank response
+
+#### What the model sees
+
+In `enforce` mode only, when the response that would end the turn has no tool call and no visible text, at most `blankResponse.maxSteers` times per turn, the model receives a `notice`-form user message with this text:
+
+##### Verbatim text for this field
+
+```markdown
+Your last response had no visible text and no tool call, so this turn cannot end on it.
+Continue the task: take the next action with a tool call, or state the result in text.
+```
+
+#### Token effect
+
+Zero tokens in `shadow` mode, with `maxSteers: 0`, and for responses with visible text or a tool call. Each steer adds one retained message of about 35 tokens.
+
+#### KV Cache effect
+
+Append-only: the steer is a new trailing user message after the reusable request prefix.
+
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
@@ -129,9 +152,10 @@ Append-only: the steer is a new trailing user message after the reusable request
 These limits are current package constraints.
 
 - **No evidence check** — claims in the final assistant message are not compared against tool results; only the configured commands decide.
-- **Budget exhaustion ends the turn normally** — after `budget-exhausted` the turn ends `completed`; the gate does not block a session goal.
+- **Budget exhaustion ends the turn normally** — after `budget-exhausted` the turn ends `completed`; in `enforce` mode an active goal becomes `blocked` (code `verifier-budget-exhausted`), a paused goal is left as is, and `shadow` mode never changes a goal.
 - **No sandbox of its own** — verify commands run under whatever policy the mounted `shell` provider applies.
 - **Budget is in memory** — a resumed session starts with a fresh continuation counter.
+- **Blank-response counts are in memory** — like the continuation budget, a resumed session starts counting blank-response steers from zero.
 
 <a id="dev-note"></a>
 ### Dev Note

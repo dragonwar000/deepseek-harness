@@ -39,7 +39,7 @@ profile 必须已经包含 `@deepseek-ai/dsh-base`，本层各行都会用到其
 
 ### 获得的功能
 
-本层插入五行，不改变任何 `dsh-base` 行。`infra-snapshot` 记录主机信息。四个护栏都以 `shadow` 模式启动，并写入 `loop/verdict`、`loop/stationarity`、`loop/denial` 或 `loop/budget` 记录；`loop-budget` 出厂时每项限额都是 `0`（关闭），`verifier-gate` 出厂时没有校验命令，因此这两个护栏在配置之前不会记录任何内容。请在你自己的 profile patch 中针对某一行的 id 切换到 `enforce`：
+本层插入五行，不改变任何 `dsh-base` 行。`infra-snapshot` 记录主机信息。四个护栏都以 `shadow` 模式启动，并写入 `loop/verdict`、`loop/stationarity`、`loop/denial` 或 `loop/budget` 记录；`loop-budget` 出厂时每项限额都是 `0`（关闭），`verifier-gate` 出厂时没有校验命令，因此在配置之前 `loop-budget` 不会记录任何内容，而 `verifier-gate` 只会记录 `no-commands` 或 `blank-response` 判定。请在你自己的 profile patch 中针对某一行的 id 切换到 `enforce`：
 
 ```yaml
 - id: stationarity-guard
@@ -54,6 +54,22 @@ profile 必须已经包含 `@deepseek-ai/dsh-base`，本层各行都会用到其
 ```
 
 当 `stationarity-guard` 仍处于 `shadow` 模式时，`repeat-tool-reminder` 依然会发送其提示性提醒；启用 `stationarity-guard` 的 `enforce` 时，请如上所示一并禁用它。
+
+本 bundle 不改变压缩。若要让尚未回应的工具结果不参与压力修剪，并停止重复摘要那些摘要未能缩小的历史，请在你自己的 headless profile 中修补 `dsh-base` 的行；配置补丁会替换整行配置，因此需要重新写出 pruner 的预算：
+
+```yaml
+- id: tool-result-pruner
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+    protectUnseen: true
+- id: compaction-basic
+  config:
+    convergence: refuse
+```
+
+Web preset 在各自的 preset group 中带有自己的 `compaction-basic` 与 `tool-result-pruner` 行，因此该补丁不会作用到它们。
 
 -----
 
@@ -109,6 +125,7 @@ profile 必须已经包含 `@deepseek-ai/dsh-base`，本层各行都会用到其
 - **需要 base profile**——本 patch 依赖 `dsh-base` 提供的 `agent/turn-stopping`、`agent/pre-step` 与 `agent/created` 事件，各行都会用到；它不是独立 profile。
 - **不含 invariant 行**——挂载 `@deepseek-ai/dsh-invariants` 的 composition 需要自行添加 `verifier-gate/invariant`、`stationarity-guard/invariant`、`denial-budget/invariant` 与 `loop-budget/invariant` 伴生条目；本组合包不添加，与 `dsh-base` 一致。
 - **shadow 模式下没有重复提醒的替代**——当 `stationarity-guard` 仍处于 `shadow` 模式时，`repeat-tool-reminder` 依然会发送其提示性提醒；启用 `stationarity-guard` 的 `enforce` 时，请在你自己的 profile patch 中一并禁用它。
+- **压缩设置不随 bundle 提供**——`protectUnseen`、`convergence` 与 `authoritativeRequest` 仍需在每个 profile 中自行开启，因为 bundle 补丁会替换 `dsh-base` 整行配置，且无法作用到 Web profile 中各 preset 的压缩行。
 
 <a id="dev-note"></a>
 ### 开发备注

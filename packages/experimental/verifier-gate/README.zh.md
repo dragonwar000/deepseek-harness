@@ -49,13 +49,14 @@ kind: "package-reference"
 | `verify.commands` | `[]` | 每个 turn 边界按顺序运行的命令；第一个失败的命令终止本轮运行 |
 | `verify.timeoutMs` | `300000` | 交给 shell 提供者的单条命令超时 |
 | `verify.stdoutTailChars` | `2000` | 判定与引导中保留的 stdout 与 stderr 尾部字符数 |
+| `blankResponse.maxSteers` | `1` | 回复既无工具调用也无可见文本（只有推理或空文本）时，每个 turn 的引导次数上限；`0` 关闭该检查。每次引导也消耗一次续跑 |
 | `maxContinuations` | `8` | 每个 turn 的引导次数上限，超过后门控记录 `budget-exhausted` 并让 turn 结束 |
 
 以下情况加载会以 `verifier-gate:` 错误失败：`assumption` 为空白；`maxContinuations` 不是不小于 0 的整数；`verify.timeoutMs` 或 `verify.stdoutTailChars` 不是不小于 1 的整数；`verify.commands` 非空但没有挂载 `shell` 服务。
 
 ### 你会得到什么
 
-每个 turn 边界追加一个 `loop/verdict` 会话事件，内容包括 turn 编号、模式、判定（`ok`、`not-ok` 或 `skipped`）、原因（`all-passed`、`command-failed`、`budget-exhausted` 或 `no-commands`）、已运行的检查及其退出码与输出尾部、本 turn 已用的续跑次数，以及本次判定是否引导了 agent。在 `enforce` 模式下，预算未用尽的 `not-ok` 判定会以 source kind 为 `verifier-gate` 的 `notice` 形式 user 消息引导 agent；下一个 step 运行后，门控再判定新的边界。新的人类消息会重置每个 turn 的预算。
+每个 turn 边界追加一个 `loop/verdict` 会话事件，内容包括 turn 编号、模式、判定（`ok`、`not-ok` 或 `skipped`）、原因（`all-passed`、`command-failed`、`budget-exhausted`、`no-commands` 或 `blank-response`）、已运行的检查及其退出码与输出尾部、本 turn 已用的续跑次数，以及本次判定是否引导了 agent。在 `enforce` 模式下，预算未用尽的 `not-ok` 判定会以 source kind 为 `verifier-gate` 的 `notice` 形式 user 消息引导 agent；下一个 step 运行后，门控再判定新的边界。新的人类消息会重置每个 turn 的预算。在 `enforce` 模式下，预算用尽且会话存在 active goal 时，门控还会以代码 `verifier-budget-exhausted` 阻塞该 goal，使 goal 轮次停止，而不是再次进入同一个失败检查。运行任何命令之前，门控会检查即将结束 turn 的回复；若它既无工具调用也无可见文本，`enforce` 模式会（默认一次）以固定通知引导，并且在该边界不运行任何命令。
 
 -----
 
@@ -74,6 +75,7 @@ kind: "package-reference"
 - **引导从不说明如何关闭门控。** 它只写出失败的命令、退出状态与输出尾部。
 - **判定只进日志。** `loop/verdict` 在 `SessionEventMap` 中声明、读取时必需，且从不进入派生历史；只有引导消息对模型可见。
 - **不变量伴随插件。** `./invariant` 检查每个 `continued: true` 的 `loop/verdict` 之后，在其 turn 以 `completed` 或 `max-tokens` 结束前，都有一条 `verifier-gate` user 消息；被中止、出错或被阻塞的 turn 可以丢弃待处理的引导。组合需把伴随插件与 `@deepseek-ai/dsh-invariants` 一起挂载。
+- **空白回复才是可达的空转情形。** 没有任何内容块的完成永远不会到达门控：两个 DeepSeek 适配器都把它归类为 `EMPTY_RESPONSE`，由重试策略重复请求，否则 turn 以错误结束。门控处理剩下的情形，即只有推理或空白文本的已完成回复，其状态由 `assistant/message` 事件折叠得到。
 
 ### 源码地图
 
@@ -122,6 +124,27 @@ Fix the cause, rerun the failing check yourself, and only then finish.
 
 只追加：引导是位于可复用请求前缀之后的一条新的末尾 user 消息，门控不改变任何更早的请求内容。
 
+### 空白回复后的引导
+
+#### 模型看到什么
+
+仅在 `enforce` 模式下，当将要结束 turn 的回复既无工具调用也无可见文本时，每个 turn 至多 `blankResponse.maxSteers` 次，模型会收到一条 `notice` 形式的 user 消息，内容如下：
+
+##### 该字段的原文
+
+```markdown
+Your last response had no visible text and no tool call, so this turn cannot end on it.
+Continue the task: take the next action with a tool call, or state the result in text.
+```
+
+#### Token 影响
+
+在 `shadow` 模式、`maxSteers: 0` 以及有可见文本或工具调用的回复中为零。每次引导增加一条约 35 个 token 的保留消息。
+
+#### KV Cache 影响
+
+仅追加：引导是可复用请求前缀之后的新尾部 user 消息。
+
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
@@ -129,9 +152,10 @@ Fix the cause, rerun the failing check yourself, and only then finish.
 这些限制是本包当前的约束。
 
 - **没有证据检查**——最终 assistant 消息中的声明不会与工具结果比对；只有配置的命令做决定。
-- **预算用尽时 turn 正常结束**——`budget-exhausted` 之后 turn 以 `completed` 结束；门控不会阻塞会话 goal。
+- **预算用尽时 turn 正常结束**——`budget-exhausted` 之后 turn 以 `completed` 结束；在 `enforce` 模式下 active goal 变为 `blocked`（代码 `verifier-budget-exhausted`），paused goal 保持不变，`shadow` 模式从不改变 goal。
 - **自身没有沙箱**——verify 命令运行在挂载的 `shell` 提供者所施加的任何策略之下。
 - **预算只在内存中**——恢复的会话以全新的续跑计数开始。
+- **空白回复计数只在内存中**——与续跑预算相同，恢复的会话从零开始计数空白回复引导。
 
 <a id="dev-note"></a>
 ### 开发备注

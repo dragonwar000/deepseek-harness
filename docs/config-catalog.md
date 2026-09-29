@@ -677,7 +677,7 @@ export type ThemePreference = typeof THEME_PREFERENCES[number]
 ## `@deepseek-ai/dsh-compaction-basic`
 
 - `inject`: `llm` · `tokenMeter` · `sessions`
-- `source`: [`packages/compaction/compaction-basic/src/types.ts:40`](../packages/compaction/compaction-basic/src/types.ts)
+- `source`: [`packages/compaction/compaction-basic/src/types.ts:53`](../packages/compaction/compaction-basic/src/types.ts)
 
 ```ts config-catalog
 /** Basic compaction configuration with an optional exact-target policy table. */
@@ -686,6 +686,15 @@ export interface BasicCompactionConfig extends CompactionPolicyConfig {
   modelPolicies?: ModelCompactPolicyConfig[]
   /** Enable automatic step-boundary pressure and overflow-recovery listeners. Defaults to `true`. */
   auto?: boolean
+  /**
+   * What automatic compaction does with a span whose framed summary was not
+   * smaller than the span: `retry` summarizes it again at the next trigger;
+   * `refuse` remembers the exact span in this process and skips it until the
+   * span changes. Manual `/compact` always tries. Defaults to `retry`.
+   */
+  convergence?: 'retry' | 'refuse'
+  /** Checkpoint framing; see {@link AuthoritativeRequestConfig}. */
+  authoritativeRequest?: AuthoritativeRequestConfig
 }
 
 /** Policy fields shared by the default policy and exact model overrides. */
@@ -717,6 +726,19 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
   /** Exact routed model id to match within `provider`. */
   model: string
 }
+
+/** Framing of the checkpoint message that replaces a summarized span. */
+export interface AuthoritativeRequestConfig {
+  /**
+   * `off` frames the model-written summary alone. `split` also quotes the
+   * span's human requests verbatim in an `<authoritative-request>` block,
+   * carries that block forward from earlier split checkpoints, and marks the
+   * summary as untrusted reference state. Defaults to `off`.
+   */
+  mode?: 'off' | 'split'
+  /** Unicode code points of quoted request text kept, newest first. Defaults to `4000`. */
+  maxChars?: number
+}
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-compaction-basic -->
 
@@ -737,6 +759,12 @@ export interface ToolResultPruneConfig {
   headChars?: number
   /** Maximum trailing Unicode code points retained. Defaults to `1024`. */
   tailChars?: number
+  /**
+   * Under the `pressure` trigger, keep tool results that follow the latest
+   * assistant message on the surface verbatim: the model has not answered
+   * them yet. `context-overflow` still prunes them. Defaults to `false`.
+   */
+  protectUnseen?: boolean
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-compaction-tool-result-pruner -->
@@ -1344,7 +1372,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-verifier-gate`
 
-- `source`: [`packages/experimental/verifier-gate/src/index.ts:63`](../packages/experimental/verifier-gate/src/index.ts)
+- `source`: [`packages/experimental/verifier-gate/src/index.ts:73`](../packages/experimental/verifier-gate/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1358,6 +1386,8 @@ export interface Config {
   assumption?: string
   /** Verify-command settings. */
   verify?: VerifyConfig
+  /** Blank-response settings. */
+  blankResponse?: BlankResponseConfig
   /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
   maxContinuations?: number
 }
@@ -1370,6 +1400,12 @@ export interface VerifyConfig {
   timeoutMs?: number
   /** Characters of the stdout and stderr tail kept in the verdict and steer (default 2000). */
   stdoutTailChars?: number
+}
+
+/** Blank-response settings. */
+export interface BlankResponseConfig {
+  /** Steers per turn after a response with no tool call and no visible text; `0` disables the check (default 1). */
+  maxSteers?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->

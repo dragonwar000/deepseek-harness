@@ -1,0 +1,10 @@
+# The ordinary headless composition plus the verifier gate enforcing only its
+# blank-response check (no verify commands).
+
+- insert:
+    - id: verifier-gate
+      name: '@deepseek-ai/dsh-experimental-verifier-gate'
+      config:
+        mode: enforce
+        assumption: "the model can end a turn with no visible output"
+        blankResponse: { maxSteers: 1 }

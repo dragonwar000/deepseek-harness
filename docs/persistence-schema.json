@@ -12053,7 +12053,7 @@
       "kind": "event",
       "event": "loop/verdict",
       "surface": false,
-      "digest": "7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d",
+      "digest": "ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77",
       "schema": {
         "root": 0,
         "nodes": [
@@ -12067,22 +12067,22 @@
               },
               {
                 "name": "ignorable",
-                "type": 21,
+                "type": 22,
                 "optional": true
               },
               {
                 "name": "seq",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "time",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "type",
-                "type": 22,
+                "type": 23,
                 "optional": false
               }
             ],
@@ -12098,7 +12098,7 @@
               },
               {
                 "name": "continuation",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
@@ -12118,12 +12118,12 @@
               },
               {
                 "name": "turn",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "verdict",
-                "type": 17,
+                "type": 18,
                 "optional": false
               }
             ],
@@ -12172,11 +12172,11 @@
           },
           {
             "kind": "primitive",
-            "type": "null"
+            "type": "number"
           },
           {
             "kind": "primitive",
-            "type": "number"
+            "type": "null"
           },
           {
             "kind": "primitive",
@@ -12203,12 +12203,17 @@
               13,
               14,
               15,
-              16
+              16,
+              17
             ]
           },
           {
             "kind": "literal",
             "value": "all-passed"
+          },
+          {
+            "kind": "literal",
+            "value": "blank-response"
           },
           {
             "kind": "literal",
@@ -12225,14 +12230,10 @@
           {
             "kind": "union",
             "types": [
-              18,
               19,
-              20
+              20,
+              21
             ]
-          },
-          {
-            "kind": "literal",
-            "value": "skipped"
           },
           {
             "kind": "literal",
@@ -12241,6 +12242,10 @@
           {
             "kind": "literal",
             "value": "ok"
+          },
+          {
+            "kind": "literal",
+            "value": "skipped"
           },
           {
             "kind": "literal",
@@ -25086,6 +25091,15 @@
       ]
     },
     {
+      "digest": "339cc62b8d8ac9b6e0cbe6436df58390cc4451782ac2e80fb83d67596b06e305",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopVerdictReason"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:23"
+      ]
+    },
+    {
       "digest": "33d0d94b113c9a89f3ce14c9c96bc47a4d1dc2a32f22e2dc01b1de48ceee8df0",
       "names": [],
       "sources": []
@@ -26304,11 +26318,6 @@
       "sources": []
     },
     {
-      "digest": "7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d",
-      "names": [],
-      "sources": []
-    },
-    {
       "digest": "7eaef7a763ba5b949b8464bc8add8980a3a5ab566014b69787aeba71e5dfe07b",
       "names": [],
       "sources": []
@@ -26464,6 +26473,11 @@
       "sources": []
     },
     {
+      "digest": "8662f267f065c5fe2f1e3b124b645d463133d8c9b64c490621f9d4d65a92ece3",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "86ba26a294dc6941096aa73245b81d3a287badee59d6fd63567d59d843c07fae",
       "names": [],
       "sources": []
@@ -26512,15 +26526,6 @@
       "digest": "8a046b52331959aa3394680d6acbe09b8a5447c6b61375f263445bfcef19b7f1",
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "8a0c6d963932d7c4d7f652ff467e949442b2f7afa8cc390a20b1bd061b1cb92a",
-      "names": [
-        "packages/experimental/verifier-gate/src/types.ts#LoopVerdictReason"
-      ],
-      "sources": [
-        "packages/experimental/verifier-gate/src/types.ts:23"
-      ]
     },
     {
       "digest": "8a6e1ec9e8db346b0e02f027db73c07a94f067a26d40c1aef1abd09c47ce7ba0",
@@ -27678,15 +27683,6 @@
       "sources": []
     },
     {
-      "digest": "d93355367c603253c9f1b371663d9375025b67f3cb97c8ad129323293cdfbdd2",
-      "names": [
-        "packages/experimental/verifier-gate/src/types.ts#LoopVerdict"
-      ],
-      "sources": [
-        "packages/experimental/verifier-gate/src/types.ts:29"
-      ]
-    },
-    {
       "digest": "d977c00bccf7f6a5a0dca2e1982bfc719eed688ca6cd94f1bab12139839153e8",
       "names": [],
       "sources": []
@@ -28009,6 +28005,15 @@
       "sources": []
     },
     {
+      "digest": "f035da2ebbbbf93999d53dd93e87375b65fdd93b61a54a1c27bd7c55dae39127",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopVerdict"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:29"
+      ]
+    },
+    {
       "digest": "f05fb85e715af4ab4de0b6ba111166dd0435bd8bb74a0fa0f32b9d174113fc7c",
       "names": [],
       "sources": []
@@ -28275,6 +28280,11 @@
     },
     {
       "digest": "fee1caf8ab6a65c1bc981f5a1730164490f22a2a89ffa3d0b76f1f432c44c8b5",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77",
       "names": [],
       "sources": []
     }

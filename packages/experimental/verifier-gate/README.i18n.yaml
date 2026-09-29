@@ -21,17 +21,17 @@
   en: bbee12b8b242de07
   zh: 400e26dee832947b
 /deepseek-ai-dsh-experimental-verifier-gate/use-this-package/minimal-configuration:
-  en: 1a25ec84337efeb9
-  zh: 5cf6419c20893d9a
+  en: 90190bf72ec4ceac
+  zh: 394e4a8de6238afe
 /deepseek-ai-dsh-experimental-verifier-gate/use-this-package/what-you-get:
-  en: e3b48e690ee3a5c1
-  zh: c2297b34b3ff1ff0
+  en: 1e1ace44cdf1f43b
+  zh: 537baeec9df9d9f6
 /deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation:
   en: 930e7ed6e0f4cdcd
   zh: 04d3765bbed2ca68
 /deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation/design-notes:
-  en: 0e470db6f9938c54
-  zh: 57c0c46bdebb6a5d
+  en: 1a08e0a492772cdc
+  zh: 105d985534f44b5b
 /deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation/source-map:
   en: 7f1e26ba056721e8
   zh: 7f37236796b1be59
@@ -56,9 +56,24 @@
 /deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-red-verify-command/kv-cache-effect:
   en: 5bece91693202a10
   zh: 13ee8894c93d8f44
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-blank-response:
+  en: 77962328967bc09a
+  zh: 2a9019b40451a3d3
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-blank-response/what-the-model-sees:
+  en: 5551fa5e287f1806
+  zh: bb25f3a3a1fe209e
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-blank-response/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-blank-response/token-effect:
+  en: 8c7e167b95f65f63
+  zh: 2f08b7010ce05a3a
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-blank-response/kv-cache-effect:
+  en: 5eafb9c18d210b94
+  zh: 5e146e3652c7aa19
 /deepseek-ai-dsh-experimental-verifier-gate/known-limitations-and-deferred-work:
-  en: 6be7a19e540c486a
-  zh: 9aa0d1b5c3590c6e
+  en: 3dfa6f70d4ea7ad0
+  zh: a6e2f0548019d084
 /deepseek-ai-dsh-experimental-verifier-gate/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 9c6918ce849f6c93

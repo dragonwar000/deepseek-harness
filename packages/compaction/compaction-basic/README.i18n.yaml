@@ -24,8 +24,8 @@
   en: 4cb73d7a57908948
   zh: 7ba2ddc4c76e4957
 /deepseek-ai-dsh-compaction-basic/use-this-package/tuning-when-condensation-starts:
-  en: 3446c54c062d7e34
-  zh: fb502c941e508ae0
+  en: 4b3ef44f7792b3c7
+  zh: ef94d09c2f15ee18
 /deepseek-ai-dsh-compaction-basic/use-this-package/what-happens-when-condensation-runs:
   en: c872a8ef069596f0
   zh: b3a48e309ae830d4
@@ -33,8 +33,8 @@
   en: 4c5067e4c57ca708
   zh: 1c0e70319b9b2112
 /deepseek-ai-dsh-compaction-basic/use-this-package/trimming-oversized-tool-outputs:
-  en: 1d6a74c0dc874dc8
-  zh: bcfa95549308c030
+  en: 4e893ed896c8b894
+  zh: b3a5960a70b47da0
 /deepseek-ai-dsh-compaction-basic/understand-the-implementation:
   en: deb655b3b1860576
   zh: 79f56e41a9dfe01f
@@ -45,8 +45,8 @@
   en: d62d65547dd0b2dc
   zh: 5c21671f16d94f5a
 /deepseek-ai-dsh-compaction-basic/understand-the-implementation/summarization-mechanics:
-  en: 967531b71453eb88
-  zh: c7919b46e36763e6
+  en: ca21539d4bc739d3
+  zh: 85ce0ec3fdd2c5e2
 /deepseek-ai-dsh-compaction-basic/understand-the-implementation/the-region-transaction:
   en: f4330f6bff22d400
   zh: 46e16c51bb66a0f7
@@ -66,14 +66,17 @@
   en: 2e1148dd0f39a281
   zh: cd68c9fff63534af
 /deepseek-ai-dsh-compaction-basic/model-experience/conversation-history/what-the-model-sees:
-  en: 8d4325e6659bc314
-  zh: f80e69305b39f4a3
+  en: 61eeb17a97ec977a
+  zh: 391580771886a02c
 /deepseek-ai-dsh-compaction-basic/model-experience/conversation-history/what-the-model-sees/conversation-checkpoint-preamble:
   en: 129d1eaba2519330
   zh: 3ec517bdc6cb5ae3
+/deepseek-ai-dsh-compaction-basic/model-experience/conversation-history/what-the-model-sees/split-checkpoint-preamble-authoritativerequest-mode-split:
+  en: 4d41d05aae91b00e
+  zh: 644bdf78c2e773ab
 /deepseek-ai-dsh-compaction-basic/model-experience/conversation-history/token-effect:
-  en: 872515a75b5a9726
-  zh: c0045e1972bbac4e
+  en: f745f6d29f96fff7
+  zh: d52a6739c7d29595
 /deepseek-ai-dsh-compaction-basic/model-experience/conversation-history/kv-cache-effect:
   en: a22b43f321843aee
   zh: a5960da1bef34441
@@ -93,8 +96,8 @@
   en: d31d3e3d46542c91
   zh: 5a42f873993e0c79
 /deepseek-ai-dsh-compaction-basic/known-limitations-and-deferred-work:
-  en: 8f459fa26e079883
-  zh: 4acdcefa71ebb409
+  en: 0432b463d4b4787e
+  zh: c50ee3fa7667004a
 /deepseek-ai-dsh-compaction-basic/known-limitations-and-deferred-work/dev-note:
   en: 1fec7b90c3b68c49
   zh: ad9ae54a598846d0

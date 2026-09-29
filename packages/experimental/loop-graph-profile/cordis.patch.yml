@@ -7,6 +7,7 @@
 # shadow. When you flip stationarity-guard to enforce, disable repeat-tool-reminder
 # in the same profile patch so the model gets one repeat reminder, not two.
 # verifier-gate precedes loop-budget so the work floor sees the gate's steer.
+# verifier-gate also records blank responses (no tool call, no visible text) in shadow mode.
 
 - insert:
     - id: infra-snapshot
@@ -21,6 +22,8 @@
           commands: []
           timeoutMs: 300000
           stdoutTailChars: 2000
+        blankResponse:
+          maxSteers: 1
         maxContinuations: 8
 
     - id: stationarity-guard

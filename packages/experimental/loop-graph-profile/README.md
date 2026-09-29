@@ -39,7 +39,7 @@ Enable Loop guards on the Web or Desktop Plugins page to switch on all five rows
 
 ### What you get
 
-The layer inserts five rows and changes no `dsh-base` row. `infra-snapshot` records host facts. The four guards start in `shadow` mode and append `loop/verdict`, `loop/stationarity`, `loop/denial`, or `loop/budget` records; `loop-budget` ships with every limit at `0` (off) and `verifier-gate` with no verify commands, so those two record nothing until configured. Flip a guard to `enforce` from your own profile patch, targeting its row id:
+The layer inserts five rows and changes no `dsh-base` row. `infra-snapshot` records host facts. The four guards start in `shadow` mode and append `loop/verdict`, `loop/stationarity`, `loop/denial`, or `loop/budget` records; `loop-budget` ships with every limit at `0` (off) and `verifier-gate` with no verify commands, so `loop-budget` records nothing and `verifier-gate` records only `no-commands` or `blank-response` verdicts until configured. Flip a guard to `enforce` from your own profile patch, targeting its row id:
 
 ```yaml
 - id: stationarity-guard
@@ -54,6 +54,22 @@ The layer inserts five rows and changes no `dsh-base` row. `infra-snapshot` reco
 ```
 
 While `stationarity-guard` stays in `shadow` mode, `repeat-tool-reminder` still sends its advisory reminders; disable it when you enforce `stationarity-guard`, as above.
+
+The bundle does not change compaction. To keep unanswered tool results out of pressure trimming and stop re-summarizing history whose summary did not shrink it, patch the `dsh-base` rows in your own headless profile; a config patch replaces the whole row config, so restate the pruner budgets:
+
+```yaml
+- id: tool-result-pruner
+  config:
+    thresholdChars: 8192
+    headChars: 4096
+    tailChars: 1024
+    protectUnseen: true
+- id: compaction-basic
+  config:
+    convergence: refuse
+```
+
+Web presets carry their own `compaction-basic` and `tool-result-pruner` rows inside each preset group, so this patch does not reach them.
 
 -----
 
@@ -109,6 +125,7 @@ Independent of this bundle's own composition: every guard message is append-only
 - **Base profile required** — the patch depends on `dsh-base` supplying the `agent/turn-stopping`, `agent/pre-step`, and `agent/created` events both rows consume; it is not a standalone profile.
 - **No invariant row** — a composition that mounts `@deepseek-ai/dsh-invariants` must add the `verifier-gate/invariant`, `stationarity-guard/invariant`, `denial-budget/invariant`, and `loop-budget/invariant` companions itself; this bundle does not, matching `dsh-base`.
 - **No repeat reminders in shadow** — while `stationarity-guard` stays in `shadow` mode, `repeat-tool-reminder` keeps sending its advisory reminders; disable it in your own profile patch when you enforce `stationarity-guard`.
+- **Compaction settings are not bundled** — `protectUnseen`, `convergence`, and `authoritativeRequest` stay opt-in per profile because a bundle patch would replace the whole `dsh-base` row config and cannot reach the per-preset compaction rows of the Web profile.
 
 <a id="dev-note"></a>
 ### Dev Note

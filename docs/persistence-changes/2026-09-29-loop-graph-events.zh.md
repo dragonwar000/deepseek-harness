@@ -32,7 +32,7 @@ changes:
     decision: same-version
   - root: "event:loop/verdict"
     previous: null
-    after: "7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d"
+    after: "ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77"
     decision: same-version
 ```
 

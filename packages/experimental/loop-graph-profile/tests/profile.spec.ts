@@ -60,4 +60,13 @@ describe('loop guards bundle', () => {
     expect(String(row?.config?.['assumption']).trim()).not.toBe('')
     expect(() => GUARD_SCHEMAS[id]!(row?.config)).not.toThrow()
   })
+
+  it('starts the verifier gate with one blank-response steer per turn', () => {
+    const row = inserted.find(entry => entry.id === 'verifier-gate')
+    expect(row?.config).toMatchObject({ mode: 'shadow', blankResponse: { maxSteers: 1 } })
+  })
+
+  it('leaves the dsh-base compaction rows to the profile owner', () => {
+    expect(patches.filter(patch => patch.id === 'compaction-basic' || patch.id === 'tool-result-pruner')).toEqual([])
+  })
 })

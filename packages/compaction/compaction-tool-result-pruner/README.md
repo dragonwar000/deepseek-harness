@@ -52,12 +52,15 @@ All settings are optional; the defaults trim any result with more than 8,192 tex
 | `thresholdChars` | `8192` | Trim when combined text exceeds this many Unicode code points. |
 | `headChars` | `4096` | Leading Unicode code points retained. |
 | `tailChars` | `1024` | Trailing Unicode code points retained. |
+| `protectUnseen` | `false` | When `true`, trimming for token pressure skips tool results the model has not answered yet (those after the latest assistant message); overflow recovery still trims them. |
 
 Character counts are Unicode code points, so slicing never splits an emoji pair, though a multi-character grapheme can still be cut. The head plus the marker plus the tail must fit within the threshold, so a valid configuration trims every over-budget result without growth or repeated rewriting. An unknown setting rejects the plugin at construction.
 
 ### When trimming runs
 
 Trimming only runs when a compaction trigger qualifies: `dsh-compaction-basic` invokes it after pressure or overflow is confirmed, before it selects what to condense. Below pressure nothing is trimmed, and trimming itself makes no model call.
+
+`dsh-compaction-basic` tells the pruner which trigger qualified. With `protectUnseen: true`, a pressure pass leaves every tool result that follows the latest assistant message untouched, so the model reads each result in full at least once; a context-overflow pass trims them because the request cannot be sent otherwise.
 
 -----
 
@@ -114,7 +117,7 @@ Read these pages when the package-level contract is not enough; they move from t
 
 #### What the model sees
 
-Once a compaction trigger qualifies, future requests see the retained head, `\n\n[... tool result middle pruned ...]\n\n`, and retained tail in place of the removed text. Rich blocks keep their order. The model does not see a second copy of the original.
+Once a compaction trigger qualifies, future requests see the retained head, `\n\n[... tool result middle pruned ...]\n\n`, and retained tail in place of the removed text. Rich blocks keep their order. The model does not see a second copy of the original. With `protectUnseen: true`, a result is first shown in full and is trimmed only by a later pressure pass, after the model has answered it, or by overflow recovery.
 
 #### Token effect
 

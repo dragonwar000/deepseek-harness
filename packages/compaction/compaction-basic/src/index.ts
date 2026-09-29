@@ -26,6 +26,7 @@ import {
   assertNoActiveCompaction,
   compactSurfaceRegion,
   selectCompactableRange,
+  SummaryNotSmallerError,
 } from './region.ts'
 import { summarizeWithLlm } from './summarizer.ts'
 import type { SummarizationInput, SummaryResult } from './summarizer.ts'
@@ -36,6 +37,7 @@ import type {
 } from './types.ts'
 
 export type {
+  AuthoritativeRequestConfig,
   BasicCompactionConfig,
   CompactionPolicyConfig,
   ModelCompactPolicyConfig,
@@ -76,6 +78,15 @@ function conversationTarget(
   if (agent.options.provider === undefined || agent.options.provider.length === 0
     || agent.options.model === undefined || agent.options.model.length === 0) return undefined
   return { provider: agent.options.provider, model: agent.options.model }
+}
+
+/**
+ * Identity of one positional span: the exact current surface seqs it covers.
+ * A replacement inside the span, or a span that grew, yields a new identity.
+ */
+function spanKey(session: Session, range: { start: SessionSeq; end: SessionSeq }): string {
+  const nodes = session.surface.nodes
+  return nodes.slice(nodes.indexOf(range.start), nodes.indexOf(range.end) + 1).join(',')
 }
 
 const thresholdRatioSchema = z.number()
@@ -125,6 +136,11 @@ export class BasicCompactionEngine extends CompactionEngine {
     maxOverflowRetries: maxOverflowRetriesSchema,
     modelPolicies: z.array(modelPolicy),
     auto: z.boolean(),
+    convergence: z.union(['retry', 'refuse']),
+    authoritativeRequest: z.object({
+      mode: z.union(['off', 'split']),
+      maxChars: z.number().step(1).min(1),
+    }),
   })
 
   /** Resolved and validated compaction configuration. */
@@ -133,6 +149,7 @@ export class BasicCompactionEngine extends CompactionEngine {
   private readonly warnedPressureConfigTargets = new Set<string>()
   private readonly overflowRetries = new WeakMap<Agent, number>()
   private readonly overflowAgents = new WeakMap<Session, Agent>()
+  private readonly unshrinkableSpans = new WeakMap<Session, Set<string>>()
 
   constructor(ctx: Context, config: BasicCompactionConfig = {}) {
     super(ctx)
@@ -293,12 +310,12 @@ export class BasicCompactionEngine extends CompactionEngine {
 
     if (trigger === 'context-overflow') {
       if (prune !== undefined) {
-        prune.pruneSession(agent.session)
+        prune.pruneSession(agent.session, 'context-overflow')
         measurement = meter.measure(agent.session)
       }
       const range = selectCompactableRange(agent.session, measurement, 0)
-      if (range === null) return null
-      return this.compactRegion(range.start, range.end, agent, signal)
+      if (range === null || this.refusesSpan(agent.session, range)) return null
+      return this.compactAutomatic(range, agent, signal)
     }
 
     const info = await this.ctx.llm.resolveModelInfo(target.provider, target.model, signal)
@@ -321,7 +338,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     // Once pressure qualifies, land the model-free pass before choosing a
     // summary range, then remeasure through the singleton replay fold.
     if (prune !== undefined) {
-      prune.pruneSession(agent.session)
+      prune.pruneSession(agent.session, 'pressure')
       measurement = meter.measure(agent.session)
     }
     if (measurement.totalTokens < spec.thresholdTokens) return null
@@ -335,7 +352,8 @@ export class BasicCompactionEngine extends CompactionEngine {
         /* v8 ignore next -- paired with the defensive post-success branch above. */
         break
       }
-      result = await this.compactRegion(range.start, range.end, agent, signal)
+      if (this.refusesSpan(agent.session, range)) return result
+      result = await this.compactAutomatic(range, agent, signal)
       measurement = meter.measure(agent.session)
       if (measurement.totalTokens < spec.thresholdTokens) return result
     }
@@ -344,6 +362,39 @@ export class BasicCompactionEngine extends CompactionEngine {
       `compaction still above threshold after ${spec.compactionRetries + 1} compaction attempts `
       + `(${measurement.totalTokens} estimated tokens >= threshold ${spec.thresholdTokens})`,
     )
+  }
+
+  /**
+   * Whether `convergence: refuse` forbids summarizing this exact span again
+   * because an earlier automatic attempt produced a summary that did not
+   * shrink it. Logs each refusal.
+   */
+  private refusesSpan(session: Session, range: { start: SessionSeq; end: SessionSeq }): boolean {
+    if (this.config.convergence !== 'refuse') return false
+    if (this.unshrinkableSpans.get(session)?.has(spanKey(session, range)) !== true) return false
+    this.ctx.logger.info(
+      `compaction: span ${range.start}-${range.end} already produced a summary that did not shrink it; not retrying`,
+    )
+    return true
+  }
+
+  /** Compact one automatically selected span; under `refuse`, remember it when its summary did not shrink it. */
+  private async compactAutomatic(
+    range: { start: SessionSeq; end: SessionSeq },
+    agent: Agent,
+    signal: AbortSignal,
+  ): Promise<CompactionResult> {
+    const key = spanKey(agent.session, range)
+    try {
+      return await this.compactRegion(range.start, range.end, agent, signal)
+    } catch (error: unknown) {
+      if (this.config.convergence === 'refuse' && error instanceof SummaryNotSmallerError) {
+        const spans = this.unshrinkableSpans.get(agent.session) ?? new Set<string>()
+        spans.add(key)
+        this.unshrinkableSpans.set(agent.session, spans)
+      }
+      throw error
+    }
   }
 
   /**
@@ -438,6 +489,7 @@ export class BasicCompactionEngine extends CompactionEngine {
   private regionDependencies(): Parameters<typeof compactSurfaceRegion>[0] {
     return {
       meter: this.ctx.tokenMeter,
+      framing: this.config.authoritativeRequest,
       summarize: (input, owner, abort) => this.summarize(input, owner, abort),
       recover: (error, agent, sourceEventSeqs, signal) => this.ctx.waterfall('compaction/summary-error', {
         session: agent.session,

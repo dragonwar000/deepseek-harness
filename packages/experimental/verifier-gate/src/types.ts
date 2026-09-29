@@ -19,8 +19,8 @@ export interface VerdictCheck {
 /** Gate decision for one turn-stopping boundary. */
 export type LoopVerdictKind = 'ok' | 'not-ok' | 'skipped'
 
-/** Why the gate reached its decision. */
-export type LoopVerdictReason = 'all-passed' | 'command-failed' | 'budget-exhausted' | 'no-commands'
+/** Why the gate reached its decision. `blank-response`: the settled response had no tool call and no visible text. */
+export type LoopVerdictReason = 'all-passed' | 'command-failed' | 'budget-exhausted' | 'no-commands' | 'blank-response'
 
 /**
  * The durable record of one gate decision. `continued: true` means the gate
@@ -35,7 +35,7 @@ export interface LoopVerdict {
   verdict: LoopVerdictKind
   /** Why the gate decided `verdict`. */
   reason: LoopVerdictReason
-  /** Commands run in order; the first failing command ends the list. */
+  /** Commands run in order; the first failing command ends the list. Empty for `no-commands` and `blank-response`. */
   checks: VerdictCheck[]
   /** Continuations already spent on this turn before this decision. */
   continuation: number

@@ -1,0 +1,10 @@
+version: 1
+scenario: verifier-gate-blank-response
+profile: headless
+composition: verifier-gate-blank-response
+recording: authored
+header:
+  class: verifier-gate-blank-response
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn

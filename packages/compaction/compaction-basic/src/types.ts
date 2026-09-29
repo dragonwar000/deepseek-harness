@@ -36,12 +36,34 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
   model: string
 }
 
+/** Framing of the checkpoint message that replaces a summarized span. */
+export interface AuthoritativeRequestConfig {
+  /**
+   * `off` frames the model-written summary alone. `split` also quotes the
+   * span's human requests verbatim in an `<authoritative-request>` block,
+   * carries that block forward from earlier split checkpoints, and marks the
+   * summary as untrusted reference state. Defaults to `off`.
+   */
+  mode?: 'off' | 'split'
+  /** Unicode code points of quoted request text kept, newest first. Defaults to `4000`. */
+  maxChars?: number
+}
+
 /** Basic compaction configuration with an optional exact-target policy table. */
 export interface BasicCompactionConfig extends CompactionPolicyConfig {
   /** Exact provider/model overrides; duplicate targets fail plugin load. */
   modelPolicies?: ModelCompactPolicyConfig[]
   /** Enable automatic step-boundary pressure and overflow-recovery listeners. Defaults to `true`. */
   auto?: boolean
+  /**
+   * What automatic compaction does with a span whose framed summary was not
+   * smaller than the span: `retry` summarizes it again at the next trigger;
+   * `refuse` remembers the exact span in this process and skips it until the
+   * span changes. Manual `/compact` always tries. Defaults to `retry`.
+   */
+  convergence?: 'retry' | 'refuse'
+  /** Checkpoint framing; see {@link AuthoritativeRequestConfig}. */
+  authoritativeRequest?: AuthoritativeRequestConfig
 }
 
 /** Exactly one validated retention form. */
@@ -64,6 +86,8 @@ interface ResolvedPolicyFields {
 export type ResolvedConfig = ResolvedPolicyFields & ResolvedRetention & {
   readonly modelPolicies: readonly Readonly<ModelCompactPolicyConfig>[]
   readonly auto: boolean
+  readonly convergence: 'retry' | 'refuse'
+  readonly authoritativeRequest: Readonly<Required<AuthoritativeRequestConfig>>
 }
 
 /** Fully merged policy for one routed conversation target, before capacity scaling. */

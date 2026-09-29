@@ -50,7 +50,7 @@
 | `event:loop/budget` | event | `151e7acda0708d10be7e8396b570ac0ee707c213cc54f6493f22c613e5ccf380` | [`{ type: "loop/budget" }`](#persistence-type-sha256-151e7acda0708d10be7e8396b570ac0ee707c213cc54f6493f22c613e5ccf380) |
 | `event:loop/denial` | event | `52ff900df9dcdaa61a565eefb84b5f635d65b2c2193577d35d473182a9246cab` | [`{ type: "loop/denial" }`](#persistence-type-sha256-52ff900df9dcdaa61a565eefb84b5f635d65b2c2193577d35d473182a9246cab) |
 | `event:loop/stationarity` | event | `705bbf86ac1cc0d348e09065d8bae5a5d001e24f26839c85698231a081304047` | [`{ type: "loop/stationarity" }`](#persistence-type-sha256-705bbf86ac1cc0d348e09065d8bae5a5d001e24f26839c85698231a081304047) |
-| `event:loop/verdict` | event | `7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d` | [`{ type: "loop/verdict" }`](#persistence-type-sha256-7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d) |
+| `event:loop/verdict` | event | `ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77` | [`{ type: "loop/verdict" }`](#persistence-type-sha256-ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77) |
 | `event:model/selection` | event | `35203ba7ad5ef6f97d556b85df20ae98f04f09c65748cecdf8eefdb8b6405ffc` | [`{ type: "model/selection" }`](#persistence-type-sha256-35203ba7ad5ef6f97d556b85df20ae98f04f09c65748cecdf8eefdb8b6405ffc) |
 | `event:permission/preset` | event | `5c45bf4c544a7211dcd8ba6ba7e5f1bc39b49e7a9df9d5cbdc8e87c22771b37b` | [`{ type: "permission/preset" }`](#persistence-type-sha256-5c45bf4c544a7211dcd8ba6ba7e5f1bc39b49e7a9df9d5cbdc8e87c22771b37b) |
 | `event:plan/mode` | event | `a7cf43ce7c2a4c038feed1885cd7a00d5c6ee2d90a7e0d56b46f78a3e1ca327f` | [`{ type: "plan/mode" }`](#persistence-type-sha256-a7cf43ce7c2a4c038feed1885cd7a00d5c6ee2d90a7e0d56b46f78a3e1ca327f) |
@@ -1518,6 +1518,14 @@ SHA-256: `6ab45ac76839722df912f3ba50f1c6b41f2d614bde11f1aabfae04117ccdc80d`
 SHA-256: `17aae616ef020b8b9f011ec398ec935450fb06d3e2a0722c456f63aeaf5ff728`
 
 `"at"`
+
+<a id="persistence-type-sha256-8662f267f065c5fe2f1e3b124b645d463133d8c9b64c490621f9d4d65a92ece3"></a>
+
+### `"blank-response"`
+
+SHA-256: `8662f267f065c5fe2f1e3b124b645d463133d8c9b64c490621f9d4d65a92ece3`
+
+`"blank-response"`
 
 <a id="persistence-type-sha256-1e346446e183ee76f48d7994c97ecb302bddc682abb60b8a10ea0bb26223a69c"></a>
 
@@ -4348,7 +4356,7 @@ SHA-256: `e53f66a2ab85dde8343e0686de1e5a14fd646db3645e6fe46fe405b46d41029d`
 | `tier` | 必需 | [`StationarityTier`](#persistence-type-sha256-9a9a7df1922f3d8fb55776bc45480c69433f3d91eb1ce637cb5c471d57551e70) |
 | `turn` | 必需 | `number` |
 
-<a id="persistence-type-sha256-d93355367c603253c9f1b371663d9375025b67f3cb97c8ad129323293cdfbdd2"></a>
+<a id="persistence-type-sha256-f035da2ebbbbf93999d53dd93e87375b65fdd93b61a54a1c27bd7c55dae39127"></a>
 
 <a id="persistence-type-loopverdict"></a>
 
@@ -4356,7 +4364,7 @@ SHA-256: `e53f66a2ab85dde8343e0686de1e5a14fd646db3645e6fe46fe405b46d41029d`
 
 ### `LoopVerdict`
 
-SHA-256: `d93355367c603253c9f1b371663d9375025b67f3cb97c8ad129323293cdfbdd2`
+SHA-256: `f035da2ebbbbf93999d53dd93e87375b65fdd93b61a54a1c27bd7c55dae39127`
 
 来源：[`packages/experimental/verifier-gate/src/types.ts:29`](../packages/experimental/verifier-gate/src/types.ts)
 
@@ -4366,7 +4374,7 @@ SHA-256: `d93355367c603253c9f1b371663d9375025b67f3cb97c8ad129323293cdfbdd2`
 | `continuation` | 必需 | `number` |
 | `continued` | 必需 | `boolean` |
 | `mode` | 必需 | [`union (2 variants)`](#persistence-type-sha256-0172709524b0a58e45d336b038dede9b10173d745b528e7105336d9ab6bd627c) |
-| `reason` | 必需 | [`LoopVerdictReason`](#persistence-type-sha256-8a0c6d963932d7c4d7f652ff467e949442b2f7afa8cc390a20b1bd061b1cb92a) |
+| `reason` | 必需 | [`LoopVerdictReason`](#persistence-type-sha256-339cc62b8d8ac9b6e0cbe6436df58390cc4451782ac2e80fb83d67596b06e305) |
 | `turn` | 必需 | `number` |
 | `verdict` | 必需 | [`LoopVerdictKind`](#persistence-type-sha256-0985929517bc4b2e61096139c2c170157851ad0aa6f359b9f84850d24d6be0ec) |
 
@@ -4388,7 +4396,7 @@ SHA-256: `0985929517bc4b2e61096139c2c170157851ad0aa6f359b9f84850d24d6be0ec`
 - `"ok"`
 - `"skipped"`
 
-<a id="persistence-type-sha256-8a0c6d963932d7c4d7f652ff467e949442b2f7afa8cc390a20b1bd061b1cb92a"></a>
+<a id="persistence-type-sha256-339cc62b8d8ac9b6e0cbe6436df58390cc4451782ac2e80fb83d67596b06e305"></a>
 
 <a id="persistence-type-loopverdictreason"></a>
 
@@ -4396,13 +4404,14 @@ SHA-256: `0985929517bc4b2e61096139c2c170157851ad0aa6f359b9f84850d24d6be0ec`
 
 ### `LoopVerdictReason`
 
-SHA-256: `8a0c6d963932d7c4d7f652ff467e949442b2f7afa8cc390a20b1bd061b1cb92a`
+SHA-256: `339cc62b8d8ac9b6e0cbe6436df58390cc4451782ac2e80fb83d67596b06e305`
 
 来源：[`packages/experimental/verifier-gate/src/types.ts:23`](../packages/experimental/verifier-gate/src/types.ts)
 
 以下类型之一：
 
 - `"all-passed"`
+- `"blank-response"`
 - `"budget-exhausted"`
 - `"command-failed"`
 - `"no-commands"`
@@ -9039,17 +9048,17 @@ SHA-256: `705bbf86ac1cc0d348e09065d8bae5a5d001e24f26839c85698231a081304047`
 | `time` | 必需 | `number` |
 | `type` | 必需 | `"loop/stationarity"` |
 
-<a id="persistence-type-sha256-7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d"></a>
+<a id="persistence-type-sha256-ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77"></a>
 
 <a id="persistence-type-eventloopverdict"></a>
 
 ### `{ type: "loop/verdict" }`
 
-SHA-256: `7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d`
+SHA-256: `ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77`
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
-| `data` | 必需 | [`LoopVerdict`](#persistence-type-sha256-d93355367c603253c9f1b371663d9375025b67f3cb97c8ad129323293cdfbdd2) |
+| `data` | 必需 | [`LoopVerdict`](#persistence-type-sha256-f035da2ebbbbf93999d53dd93e87375b65fdd93b61a54a1c27bd7c55dae39127) |
 | `ignorable` | 可选 | `true` |
 | `seq` | 必需 | `number` |
 | `time` | 必需 | `number` |

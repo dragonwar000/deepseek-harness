@@ -1,10 +1,12 @@
 /**
  * Turn-stopping verifier gate. Before a turn may end it runs the configured
  * verify commands through the shell seam; in `enforce` mode a red command
- * steers the agent to keep working (bounded by `maxContinuations`), in
- * `shadow` mode it only records what it would have done. A failed step never
- * reaches this gate (agent-loop runs `agent/turn-stopping` only after a
- * completed step), so the gate needs no failed-step guard.
+ * steers the agent to keep working (bounded by `maxContinuations`), and an
+ * exhausted budget blocks the session's active goal so goal rounds stop
+ * re-entering the same red check. `shadow` mode only records what it would
+ * have done. A failed step never reaches this gate (agent-loop runs
+ * `agent/turn-stopping` only after a completed step), so the gate needs no
+ * failed-step guard.
  * @module @deepseek-ai/dsh-experimental-verifier-gate
  */
 
@@ -12,15 +14,17 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { boundContextSummary, createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { ContextFormed } from '@deepseek-ai/dsh-llm'
+import type { ContentBlock, ContextFormed } from '@deepseek-ai/dsh-llm'
+import type { Session } from '@deepseek-ai/dsh-session'
 import type { ShellExecRequest, ShellExecSpec, ShellRunResult } from '@deepseek-ai/dsh-shell'
+import type {} from '@deepseek-ai/dsh-goal'
 import type { LoopVerdict, VerdictCheck } from './types.ts'
 
 export type { LoopVerdict, LoopVerdictKind, LoopVerdictReason, VerdictCheck } from './types.ts'
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
-    /** Steering the gate submits after a red verify command in `enforce` mode.
+    /** Steering the gate submits after a blank response or a red verify command in `enforce` mode.
      * @persistenceAttribution
      */
     'verifier-gate': { kind: 'verifier-gate' } & ContextFormed
@@ -56,6 +60,12 @@ export interface VerifyConfig {
   stdoutTailChars?: number
 }
 
+/** Blank-response settings. */
+export interface BlankResponseConfig {
+  /** Steers per turn after a response with no tool call and no visible text; `0` disables the check (default 1). */
+  maxSteers?: number
+}
+
 /**
  * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
  * what the gate assumes about the model, so a later model can retire it.
@@ -67,6 +77,8 @@ export interface Config {
   assumption?: string
   /** Verify-command settings. */
   verify?: VerifyConfig
+  /** Blank-response settings. */
+  blankResponse?: BlankResponseConfig
   /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
   maxContinuations?: number
 }
@@ -80,8 +92,15 @@ export const Config: z<Config> = z.object({
     timeoutMs: z.number().default(300_000),
     stdoutTailChars: z.number().default(2000),
   }).default({}),
+  blankResponse: z.object({
+    maxSteers: z.number().default(1),
+  }).default({}),
   maxContinuations: z.number().default(8),
 })
+
+/** Fixed steer after a blank response; it never names a way to disable the gate. */
+const BLANK_RESPONSE_STEER = 'Your last response had no visible text and no tool call, so this turn cannot end on it.\n'
+  + 'Continue the task: take the next action with a tool call, or state the result in text.'
 
 /**
  * Model-facing steer text for a red check: names the command and the output
@@ -118,10 +137,21 @@ function requireInteger(field: string, value: number, min: number): void {
   }
 }
 
-/** Per-agent continuation counter for one turn. */
+/**
+ * Whether a settled response gives the user nothing: no tool call and no text
+ * block with visible characters. Reasoning blocks are not output.
+ * @param content - the assistant message content.
+ * @returns true for a blank response.
+ */
+function isBlank(content: readonly ContentBlock[]): boolean {
+  return content.every(block => block.type === 'reasoning' || (block.type === 'text' && block.text.trim() === ''))
+}
+
+/** Per-agent steering counters for one turn. */
 interface Budget {
   turn: number
   continuation: number
+  blankSteers: number
 }
 
 /**
@@ -137,8 +167,10 @@ export function apply(ctx: Context, config: Config): void {
     throw new Error('verifier-gate: `assumption` must name what this gate assumes about the model')
   }
   const verify = config.verify as Required<VerifyConfig>
+  const blankResponse = config.blankResponse as Required<BlankResponseConfig>
   const maxContinuations = config.maxContinuations as number
   requireInteger('maxContinuations', maxContinuations, 0)
+  requireInteger('blankResponse.maxSteers', blankResponse.maxSteers, 0)
   requireInteger('verify.timeoutMs', verify.timeoutMs, 1)
   requireInteger('verify.stdoutTailChars', verify.stdoutTailChars, 1)
   if (verify.commands.length > 0 && ctx.get('shell') === undefined) {
@@ -146,13 +178,26 @@ export function apply(ctx: Context, config: Config): void {
   }
 
   const budgets = new WeakMap<Agent, Budget>()
+  // Turn number of the latest settled response while it is blank, folded from the log.
+  const blankTurns = new WeakMap<Session, number>()
 
   function budgetOf(agent: Agent, turn: number): Budget {
     const current = budgets.get(agent)
     if (current !== undefined && current.turn === turn) return current
-    const fresh: Budget = { turn, continuation: 0 }
+    const fresh: Budget = { turn, continuation: 0, blankSteers: 0 }
     budgets.set(agent, fresh)
     return fresh
+  }
+
+  // Enforce-mode exhaustion ends automatic goal rounds: another round would meet the same red check.
+  function blockGoal(agent: Agent, failed: VerdictCheck): void {
+    const goals = ctx.get('goals')
+    const goal = goals?.get(agent)
+    if (goals === undefined || goal === undefined || goal.phase !== 'active') return
+    goals.block(agent, { id: goal.id, revision: goal.revision }, {
+      code: 'verifier-budget-exhausted',
+      message: `verify command still failing after ${maxContinuations} continuation(s): ${failed.command}`,
+    })
   }
 
   async function runChecks(signal: AbortSignal): Promise<VerdictCheck[]> {
@@ -168,10 +213,33 @@ export function apply(ctx: Context, config: Config): void {
     return checks
   }
 
+  ctx.on('session/event', (session, event) => {
+    if (event.type !== 'assistant/message') return
+    if (isBlank(event.data.message.content)) blankTurns.set(session, event.data.turn)
+    else blankTurns.delete(session)
+  })
+
   ctx.on('agent/turn-stopping', async ({ agent, turn, signal }): Promise<void> => {
     const budget = budgetOf(agent, turn)
     const record = (verdict: Pick<LoopVerdict, 'verdict' | 'reason' | 'checks' | 'continued'>): void => {
       agent.session.append('loop/verdict', { turn, mode, continuation: budget.continuation, ...verdict })
+    }
+
+    if (blankTurns.get(agent.session) === turn
+      && budget.blankSteers < blankResponse.maxSteers
+      && budget.continuation < maxContinuations) {
+      budget.blankSteers += 1
+      if (mode === 'shadow') {
+        record({ verdict: 'not-ok', reason: 'blank-response', checks: [], continued: false })
+        return
+      }
+      record({ verdict: 'not-ok', reason: 'blank-response', checks: [], continued: true })
+      budget.continuation += 1
+      agent.steer(createUserMessage({
+        content: [{ type: 'text', text: BLANK_RESPONSE_STEER }],
+        source: { kind: 'verifier-gate', form: 'notice', summary: boundContextSummary('blank response: continue the task') },
+      }))
+      return
     }
 
     if (verify.commands.length === 0) {
@@ -190,6 +258,7 @@ export function apply(ctx: Context, config: Config): void {
     }
     if (budget.continuation >= maxContinuations) {
       record({ verdict: 'not-ok', reason: 'budget-exhausted', checks, continued: false })
+      blockGoal(agent, failed)
       return
     }
     record({ verdict: 'not-ok', reason: 'command-failed', checks, continued: true })

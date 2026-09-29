@@ -101,7 +101,7 @@
       "kind": "event",
       "event": "loop/verdict",
       "surface": false,
-      "digest": "7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d",
+      "digest": "ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77",
       "schema": {
         "root": 0,
         "nodes": [
@@ -115,22 +115,22 @@
               },
               {
                 "name": "ignorable",
-                "type": 21,
+                "type": 22,
                 "optional": true
               },
               {
                 "name": "seq",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "time",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "type",
-                "type": 22,
+                "type": 23,
                 "optional": false
               }
             ],
@@ -146,7 +146,7 @@
               },
               {
                 "name": "continuation",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
@@ -166,12 +166,12 @@
               },
               {
                 "name": "turn",
-                "type": 7,
+                "type": 6,
                 "optional": false
               },
               {
                 "name": "verdict",
-                "type": 17,
+                "type": 18,
                 "optional": false
               }
             ],
@@ -220,11 +220,11 @@
           },
           {
             "kind": "primitive",
-            "type": "null"
+            "type": "number"
           },
           {
             "kind": "primitive",
-            "type": "number"
+            "type": "null"
           },
           {
             "kind": "primitive",
@@ -251,12 +251,17 @@
               13,
               14,
               15,
-              16
+              16,
+              17
             ]
           },
           {
             "kind": "literal",
             "value": "all-passed"
+          },
+          {
+            "kind": "literal",
+            "value": "blank-response"
           },
           {
             "kind": "literal",
@@ -273,14 +278,10 @@
           {
             "kind": "union",
             "types": [
-              18,
               19,
-              20
+              20,
+              21
             ]
-          },
-          {
-            "kind": "literal",
-            "value": "skipped"
           },
           {
             "kind": "literal",
@@ -289,6 +290,10 @@
           {
             "kind": "literal",
             "value": "ok"
+          },
+          {
+            "kind": "literal",
+            "value": "skipped"
           },
           {
             "kind": "literal",

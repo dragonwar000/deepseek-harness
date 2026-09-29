@@ -3253,9 +3253,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'pruned content, or `null` when the text is within budget.',
       },
       {
-        signature: 'pruneSession(session: Session): PruneResult',
-        description: 'Prune every over-budget tool result from one stable current-surface snapshot. Each replacement preserves the complete event data except for `content`, cites the shadowed node so replay can recover the replacement input, and is immediately preceded by a `compaction/prune` shadow-price event pricing the shadowed node through the injected token meter, so pure consumers can subtract it without per-node state.',
-        parameters: [{ name: 'session', description: 'session whose current surface is rewritten.' }],
+        signature: 'pruneSession(session: Session, trigger: CompactionTrigger): PruneResult',
+        description: 'Prune over-budget tool results from one stable current-surface snapshot. With `protectUnseen` and the `pressure` trigger, results after the latest assistant message on the surface stay verbatim because the model has not answered them yet; `context-overflow` prunes every over-budget result. Each replacement preserves the complete event data except for `content`, cites the shadowed node so replay can recover the replacement input, and is immediately preceded by a `compaction/prune` shadow-price event pricing the shadowed node through the injected token meter, so pure consumers can subtract it without per-node state.',
+        parameters: [{ name: 'session', description: 'session whose current surface is rewritten.' }, { name: 'trigger', description: 'the compaction trigger that qualified this pass.' }],
         returns: 'landed replacements and aggregate Unicode-code-point savings.',
         throws: ['when the session rejects a replacement; replacements committed earlier in the pass remain durable.'],
       },

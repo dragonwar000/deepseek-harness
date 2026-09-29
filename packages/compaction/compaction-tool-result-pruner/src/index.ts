@@ -9,8 +9,9 @@ import z from '@deepseek-ai/schemastery'
 import { freezeMessage } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent, SessionSeq, ToolResultMessage } from '@deepseek-ai/dsh-session'
-// Type-only: the `compaction/*` SessionEventMap merges (the shadow-price event).
-import type {} from '@deepseek-ai/dsh-compaction'
+// The `compaction/*` SessionEventMap merges (the shadow-price event) and the
+// trigger vocabulary compaction-basic passes to `pruneSession`.
+import type { CompactionTrigger } from '@deepseek-ai/dsh-compaction'
 // Type-only: the `ctx.tokenMeter` Context merge for the declared injection.
 import type {} from '@deepseek-ai/dsh-token-meter'
 import { codePointLength, DEFAULTS, PRUNE_MARKER, resolveConfig } from './config.ts'
@@ -50,6 +51,7 @@ export class ToolResultPruner extends Service {
     thresholdChars: z.number().step(1).min(1).default(DEFAULTS.thresholdChars),
     headChars: z.number().step(1).min(0).default(DEFAULTS.headChars),
     tailChars: z.number().step(1).min(0).default(DEFAULTS.tailChars),
+    protectUnseen: z.boolean().default(DEFAULTS.protectUnseen),
   })
 
   /** Resolved and immutable character budgets. */
@@ -122,29 +124,38 @@ export class ToolResultPruner extends Service {
   }
 
   /**
-   * Prune every over-budget tool result from one stable current-surface snapshot.
+   * Prune over-budget tool results from one stable current-surface snapshot.
+   * With `protectUnseen` and the `pressure` trigger, results after the latest
+   * assistant message on the surface stay verbatim because the model has not
+   * answered them yet; `context-overflow` prunes every over-budget result.
    * Each replacement preserves the complete event data except for `content`,
    * cites the shadowed node so replay can recover the replacement input, and is
    * immediately preceded by a `compaction/prune` shadow-price event pricing the
    * shadowed node through the injected token meter, so pure consumers can
    * subtract it without per-node state.
    * @param session - session whose current surface is rewritten.
+   * @param trigger - the compaction trigger that qualified this pass.
    * @returns landed replacements and aggregate Unicode-code-point savings.
    * @throws when the session rejects a replacement; replacements committed
    * earlier in the pass remain durable.
    */
-  pruneSession(session: Session): PruneResult {
+  pruneSession(session: Session, trigger: CompactionTrigger): PruneResult {
+    const protectUnseen = this.config.protectUnseen && trigger === 'pressure'
     const candidates: SnapshotCandidate[] = []
+    let seenCandidates = 0
     for (const seq of [...session.surface.nodes]) {
       // oxlint-disable-next-line typescript/no-deprecated -- Existing Session history read; migration deferred.
       const event = session.eventAt(seq)
       /* v8 ignore next -- surface seqs are validated contiguous log references. */
-      if (event?.type === 'tool/result') candidates.push({ seq, event })
+      if (event === undefined) continue
+      if (event.type === 'assistant/message') seenCandidates = candidates.length
+      else if (event.type === 'tool/result') candidates.push({ seq, event })
     }
+    const eligible = protectUnseen ? candidates.slice(0, seenCandidates) : candidates
 
     const pruned: PrunedEntry[] = []
     let charsRemoved = 0
-    for (const { seq, event } of candidates) {
+    for (const { seq, event } of eligible) {
       const original = session.deriveEventMessage(event) as ToolResultMessage
       const content = this.pruneContent(original.content)
       if (content === null) continue

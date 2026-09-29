@@ -11,6 +11,7 @@
     { "path": "../../../vendor/schemastery" },
     { "path": "../../core/agent" },
     { "path": "../../core/session" },
+    { "path": "../../goal/goal" },
     { "path": "../../llm/llm" },
     { "path": "../../shell/shell" },
     { "path": "../../runtime-diagnostics/invariants" }
