@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -169,6 +169,58 @@ describe('graph_audit', () => {
     [{ ...ENFORCE, runBudget: { steps: -1 } }, /invalid runBudget\.steps -1/],
     [{ ...ENFORCE, runBudget: { wallMs: 1.5 } }, /invalid runBudget\.wallMs 1\.5/],
   ])('fails the load on %o', async (config, message) => {
+    const ctx = new Context()
+    await mountAgentLoopTestDependencies(ctx)
+    await expect(ctx.plugin(GraphContract, config)).rejects.toThrow(message)
+  })
+})
+
+describe('capability routes', () => {
+  const ROUTES = { ...ENFORCE, routes: [{ category: 'coding', provider: 'mock', model: 'mock-large' }, { category: 'review', provider: 'gone', model: 'x', reliability: 'verified' as const }] }
+
+  it('records the routes a plan uses on graph/plan', async () => {
+    const ctx = await harness(ROUTES)
+    const plan = diamond()
+    ;(plan['nodes'] as Record<string, unknown>[])[1]!['category'] = 'coding'
+    const agent = await audit(ctx, [plan])
+    expect(records(agent)[0]).toMatchObject({ admitted: true, routes: [{ category: 'coding', provider: 'mock', model: 'mock-large', reliability: 'unverified' }] })
+  })
+
+  it('lists routes with availability, granted tools, and depth', async () => {
+    const ctx = await harness(ROUTES)
+    vi.spyOn(ctx.llm, 'listModels').mockImplementation(provider => (provider === 'mock'
+      ? Promise.resolve([{ provider: 'mock', id: 'mock-large', name: 'Mock large' }])
+      : Promise.reject(new Error(`unknown provider ${provider}`))))
+    ctx.llm.registerAdapter(['mock'], new MockAdapter([toolCallResponse('c0', 'graph_capabilities', {}), textResponse('done')]))
+    const agent = await ctx.agentLoop.create(SessionId('caps'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'what can nodes use?' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    expect(JSON.parse(results(agent)[0]!)).toEqual({
+      categories: [
+        { category: 'coding', provider: 'mock', model: 'mock-large', reliability: 'unverified', available: true },
+        { category: 'review', provider: 'gone', model: 'x', reliability: 'verified', available: false },
+      ],
+      tools: ['edit', 'read'],
+      depth: { current: 0, max: 1 },
+    })
+    expect(ctx.tools.get('graph_capabilities')?.presentCall?.({})).toEqual({ card: 'generic', title: 'List graph capabilities', kind: 'read' })
+  })
+
+  it('omits depth without a subagent service and refuses a call with no owning agent', async () => {
+    const ctx = await harness(ENFORCE, false)
+    ctx.llm.registerAdapter(['mock'], new MockAdapter([toolCallResponse('c0', 'graph_capabilities', {}), textResponse('done')]))
+    const agent = await ctx.agentLoop.create(SessionId('caps-nodepth'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'list' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    expect(JSON.parse(results(agent)[0]!)).toEqual({ categories: [], tools: ['edit', 'read'] })
+    const direct = await ctx.tools.execute({ callId: ToolCallId('direct-caps'), name: 'graph_capabilities', arguments: {}, signal: new AbortController().signal })
+    expect(direct.isError).toBe(true)
+  })
+
+  it.each<[Config, RegExp]>([
+    [{ ...ENFORCE, routes: [{ category: ' ', provider: 'p', model: 'm' }] }, /every route needs a category, a provider, and a model/],
+    [{ ...ENFORCE, routes: [{ category: 'a', provider: 'p', model: 'm' }, { category: 'a', provider: 'q', model: 'n' }] }, /category a is routed twice/],
+  ])('fails the load on bad routes %#', async (config, message) => {
     const ctx = new Context()
     await mountAgentLoopTestDependencies(ctx)
     await expect(ctx.plugin(GraphContract, config)).rejects.toThrow(message)

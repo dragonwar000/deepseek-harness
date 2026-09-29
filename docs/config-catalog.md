@@ -1022,7 +1022,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-graph-contract`
 
 - `inject`: `tools` · `sessionProjections`
-- `source`: [`packages/experimental/graph-contract/src/index.ts:79`](../packages/experimental/graph-contract/src/index.ts)
+- `source`: [`packages/experimental/graph-contract/src/index.ts:104`](../packages/experimental/graph-contract/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1041,6 +1041,8 @@ export interface Config {
   allowedTools?: string[]
   /** Run limits per kind for one plan's worst case; 0 (default) is unlimited. */
   runBudget?: GraphNodeBudget
+  /** Capability routes: a node's category selects the provider and model of its subagent. */
+  routes?: GraphRouteConfig[]
 }
 
 /** Worst-case spend of one attempt of an agent node; an absent field is unbounded. */
@@ -1052,8 +1054,55 @@ export interface GraphNodeBudget {
   /** Wall-clock milliseconds. */
   wallMs?: number
 }
+
+/** One configured capability route. */
+export interface GraphRouteConfig {
+  /** Category a plan node declares; unique across routes. */
+  category: string
+  /** Provider that runs the node's subagent. */
+  provider: string
+  /** Model id that runs the node's subagent. */
+  model: string
+  /** Deployment reliability label (default `unverified`). */
+  reliability?: 'verified' | 'unverified'
+}
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-contract -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-runner -->
+<a id="deepseek-aidsh-experimental-graph-runner"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-runner`
+
+- `inject`: `tools` · `sessionProjections` · `subagents`
+- `source`: [`packages/experimental/graph-runner/src/index.ts:42`](../packages/experimental/graph-runner/src/index.ts)
+
+```ts config-catalog
+/** Plugin config. `assumption` is mandatory outside `off`. */
+export interface Config {
+  /** `off` registers nothing; `shadow` records writes outside a node's scopes; `enforce` refuses them. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Subagent provider for agent nodes; it must support `toolFilter` and `outputSchema`. Default `spawn`. */
+  provider?: string
+  /** Nodes running at once (default 2). */
+  maxConcurrent?: number
+  /** Agent-node dispatches per run; 0 (default) is unlimited. */
+  maxDispatches?: number
+  /** Wall time per run in milliseconds; 0 (default) is unlimited. */
+  maxWallMs?: number
+  /** Highest plan version that may run (default 8). */
+  maxPlanVersions?: number
+  /** Timeout per verify command in milliseconds (default 300000). */
+  verifyTimeoutMs?: number
+  /** Characters of command output kept per check (default 2000). */
+  outputTailChars?: number
+  /** Human gate timeout in milliseconds; 0 (default) waits until the run stops. */
+  humanTimeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-runner -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
 <a id="deepseek-aidsh-experimental-infra-snapshot"></a>

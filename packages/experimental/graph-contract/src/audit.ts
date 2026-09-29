@@ -16,6 +16,7 @@ import type {
   GraphPlan,
   GraphRejection,
   GraphRejectionCode,
+  GraphRoute,
 } from './types.ts'
 
 /** Check family, severity, and fixed remedy of one rejection code. */
@@ -41,7 +42,7 @@ export const REJECTION_RULES: Readonly<Record<GraphRejectionCode, RejectionRule>
   MISSING_HUMAN_GATE: { check: 'gates', severity: 'reject', remedy: 'Add a human_gate node before the step that is expensive to undo.' },
   MISSING_STOP_HANDOFF: { check: 'gates', severity: 'reject', remedy: 'Add a stop_handoff node that ends the plan with a handoff.' },
   WRITE_SCOPE_OVERLAP: { check: 'writes', severity: 'reject', remedy: 'Make the two write scopes disjoint, or order the two nodes with a dependency.' },
-  CAPABILITY_UNVERIFIED: { check: 'capability', severity: 'reject', remedy: 'Declare only tools this deployment grants to graph nodes.' },
+  CAPABILITY_UNVERIFIED: { check: 'capability', severity: 'reject', remedy: 'Declare only tools and categories this deployment grants to graph nodes; graph_capabilities lists them.' },
   BUDGET_EXCEEDED: { check: 'budget', severity: 'reject', remedy: 'Declare the missing budgets, lower node or retry budgets, or split the plan.' },
   INPUT_MAY_BE_ABSENT: { check: 'inputs', severity: 'reject', remedy: 'Add a fallback to the binding, or set mayFail false on the source node.' },
   EDGE_WITHOUT_ARTIFACT: { check: 'structure', severity: 'reject', remedy: 'Declare one edge with a non-blank artifact for every dependency.' },
@@ -78,6 +79,8 @@ export interface AuditEnvironment {
   readonly depth: { readonly current: number; readonly max: number } | undefined
   /** Acceptance frozen by the first parsed version of this plan id. */
   readonly frozenAcceptance: readonly string[] | undefined
+  /** Configured routes by category. */
+  readonly routes: ReadonlyMap<string, GraphRoute>
 }
 
 /** Audit outcome; `order` and `waves` are absent when structure errors or a cycle prevent them. */
@@ -366,6 +369,10 @@ function capabilityRejections(plan: GraphPlan, env: AuditEnvironment): GraphReje
   const out: GraphRejection[] = []
   for (const node of plan.nodes) {
     if (!runsAsAgent(node) && node.tools.length > 0) out.push(rejection('CAPABILITY_UNVERIFIED', node.id, `${node.kind} nodes run no agent, so they take no tools`))
+    if (node.category !== undefined) {
+      if (!runsAsAgent(node)) out.push(rejection('CAPABILITY_UNVERIFIED', `${node.id}:category`, `${node.kind} nodes run no agent, so they take no category`))
+      else if (!env.routes.has(node.category)) out.push(rejection('CAPABILITY_UNVERIFIED', `${node.id}:category`, `no route is configured for category ${node.category}`))
+    }
     for (const tool of node.tools) {
       const problem = toolProblem(tool, env)
       if (problem !== undefined) out.push(rejection('CAPABILITY_UNVERIFIED', `${node.id}:${tool}`, problem))
@@ -485,4 +492,18 @@ export function auditPlan(plan: GraphPlan, env: AuditEnvironment): AuditResult {
   const ancestors = ancestorsOf(plan, order)
   rejections.push(...orderRejections(plan, ancestors), ...writeRejections(plan, ancestors), ...budgetRejections(plan, env, order))
   return { rejections: sortRejections(rejections), order, waves: planWaves(plan) }
+}
+
+/**
+ * The configured routes of the categories a plan uses.
+ * @param plan - the plan.
+ * @param routes - configured routes by category.
+ * @returns routes sorted by category; categories without a route are left out.
+ */
+export function routesFor(plan: GraphPlan, routes: ReadonlyMap<string, GraphRoute>): GraphRoute[] {
+  const categories = [...new Set(plan.nodes.flatMap(node => (node.category === undefined ? [] : [node.category])))].sort()
+  return categories.flatMap((category) => {
+    const route = routes.get(category)
+    return route === undefined ? [] : [route]
+  })
 }

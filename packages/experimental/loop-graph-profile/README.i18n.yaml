@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/loop-graph-profile/README.md
 /:
-  en: f14d2d0ee112bf06
-  zh: f0a5b0fe9c18cf3d
+  en: f80503173a28ad20
+  zh: 1554edd617085057
 /deepseek-ai-dsh-experimental-loop-graph-profile:
   en: 73200c096febef48
   zh: 4e3942bdefcc59e5
 /deepseek-ai-dsh-experimental-loop-graph-profile/summary:
-  en: 65af3a9929090e40
-  zh: 4fd873b1e0a6e5a7
+  en: 3c949f764ae6c498
+  zh: c53d619f026ce7e2
 /deepseek-ai-dsh-experimental-loop-graph-profile/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
@@ -18,26 +18,26 @@
   en: bbff250eba0f1b89
   zh: 0a618f05cc88ee2b
 /deepseek-ai-dsh-experimental-loop-graph-profile/use-this-package/install-into-a-profile:
-  en: 50fd4e6338198c42
-  zh: 82536923bf846ecf
+  en: ea79aeaa908a31de
+  zh: 09630dac6baf3013
 /deepseek-ai-dsh-experimental-loop-graph-profile/use-this-package/what-you-get:
-  en: a08764f97fa7a708
-  zh: a3b6e8464871d602
+  en: c205df13ad730c6a
+  zh: dfb6030d51710cb8
 /deepseek-ai-dsh-experimental-loop-graph-profile/understand-the-implementation:
-  en: aff91b67b0f2b40b
-  zh: a3c672f1fe5844b3
+  en: d44914d3fb01b943
+  zh: 7d4431345b977cbf
 /deepseek-ai-dsh-experimental-loop-graph-profile/further-exploration:
-  en: 44bd3f025b0a0ca6
-  zh: 39517f89474b0d9b
+  en: 54bcc9b7f0f5e68a
+  zh: 3d59d453b08864ae
 /deepseek-ai-dsh-experimental-loop-graph-profile/model-experience:
-  en: 29868d7ad05e74b1
-  zh: e72c6628a775302a
+  en: caa81bbdd210c540
+  zh: e88600893b9fb50d
 /deepseek-ai-dsh-experimental-loop-graph-profile/model-experience/kv-cache-effect:
-  en: 49e7d439d30cd55f
-  zh: f4c9d2d3a7c59dd3
+  en: 1d9e668165d9ec82
+  zh: 313360299a59d488
 /deepseek-ai-dsh-experimental-loop-graph-profile/known-limitations-and-deferred-work:
-  en: 0fd979a3acddf2bd
-  zh: affd8683c496105f
+  en: 67b937a6e2cc22b2
+  zh: 7243a311d6d36a48
 /deepseek-ai-dsh-experimental-loop-graph-profile/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

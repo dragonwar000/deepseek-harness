@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package defines the `dsh-graph/v1` plan format and registers the `graph_audit` tool. The model passes one plan as JSON; the tool parses it, audits it without running anything, and returns every finding with a fixed remedy. Each call whose input carries a readable plan id appends one `graph/plan` session event, so plan versions, rejection memory, and admission are rebuilt from the log. In `enforce` mode a version is admitted only when no finding has severity `reject`; in `shadow` mode every version is admitted and the findings are still reported. It is experimental and carries no stability promise.
+This package defines the `dsh-graph/v1` plan format and registers the `graph_audit` and `graph_capabilities` tools. `graph_audit` parses one plan, audits it without running anything, returns every finding with a fixed remedy, and appends a `graph/plan` event when the plan id is readable, so versions, rejection memory, admission, and capability routes are rebuilt from the log. `enforce` admits a version only without a `reject` finding; `shadow` admits every version. The package also declares the `graph/node` and `graph/run` events and the node lifecycle rules the graph runner and projection share. It is experimental.
 
 ## Table of Contents
 
@@ -39,6 +39,8 @@ Choose it when plans need a checked structure before any of them runs: no cycles
     mode: shadow
     assumption: the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them
     allowedTools: [read, grep, edit]
+    routes:
+      - { category: coding, provider: deepseek, model: deepseek-chat }
 ```
 
 | Field | Default | Meaning |
@@ -49,8 +51,9 @@ Choose it when plans need a checked structure before any of them runs: no cycles
 | `runBudget.steps` | `0` | Limit on the summed worst-case steps of agent nodes (per-attempt budget × (retryBudget + 1)); `0` is unlimited |
 | `runBudget.tokens` | `0` | Same for tokens |
 | `runBudget.wallMs` | `0` | Limit on the critical path of worst-case wall time through the needs; `0` is unlimited |
+| `routes` | `[]` | Capability routes `{category, provider, model, reliability}`; a node's `category` must be routed. `reliability` is a deployment label, `unverified` by default |
 
-Loading fails with a `graph-contract:` error when `assumption` is blank, `allowedTools` names `run_code`, or a `runBudget` field is not an integer of at least 0.
+Loading fails with a `graph-contract:` error when `assumption` is blank, `allowedTools` names `run_code`, a `runBudget` field is not an integer of at least 0, a route has a blank category, provider, or model, or a category is routed twice.
 
 ### What you get
 
@@ -69,7 +72,7 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 | `MISSING_HUMAN_GATE` | `gates` | reject | An L3 plan has no `human_gate` node |
 | `MISSING_STOP_HANDOFF` | `gates` | reject | An L3 plan has no `stop_handoff` node |
 | `WRITE_SCOPE_OVERLAP` | `writes` | reject | Two nodes that can run in the same wave have overlapping write prefixes |
-| `CAPABILITY_UNVERIFIED` | `capability` | reject | A tool is `run_code`, is not in `allowedTools`, or is not a registered global tool; an `anchor` or `human_gate` node declares tools; or agent nodes exist and no subagent service is mounted |
+| `CAPABILITY_UNVERIFIED` | `capability` | reject | A tool is `run_code`, is not in `allowedTools`, or is not a registered global tool; an `anchor` or `human_gate` node declares tools or a category; an agent node's category has no configured route; or agent nodes exist and no subagent service is mounted |
 | `BUDGET_EXCEEDED` | `budget` | reject | A run limit is set and an agent node declares no budget of that kind, or the worst case exceeds the limit |
 | `INPUT_MAY_BE_ABSENT` | `inputs` | reject | An input binds to a node with `mayFail: true` and declares no `fallback` |
 | `EDGE_WITHOUT_ARTIFACT` | `structure` | reject | A need has no declared edge, or an edge artifact is blank |
@@ -94,6 +97,8 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 - **Write scopes are path prefixes.** They are normalized like Agent Teams write scopes; two nodes may share a wave only when neither is a transitive need of the other, and then their prefixes must not overlap.
 - **Budgets have no USD.** `ctx.llm` exposes no price, so the run budget covers steps, tokens (summed over attempts), and wall time (critical path, because a wave runs in parallel).
 - **DAG only.** Edges carry no cycle guard in this format version; every cycle is rejected.
+- **Routes are recorded, not looked up later.** A node's `category` selects the provider and model of its subagent, and a model choice reaches the model request, so `graph_audit` records the configured routes of the categories an admitted plan uses on its `graph/plan` record; the graph runner reads routes only from that record. `graph_capabilities` lists the configured routes with `available` (the model appears in `ctx.llm.listModels` at call time), the allowed tools that are registered, and the delegation depth. The routes carry no price because `ctx.llm` exposes none.
+- **Runner vocabulary lives here.** `graph/node` and `graph/run` are declared in this package, with `NODE_TRANSITIONS`, `needSatisfied`, and `nodeFingerprints`, so the runner and the projection share one definition without depending on each other. A need is satisfied when it is `executed`, `failed` with `mayFail`, or `unverified` across a `verifies` edge. A node fingerprint digests the node and its needs' fingerprints, so a changed node changes every dependent.
 - **Output schemas match subagents.** `output` is the object-rooted JSON Schema subset that `ctx.subagents.start` accepts.
 - **Invariant companion.** `./invariant` checks that versions are contiguous, that admission agrees with the mode and the findings, that `plan: null` carries `SCHEMA_INVALID`, and that changed acceptance carries `ACCEPTANCE_CHANGED`. A composition mounts the companion together with `@deepseek-ai/dsh-invariants`.
 
@@ -101,12 +106,13 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 
 | File | Role |
 |---|---|
-| [`src/index.ts`](src/index.ts) | Plugin entry: `Config`, load-time validation, the `graph_audit` tool, and result rendering |
-| [`src/types.ts`](src/types.ts) | Plan, finding, `graph/plan` event, and `graphPlans` state types |
+| [`src/index.ts`](src/index.ts) | Plugin entry: `Config`, load-time validation, the `graph_audit` and `graph_capabilities` tools, and result rendering |
+| [`src/types.ts`](src/types.ts) | Plan, route, finding, `graph/plan`, `graph/node`, and `graph/run` event, and `graphPlans` state types |
 | [`src/schema.ts`](src/schema.ts) | Zod parser of model-written plans and schemas of records and state |
 | [`src/audit.ts`](src/audit.ts) | Rejection rules, waves, order, and the audit |
 | [`src/digest.ts`](src/digest.ts) | Canonical JSON and plan digests |
 | [`src/projection.ts`](src/projection.ts) | The `graphPlans` projection |
+| [`src/run.ts`](src/run.ts) | Node transition table, need satisfaction, and node fingerprints |
 | [`src/invariant.ts`](src/invariant.ts) | Invariant companion for versions and admission |
 
 </details>
@@ -117,7 +123,8 @@ Each call with a readable plan id appends one `graph/plan` event; the `graphPlan
 ## Further Exploration
 
 - [Graph projection package](../graph-projection/README.md) — task graphs of admitted plans, read through `graph_query`.
-- [Loop graph profile](../loop-graph-profile/README.md) — the optional bundle that mounts both graph packages.
+- [Graph runner package](../graph-runner/README.md) — the `graph_run` tool that executes admitted plans on the recorded routes.
+- [Loop graph profile](../loop-graph-profile/README.md) — the optional bundle that mounts the graph packages.
 - [Experimental group map](../README.md) — sibling experimental packages and the publication policy.
 
 -----
@@ -140,7 +147,7 @@ Every call with a valid plan id records a new version of that plan. Fix every re
 
 Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).
 
-Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail.
+Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
 
 Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).
 
@@ -183,13 +190,32 @@ Each call adds one tool result that grows with the number of findings (about 40 
 
 Append-only: each result is a new tool result after the reusable request prefix.
 
+### The graph_capabilities tool
+
+#### What the model sees
+
+When the plugin is mounted (any mode except `off`), the model is offered a read-only tool named `graph_capabilities` with no parameters and this description. The result is compact JSON: `{"categories":[{"category","provider","model","reliability","available"}],"tools":[…],"depth":{"current","max"}}`; `depth` is absent when no subagent service is mounted.
+
+##### Verbatim text for this field
+
+```markdown
+List what graph nodes can use in this deployment: each node category with its provider, model, reliability label, and whether the model is available now; the tools a node may declare; and the current and maximum delegation depth. Use only these categories and tools in a dsh-graph/v1 plan.
+```
+
+#### Token effect
+
+Always-on while mounted: the tool definition is about 70 tokens in every request. Each call returns about 20 tokens per route.
+
+#### KV Cache effect
+
+The tool definition joins the stable tool prefix once, when the plugin loads; results are append-only tool results after the reusable prefix.
+
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
 These limits are current package constraints.
 
-- **No runner yet** — an admitted plan is not executed until a graph runner package exists.
 - **Rejection memory is per session** — a new session starts with no history; storage-backed memory is deferred.
 - **No cost in USD** — `runBudget` has steps, tokens, and wall time.
 - **DAG only** — cycles with a guard are not part of this format version.

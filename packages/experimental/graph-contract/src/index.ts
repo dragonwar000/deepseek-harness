@@ -7,43 +7,59 @@
  * admits a version only when no finding has severity `reject`; `shadow`
  * admits every version and still reports its findings. The `graphPlans`
  * projection folds the records into versions, rejection memory, and the
- * latest admitted plan.
+ * latest admitted plan. The `routes` config maps node categories to a
+ * provider and model; the routes a plan uses are recorded on its `graph/plan`
+ * record, and the read-only `graph_capabilities` tool lists the routes, the
+ * granted tools, and the delegation depth.
  * @module @deepseek-ai/dsh-experimental-graph-contract
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-llm'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import { delegationDepthOf } from '@deepseek-ai/dsh-subagent'
 import { defineTool, RUN_CODE_NAME } from '@deepseek-ai/dsh-tools'
 import type { InferValue } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import { auditPlan } from './audit.ts'
+import { auditPlan, routesFor } from './audit.ts'
 import type { AuditEnvironment, AuditResult } from './audit.ts'
 import { planSha } from './digest.ts'
 import { graphPlansProjection, historyOf } from './projection.ts'
 import { parsePlan } from './schema.ts'
-import type { GraphNodeBudget, GraphPlanHistory, GraphPlansState } from './types.ts'
+import type { GraphNodeBudget, GraphPlanHistory, GraphPlansState, GraphRoute } from './types.ts'
 
-export { auditPlan, planOrder, planWaves, REJECTION_RULES, rejection, runsAsAgent, scopesOverlap } from './audit.ts'
+export { auditPlan, planOrder, planWaves, REJECTION_RULES, rejection, routesFor, runsAsAgent, scopesOverlap } from './audit.ts'
 export type { AuditEnvironment, AuditResult, RejectionRule } from './audit.ts'
 export { canonicalJson, planSha } from './digest.ts'
 export { applyGraphPlanEvent, emptyGraphPlans, graphPlansProjection, historyOf } from './projection.ts'
+export { canTransition, needSatisfied, NODE_TRANSITIONS, nodeFingerprints } from './run.ts'
 export {
   GRAPH_FORMAT,
   graphNodeId,
   graphNodeIdSchema,
+  graphNodeRecordSchema,
   graphPlanId,
   graphPlanIdSchema,
   graphPlanRecordSchema,
   graphPlanSchema,
   graphPlansStateSchema,
+  graphRunId,
+  graphRunIdSchema,
+  graphRunRecordSchema,
+  jsonValueSchema,
+  nodeBasisSchema,
   nodeKindSchema,
+  nodeStatusSchema,
   normalizeWriteScope,
   parsePlan,
+  recoveryStateSchema,
   rejectionSchema,
+  routeSchema,
+  sessionIdSchema,
+  stopReasonSchema,
 } from './schema.ts'
 export type { ParsedPlan } from './schema.ts'
 export type {
@@ -54,17 +70,26 @@ export type {
   GraphInputBinding,
   GraphLevel,
   GraphNode,
+  GraphNodeBasis,
   GraphNodeBudget,
+  GraphNodeCheck,
   GraphNodeId,
   GraphNodeKind,
+  GraphNodeRecord,
+  GraphNodeStatus,
   GraphPlan,
   GraphPlanHistory,
   GraphPlanId,
   GraphPlanRecord,
   GraphPlansState,
   GraphPlanVersion,
+  GraphRecoveryState,
   GraphRejection,
   GraphRejectionCode,
+  GraphRoute,
+  GraphRunId,
+  GraphRunRecord,
+  GraphStopReason,
 } from './types.ts'
 
 /** Cordis plugin name. */
@@ -88,6 +113,20 @@ export interface Config {
   allowedTools?: string[]
   /** Run limits per kind for one plan's worst case; 0 (default) is unlimited. */
   runBudget?: GraphNodeBudget
+  /** Capability routes: a node's category selects the provider and model of its subagent. */
+  routes?: GraphRouteConfig[]
+}
+
+/** One configured capability route. */
+export interface GraphRouteConfig {
+  /** Category a plan node declares; unique across routes. */
+  category: string
+  /** Provider that runs the node's subagent. */
+  provider: string
+  /** Model id that runs the node's subagent. */
+  model: string
+  /** Deployment reliability label (default `unverified`). */
+  reliability?: 'verified' | 'unverified'
 }
 
 /** Schemastery validator for {@link Config}. */
@@ -100,6 +139,12 @@ export const Config: z<Config> = z.object({
     tokens: z.number().default(0),
     wallMs: z.number().default(0),
   }).default({}),
+  routes: z.array(z.object({
+    category: z.string().required(),
+    provider: z.string().required(),
+    model: z.string().required(),
+    reliability: z.union(['verified', 'unverified']).default('unverified'),
+  })).default([]),
 })
 
 /** Model-facing description of `graph_audit`. */
@@ -107,10 +152,44 @@ export const GRAPH_AUDIT_DESCRIPTION = [
   'Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version.',
   'Every call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.',
   'Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).',
-  'Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail.',
+  'Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).',
   'Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).',
   'Status, basis, and version belong to the harness and are rejected inside a plan.',
 ].join('\n\n')
+
+/** Model-facing description of `graph_capabilities`. */
+export const GRAPH_CAPABILITIES_DESCRIPTION = 'List what graph nodes can use in this deployment: each node category with its provider, model, reliability label, and whether the model is available now; the tools a node may declare; and the current and maximum delegation depth. Use only these categories and tools in a dsh-graph/v1 plan.'
+
+const CAPABILITIES_VALUE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    categories: {
+      type: 'array',
+      required: true,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          category: { type: 'string', required: true },
+          provider: { type: 'string', required: true },
+          model: { type: 'string', required: true },
+          reliability: { type: 'string', required: true },
+          available: { type: 'boolean', required: true },
+        },
+      },
+    },
+    tools: { type: 'array', required: true, items: { type: 'string' } },
+    depth: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { current: { type: 'integer', required: true }, max: { type: 'integer', required: true } },
+    },
+  },
+} as const
+
+/** Canonical value of one `graph_capabilities` call. */
+export type GraphCapabilitiesValue = InferValue<typeof CAPABILITIES_VALUE_SCHEMA>
 
 const REJECTION_VALUE_SCHEMA = {
   type: 'object',
@@ -245,6 +324,16 @@ export function apply(ctx: Context, config: Config): void {
     }
   }
 
+  const routes = new Map<string, GraphRoute>()
+  // schemastery's .default() fills `reliability` on every route.
+  for (const route of config.routes as GraphRoute[]) {
+    if (route.category.trim() === '' || route.provider.trim() === '' || route.model.trim() === '') {
+      throw new Error('graph-contract: every route needs a category, a provider, and a model')
+    }
+    if (routes.has(route.category)) throw new Error(`graph-contract: category ${route.category} is routed twice`)
+    routes.set(route.category, { category: route.category, provider: route.provider, model: route.model, reliability: route.reliability })
+  }
+
   ctx.sessionProjections.register(graphPlansProjection)
 
   function plansOf(session: Session): GraphPlansState {
@@ -270,6 +359,7 @@ export function apply(ctx: Context, config: Config): void {
       runBudget,
       depth: depthOf(agent),
       frozenAcceptance: history?.acceptance ?? undefined,
+      routes,
     }
   }
 
@@ -287,6 +377,7 @@ export function apply(ctx: Context, config: Config): void {
     const previous = history === undefined ? [] : history.versions
     const repeatOf = previous.findLast(version => version.sha === sha)?.version
     const version = previous.length + 1
+    const used = parsed.ok ? routesFor(parsed.plan, routes) : []
     if (planId !== undefined) {
       agent.session.append('graph/plan', {
         planId,
@@ -297,6 +388,7 @@ export function apply(ctx: Context, config: Config): void {
         plan: parsed.ok ? parsed.plan : null,
         rejections: result.rejections,
         ...repeatOf === undefined ? {} : { repeatOf },
+        ...used.length === 0 ? {} : { routes: used },
       })
     }
     return {
@@ -326,6 +418,35 @@ export function apply(ctx: Context, config: Config): void {
       const agent = exec.agent
       if (agent === undefined) throw new Error('graph_audit requires an owning agent session')
       return Promise.resolve(audit(agent, args.plan))
+    },
+  }))
+
+  function available(route: GraphRoute): Promise<boolean> {
+    const llm = ctx.get('llm')
+    /* v8 ignore next -- every composition that runs agents mounts ctx.llm; the tool catalog boot never calls execute. */
+    if (llm === undefined) return Promise.resolve(false)
+    return llm.listModels(route.provider).then(models => models.some(model => model.id === route.model), () => false)
+  }
+
+  ctx.tools.register(defineTool({
+    name: 'graph_capabilities',
+    description: GRAPH_CAPABILITIES_DESCRIPTION,
+    parameters: {},
+    output: {
+      schema: CAPABILITIES_VALUE_SCHEMA,
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    isConcurrencySafe: () => true,
+    presentCall: () => ({ card: 'generic', title: 'List graph capabilities', kind: 'read' }),
+    async execute(_args, exec): Promise<GraphCapabilitiesValue> {
+      const agent = exec.agent
+      if (agent === undefined) throw new Error('graph_capabilities requires an owning agent session')
+      const depth = depthOf(agent)
+      return {
+        categories: await Promise.all([...routes.values()].map(async route => ({ ...route, available: await available(route) }))),
+        tools: [...allowedTools].filter(tool => ctx.tools.get(tool) !== undefined).sort(),
+        ...depth === undefined ? {} : { depth },
+      }
     },
   }))
 }

@@ -30,7 +30,7 @@ function fold(records: GraphPlanRecord[]): GraphPlansState {
 
 describe('graphPlans projection', () => {
   it('declares a versioned host-only unit', () => {
-    expect(graphPlansProjection).toMatchObject({ key: 'graphPlans', stateVersion: 1 })
+    expect(graphPlansProjection).toMatchObject({ key: 'graphPlans', stateVersion: 2 })
     expect(graphPlansProjection.init()).toEqual({ plans: [] })
   })
 
@@ -73,5 +73,12 @@ describe('graphPlans projection', () => {
     const session = Session.create(SessionId('other'))
     const state = emptyGraphPlans()
     expect(applyGraphPlanEvent(state, session.append('turn/start', { turn: 1 }))).toBe(state)
+  })
+
+  it('keeps the recorded routes of the latest admitted version', () => {
+    const route = { category: 'coding', provider: 'p', model: 'm', reliability: 'verified' as const }
+    const state = fold([record(1), record(2, { routes: [route] })])
+    expect(historyOf(state, graphPlanId('ship'))?.admitted).toMatchObject({ version: 2, routes: [route] })
+    expect(historyOf(fold([record(1)]), graphPlanId('ship'))?.admitted?.routes).toEqual([])
   })
 })

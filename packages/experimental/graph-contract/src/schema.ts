@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { assertObjectJsonSchema, JsonSchemaError } from '@deepseek-ai/dsh-tools'
 import type { ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { REJECTION_RULES, rejection } from './audit.ts'
 import type {
@@ -15,13 +16,20 @@ import type {
   GraphContextScope,
   GraphEdgeRelation,
   GraphLevel,
+  GraphNodeBasis,
   GraphNodeId,
   GraphNodeKind,
+  GraphNodeRecord,
+  GraphNodeStatus,
   GraphPlan,
   GraphPlanId,
   GraphPlanRecord,
   GraphPlansState,
+  GraphRecoveryState,
   GraphRejection,
+  GraphRunId,
+  GraphRunRecord,
+  GraphStopReason,
 } from './types.ts'
 
 /** The only plan format this package reads. */
@@ -146,6 +154,7 @@ const nodeSchema = z.object({
   retryBudget: nonNegativeInt.default(0),
   contextScope: z.enum(keysOf(CONTEXT_SCOPES)).default('execution-only'),
   mayFail: z.boolean().default(false),
+  category: text.optional(),
 }).strict()
 
 const edgeSchema = z.object({
@@ -154,6 +163,14 @@ const edgeSchema = z.object({
   relation: z.enum(keysOf(EDGE_RELATIONS)),
   artifact: z.string(),
   allowedFields: z.array(text).optional(),
+}).strict()
+
+/** One capability route. */
+export const routeSchema = z.object({
+  category: text,
+  provider: text,
+  model: text,
+  reliability: z.enum(['verified', 'unverified']),
 }).strict()
 
 /** Normalized `dsh-graph/v1` plan schema; unknown keys, including harness-owned fields, are rejected. */
@@ -189,6 +206,7 @@ export const graphPlanRecordSchema = z.object({
   plan: graphPlanSchema.nullable(),
   rejections: z.array(rejectionSchema),
   repeatOf: positiveInt.optional(),
+  routes: z.array(routeSchema).optional(),
 }).strict() as z.ZodType<GraphPlanRecord>
 
 /** `graphPlans` projection state schema. */
@@ -203,7 +221,7 @@ export const graphPlansStateSchema = z.object({
       codes: z.array(z.enum(keysOf(REJECTION_RULES))),
     }).strict()),
     acceptance: z.array(z.string()).nullable(),
-    admitted: z.object({ version: positiveInt, plan: graphPlanSchema }).strict().nullable(),
+    admitted: z.object({ version: positiveInt, plan: graphPlanSchema, routes: z.array(routeSchema) }).strict().nullable(),
   }).strict()),
   failure: z.string().optional(),
 }).strict() as z.ZodType<GraphPlansState>
@@ -247,3 +265,73 @@ export function parsePlan(value: unknown): ParsedPlan {
     rejections: parsed.error.issues.map(issue => rejection('SCHEMA_INVALID', subjectOf(issue.path), issue.message)),
   }
 }
+
+const NODE_STATUSES: Record<GraphNodeStatus, true> = {
+  pending: true, ready: true, running: true, waiting_human: true, executed: true,
+  unverified: true, failed_retryable: true, failed: true, cancelled: true, skipped: true,
+}
+const NODE_BASES: Record<GraphNodeBasis, true> = { predicate: true, verifier: true, agentReported: true, human: true, sessionExited: true }
+const RECOVERY_STATES: Record<GraphRecoveryState, true> = { pristine: true, retried: true, patched: true }
+const STOP_REASONS: Record<GraphStopReason, true> = {
+  GOAL_MET: true, NO_FURTHER_WORK: true, MAX_ROUNDS: true, NO_PROGRESS: true, ADMISSION_REFUSED: true, HUMAN_STOPPED: true, BUDGET: true,
+}
+
+/**
+ * Brand a run id.
+ * @param value - opaque run id text.
+ * @returns the branded id.
+ */
+export function graphRunId(value: string): GraphRunId {
+  return brandString<GraphRunId>(value)
+}
+
+/** Run id schema. */
+export const graphRunIdSchema = z.string().min(1).transform(graphRunId)
+/** Node status schema. */
+export const nodeStatusSchema = z.enum(keysOf(NODE_STATUSES))
+/** Node basis schema. */
+export const nodeBasisSchema = z.enum(keysOf(NODE_BASES))
+/** Recovery state schema. */
+export const recoveryStateSchema = z.enum(keysOf(RECOVERY_STATES))
+/** Stop reason schema. */
+export const stopReasonSchema = z.enum(keysOf(STOP_REASONS))
+/** Session id schema for recorded child sessions. */
+export const sessionIdSchema = z.string().min(1).transform(value => brandString<SessionId>(value))
+/** Lossless JSON value schema. */
+export const jsonValueSchema = jsonValue
+
+/** `graph/node` payload schema. */
+export const graphNodeRecordSchema = z.object({
+  runId: graphRunIdSchema,
+  planId: graphPlanIdSchema,
+  version: positiveInt,
+  nodeId: graphNodeIdSchema,
+  status: nodeStatusSchema,
+  basis: nodeBasisSchema.optional(),
+  recoveryState: recoveryStateSchema,
+  attempt: nonNegativeInt,
+  revision: positiveInt,
+  fingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
+  childSession: sessionIdSchema.optional(),
+  output: jsonValue.optional(),
+  checks: z.array(z.object({
+    command: z.string(),
+    exitCode: z.number().int().nullable(),
+    timedOut: z.boolean(),
+    outputTail: z.string(),
+  }).strict()).optional(),
+  carriedFrom: positiveInt.optional(),
+  violations: z.array(z.string()).optional(),
+  detail: z.string().optional(),
+}).strict() as z.ZodType<GraphNodeRecord>
+
+/** `graph/run` payload schema. */
+export const graphRunRecordSchema = z.object({
+  runId: graphRunIdSchema,
+  planId: graphPlanIdSchema,
+  version: positiveInt,
+  phase: z.enum(['start', 'stop']),
+  mode: z.enum(['shadow', 'enforce']),
+  stopReason: stopReasonSchema.optional(),
+  detail: z.string().optional(),
+}).strict() as z.ZodType<GraphRunRecord>

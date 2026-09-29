@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { auditPlan, planOrder, planWaves, REJECTION_RULES, runsAsAgent, scopesOverlap } from '../src/audit.ts'
+import { auditPlan, planOrder, planWaves, REJECTION_RULES, routesFor, runsAsAgent, scopesOverlap } from '../src/audit.ts'
 import type { AuditEnvironment } from '../src/audit.ts'
 import { parsePlan } from '../src/schema.ts'
 import type { GraphPlan, GraphRejection, GraphRejectionCode } from '../src/types.ts'
@@ -18,6 +18,7 @@ interface NodeInput {
   retryBudget?: number
   contextScope?: string
   mayFail?: boolean
+  category?: string
 }
 interface EdgeInput { from: string; to: string; relation: string; artifact: string; allowedFields?: string[] }
 interface PlanInput {
@@ -96,6 +97,7 @@ const ENV: AuditEnvironment = {
   runBudget: { steps: 0, tokens: 0, wallMs: 0 },
   depth: { current: 0, max: 1 },
   frozenAcceptance: undefined,
+  routes: new Map(),
 }
 
 function parsed(input: PlanInput): GraphPlan {
@@ -148,6 +150,22 @@ describe('auditPlan admission', () => {
 })
 
 describe('auditPlan rejections', () => {
+  it('routes categories only through configured routes and only on agent nodes', () => {
+    const coding = { category: 'coding', provider: 'deepseek', model: 'deepseek-v4-pro', reliability: 'unverified' as const }
+    const plan = diamond()
+    node(plan, 'build').category = 'coding'
+    node(plan, 'docs').category = 'review'
+    node(plan, 'spec').category = 'coding'
+    const found = audit(plan, { routes: new Map([['coding', coding]]) })
+      .filter(entry => entry.code === 'CAPABILITY_UNVERIFIED')
+      .map(entry => [entry.subject, entry.detail])
+    expect(found).toEqual([
+      ['docs:category', 'no route is configured for category review'],
+      ['spec:category', 'anchor nodes run no agent, so they take no category'],
+    ])
+    expect(routesFor(parsed(plan), new Map([['coding', coding]]))).toEqual([coding])
+  })
+
   it.each<[GraphRejectionCode, (plan: PlanInput) => void, Partial<AuditEnvironment>]>([
     ['CYCLE', (plan) => {
       node(plan, 'spec').needs = ['report']

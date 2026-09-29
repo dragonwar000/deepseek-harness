@@ -13,6 +13,10 @@
 # (graph/plan) and reports findings but admits every version. allowedTools starts
 # empty, so every tool a plan node declares is reported until your profile patch
 # names the tools graph nodes may use.
+# graph-runner adds the graph_run tool. It starts in shadow mode: it runs admitted
+# plans with a fresh subagent per node and records node writes outside a node's
+# write scopes (graph/node violations) without refusing them. No capability route
+# is configured, so every node runs on the calling agent's model.
 
 - insert:
     - id: infra-snapshot
@@ -68,3 +72,17 @@
 
     - id: graph-projection
       name: '@deepseek-ai/dsh-experimental-graph-projection'
+
+    - id: graph-runner
+      name: '@deepseek-ai/dsh-experimental-graph-runner'
+      config:
+        mode: shadow
+        assumption: "node agents report completion without proof unless a verifier or a command confirms it"
+        provider: spawn
+        maxConcurrent: 2
+        maxDispatches: 0
+        maxWallMs: 0
+        maxPlanVersions: 8
+        verifyTimeoutMs: 300000
+        outputTailChars: 2000
+        humanTimeoutMs: 0

@@ -10785,11 +10785,11 @@
       }
     },
     {
-      "key": "event:graph/plan",
+      "key": "event:graph/node",
       "kind": "event",
-      "event": "graph/plan",
+      "event": "graph/node",
       "surface": false,
-      "digest": "a22510249d0295211d6e1e495b6ad08be111e4f56feb38d5516127e3523a7aa5",
+      "digest": "6d27af626def7a874a97e4f750bbd96d015195fd1a8472286d10095c77e16803",
       "schema": {
         "root": 0,
         "nodes": [
@@ -10803,7 +10803,331 @@
               },
               {
                 "name": "ignorable",
-                "type": 96,
+                "type": 34,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 35,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "attempt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "basis",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "carriedFrom",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "checks",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "childSession",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "detail",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "fingerprint",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "nodeId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "output",
+                "type": 15,
+                "optional": true
+              },
+              {
+                "name": "planId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "recoveryState",
+                "type": 18,
+                "optional": false
+              },
+              {
+                "name": "revision",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "runId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "status",
+                "type": 22,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "violations",
+                "type": 33,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "verifier"
+          },
+          {
+            "kind": "literal",
+            "value": "agentReported"
+          },
+          {
+            "kind": "literal",
+            "value": "human"
+          },
+          {
+            "kind": "literal",
+            "value": "predicate"
+          },
+          {
+            "kind": "literal",
+            "value": "sessionExited"
+          },
+          {
+            "kind": "array",
+            "element": 10
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "command",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "exitCode",
+                "type": 12,
+                "optional": false
+              },
+              {
+                "name": "outputTail",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "timedOut",
+                "type": 14,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              13
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              11,
+              13,
+              14,
+              16,
+              17
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 11,
+                "value": 15
+              }
+            ]
+          },
+          {
+            "kind": "array",
+            "element": 15
+          },
+          {
+            "kind": "union",
+            "types": [
+              19,
+              20,
+              21
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "patched"
+          },
+          {
+            "kind": "literal",
+            "value": "pristine"
+          },
+          {
+            "kind": "literal",
+            "value": "retried"
+          },
+          {
+            "kind": "union",
+            "types": [
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31,
+              32
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "skipped"
+          },
+          {
+            "kind": "literal",
+            "value": "unverified"
+          },
+          {
+            "kind": "literal",
+            "value": "waiting_human"
+          },
+          {
+            "kind": "literal",
+            "value": "cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "executed"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "literal",
+            "value": "failed_retryable"
+          },
+          {
+            "kind": "literal",
+            "value": "pending"
+          },
+          {
+            "kind": "literal",
+            "value": "ready"
+          },
+          {
+            "kind": "literal",
+            "value": "running"
+          },
+          {
+            "kind": "array",
+            "element": 11
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "graph/node"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:graph/plan",
+      "kind": "event",
+      "event": "graph/plan",
+      "surface": false,
+      "digest": "831e16f193f276537679f5281a25c025ba04e387a5ef15e25e526e6c403da73f",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 101,
                 "optional": true
               },
               {
@@ -10818,7 +11142,7 @@
               },
               {
                 "name": "type",
-                "type": 97,
+                "type": 102,
                 "optional": false
               }
             ],
@@ -10855,6 +11179,11 @@
               {
                 "name": "repeatOf",
                 "type": 27,
+                "optional": true
+              },
+              {
+                "name": "routes",
+                "type": 96,
                 "optional": true
               },
               {
@@ -11039,15 +11368,15 @@
           },
           {
             "kind": "literal",
-            "value": "L2"
-          },
-          {
-            "kind": "literal",
             "value": "L3"
           },
           {
             "kind": "literal",
             "value": "L1"
+          },
+          {
+            "kind": "literal",
+            "value": "L2"
           },
           {
             "kind": "array",
@@ -11060,6 +11389,11 @@
                 "name": "budget",
                 "type": 26,
                 "optional": false
+              },
+              {
+                "name": "category",
+                "type": 9,
+                "optional": true
               },
               {
                 "name": "contextScope",
@@ -11593,6 +11927,18 @@
           },
           {
             "kind": "literal",
+            "value": "SCHEMA_INVALID"
+          },
+          {
+            "kind": "literal",
+            "value": "SYNTHESIS_BEFORE_VERIFY"
+          },
+          {
+            "kind": "literal",
+            "value": "VERDICT_UNDECLARED"
+          },
+          {
+            "kind": "literal",
             "value": "BUDGET_EXCEEDED"
           },
           {
@@ -11605,15 +11951,7 @@
           },
           {
             "kind": "literal",
-            "value": "LINEAR_PLAN"
-          },
-          {
-            "kind": "literal",
             "value": "CAPABILITY_UNVERIFIED"
-          },
-          {
-            "kind": "literal",
-            "value": "MISSING_ANCHOR"
           },
           {
             "kind": "literal",
@@ -11621,7 +11959,7 @@
           },
           {
             "kind": "literal",
-            "value": "MISSING_HUMAN_GATE"
+            "value": "LINEAR_PLAN"
           },
           {
             "kind": "literal",
@@ -11629,11 +11967,7 @@
           },
           {
             "kind": "literal",
-            "value": "MISSING_STOP_HANDOFF"
-          },
-          {
-            "kind": "literal",
-            "value": "NOT_CONSUMED"
+            "value": "MISSING_ANCHOR"
           },
           {
             "kind": "literal",
@@ -11641,11 +11975,7 @@
           },
           {
             "kind": "literal",
-            "value": "ACCEPTANCE_CHANGED"
-          },
-          {
-            "kind": "literal",
-            "value": "SCHEMA_INVALID"
+            "value": "MISSING_HUMAN_GATE"
           },
           {
             "kind": "literal",
@@ -11653,15 +11983,19 @@
           },
           {
             "kind": "literal",
-            "value": "SYNTHESIS_BEFORE_VERIFY"
+            "value": "MISSING_STOP_HANDOFF"
           },
           {
             "kind": "literal",
-            "value": "VERDICT_UNDECLARED"
+            "value": "ACCEPTANCE_CHANGED"
           },
           {
             "kind": "literal",
             "value": "ISOLATED_NODE"
+          },
+          {
+            "kind": "literal",
+            "value": "NOT_CONSUMED"
           },
           {
             "kind": "union",
@@ -11679,12 +12013,227 @@
             "value": "warn"
           },
           {
+            "kind": "array",
+            "element": 97
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "category",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "model",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "provider",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "reliability",
+                "type": 98,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              99,
+              100
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "unverified"
+          },
+          {
+            "kind": "literal",
+            "value": "verified"
+          },
+          {
             "kind": "literal",
             "value": true
           },
           {
             "kind": "literal",
             "value": "graph/plan"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:graph/run",
+      "kind": "event",
+      "event": "graph/run",
+      "surface": false,
+      "digest": "d3c0b323291b3fd396ec50af064f84f347b7d5df62fbec370268a744b856fc4e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 18,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 17,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 17,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 19,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "detail",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "mode",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "phase",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "planId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "runId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "stopReason",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "version",
+                "type": 17,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "enforce"
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "start"
+          },
+          {
+            "kind": "literal",
+            "value": "stop"
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "ADMISSION_REFUSED"
+          },
+          {
+            "kind": "literal",
+            "value": "BUDGET"
+          },
+          {
+            "kind": "literal",
+            "value": "GOAL_MET"
+          },
+          {
+            "kind": "literal",
+            "value": "HUMAN_STOPPED"
+          },
+          {
+            "kind": "literal",
+            "value": "MAX_ROUNDS"
+          },
+          {
+            "kind": "literal",
+            "value": "NO_FURTHER_WORK"
+          },
+          {
+            "kind": "literal",
+            "value": "NO_PROGRESS"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "graph/run"
           }
         ]
       }
@@ -25584,7 +26133,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphEdge"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:83"
+        "packages/experimental/graph-contract/src/types.ts:86"
       ]
     },
     {
@@ -25666,6 +26215,11 @@
       "sources": []
     },
     {
+      "digest": "1045ce4e596ecc0429c8c662de93807e6b8cd1e1dac8800e2e362e4150a305a6",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "107edde4524666b3d82fc5ef5c9442ae2d86c443ecc9facd3d9f3526bdc631c0",
       "names": [],
       "sources": []
@@ -25681,7 +26235,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphCheck"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:140"
+        "packages/experimental/graph-contract/src/types.ts:155"
       ]
     },
     {
@@ -25702,6 +26256,11 @@
       "sources": [
         "packages/interaction/user-approval/src/index.ts:40"
       ]
+    },
+    {
+      "digest": "12136401bae0866e06990ddfd9ea529eac10ebf7b7905085fe6ebf6fa856e238",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "1243bd4f09ad34eeafae4e3e85d74021be3cee9cc00c185fb110193dbf61bd7b",
@@ -25748,6 +26307,11 @@
       "sources": []
     },
     {
+      "digest": "1502afc7997609f7af738347b134e434d285ed4a7e19584037dfe4bf4d7d3e7d",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "15196447222782e773eb943c92b18316ce96b9af0f0cfddb6e57ba8274ecc5ff",
       "names": [],
       "sources": []
@@ -25763,7 +26327,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphNodeKind"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:22"
+        "packages/experimental/graph-contract/src/types.ts:23"
       ]
     },
     {
@@ -25772,6 +26336,11 @@
       "sources": [
         "packages/deliverables/tool-present/src/types.ts:15"
       ]
+    },
+    {
+      "digest": "1548fedba7d80b612d215cae7fb959be48ab302c01e40c0ab234ba9c51c0e1f9",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "15495614ccfa9cbdeefb0ec2abd76406435f4c6ff3dae42acae8e09ef42025c9",
@@ -25853,7 +26422,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphContextScope"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:28"
+        "packages/experimental/graph-contract/src/types.ts:29"
       ]
     },
     {
@@ -25933,6 +26502,11 @@
       "sources": [
         "packages/core/session/src/types.ts:341"
       ]
+    },
+    {
+      "digest": "1cd980b41efad86959905c9e347ba3b7d23683feebe606e6d430ff55beec5985",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "1cde1bedde79c5e8a56aee9c05c8e0a579cf5bc611deb85b93fa331a16ca978f",
@@ -26064,6 +26638,11 @@
       "sources": []
     },
     {
+      "digest": "22ae8a2cff53d5fd00a926fc1d63e188016a64acffc2f141a83d69b47a874582",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "22f82c04bda46d32aa400efad24f45cb43a7a48950ff2a9f6090636146e1744f",
       "names": [],
       "sources": []
@@ -26128,11 +26707,6 @@
     },
     {
       "digest": "260523b412c19ad8c2bb00093b07f64245ff8ba6b2f76c5b545303772ac9704c",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "261ccaaab7614c62e688181b41667dcf32e3cb134b1cf271cd140e5b7b854b79",
       "names": [],
       "sources": []
     },
@@ -26293,6 +26867,11 @@
       "sources": []
     },
     {
+      "digest": "2fce5df1511f5a3cd52b14eb6dfea483657e2ef06f8cbed00856c56633b00d0d",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "2fe5026daf14bd4ff2b7bfb7cf9791c302d9cbba06802178b6dfec00b892698f",
       "names": [
         "packages/core/tools/src/types.ts#PtcDispatchStartEventData"
@@ -26332,6 +26911,11 @@
       "sources": [
         "packages/experimental/verifier-gate/src/types.ts:48"
       ]
+    },
+    {
+      "digest": "3261a5af1610a304fb14bbb302f7e9d92648d01a4c0c30b78096bf8efdf38823",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "326a9bfda27dda5882fb3cbe6e715df41dae2298fdae3d66437457268a665693",
@@ -26647,6 +27231,11 @@
       "sources": []
     },
     {
+      "digest": "450c3d90ef9cd5d5537c34eacb74dae4d67ba286aca5c96803cced5298ef5f61",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "4513e088d43e6c68425be30451b9f961cc264fe7318ca62681c41d4d78615986",
       "names": [],
       "sources": []
@@ -26782,6 +27371,7 @@
         "packages/experimental/agent-team/src/types.ts#TeamTaskId",
         "packages/experimental/graph-contract/src/types.ts#GraphNodeId",
         "packages/experimental/graph-contract/src/types.ts#GraphPlanId",
+        "packages/experimental/graph-contract/src/types.ts#GraphRunId",
         "packages/feedback/message-feedback/src/types.ts#MessageFeedbackVersion",
         "packages/goal/goal/src/types.ts#GoalId",
         "packages/interaction/commands/src/brand.ts#CommandId",
@@ -26807,8 +27397,9 @@
         "packages/experimental/agent-team/src/types.ts:20",
         "packages/experimental/agent-team/src/types.ts:32",
         "packages/experimental/agent-team/src/types.ts:8",
-        "packages/experimental/graph-contract/src/types.ts:13",
-        "packages/experimental/graph-contract/src/types.ts:16",
+        "packages/experimental/graph-contract/src/types.ts:14",
+        "packages/experimental/graph-contract/src/types.ts:17",
+        "packages/experimental/graph-contract/src/types.ts:243",
         "packages/feedback/message-feedback/src/types.ts:14",
         "packages/goal/goal/src/types.ts:17",
         "packages/interaction/commands/src/brand.ts:31",
@@ -27063,15 +27654,6 @@
       ]
     },
     {
-      "digest": "581c246158ea767224c01c3ce74288810451794e20f385bb49a5e7c4531f0ce2",
-      "names": [
-        "packages/experimental/graph-contract/src/types.ts#GraphPlanRecord"
-      ],
-      "sources": [
-        "packages/experimental/graph-contract/src/types.ts:172"
-      ]
-    },
-    {
       "digest": "587bb11da730e06aa52b62c087d217d6f8f22459b25f31cb9e1e1baf17944e5e",
       "names": [],
       "sources": []
@@ -27124,7 +27706,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphRejection"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:156"
+        "packages/experimental/graph-contract/src/types.ts:171"
       ]
     },
     {
@@ -27185,6 +27767,11 @@
       "sources": []
     },
     {
+      "digest": "5e6cf94f34b0ed83fadc4b6ad74cf28e0458f507bafe03117ee982996fc1c35d",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "5e6db6e24948d4a853c71cb9fabd252ad051ce93d4672c1266cf837c1c17b84e",
       "names": [],
       "sources": []
@@ -27216,6 +27803,11 @@
       "sources": [
         "packages/subagent/subagent/src/descriptor.ts:61"
       ]
+    },
+    {
+      "digest": "6022451d897c7050f60b564f801210136c9fa4d320a03b6d520d1cf8b3876e41",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "6075a9e76e7b8e638ffe88cd1fa4f4a891bc0a88bab077432940d4dbdf832b9f",
@@ -27263,15 +27855,6 @@
       "sources": []
     },
     {
-      "digest": "6377f652aef83495f9d64f8b0778f7fa1da9bd2cb11a97e718c70f5c702b452d",
-      "names": [
-        "packages/experimental/graph-contract/src/types.ts#GraphPlan"
-      ],
-      "sources": [
-        "packages/experimental/graph-contract/src/types.ts:97"
-      ]
-    },
-    {
       "digest": "63ddb9cc5ecf6af9e6e20a79ecbb7a13e866d88f105365d88f745b5f0e2539dc",
       "names": [
         "packages/llm/llm/src/message.ts#MessageSource"
@@ -27279,6 +27862,20 @@
       "sources": [
         "packages/llm/llm/src/message.ts:136"
       ]
+    },
+    {
+      "digest": "63e0b5f26a49378ac2c875fa82188a7f332453b974a29a4262262388de8f7bc2",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphNodeStatus"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:246"
+      ]
+    },
+    {
+      "digest": "63fbb90030dcb56f84b29e6fd2cd24aa85d98d825be06973d00fa4fc2fcafb68",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "641c5917a4504be74dd8eeef9ad324c83daa7ac76d2c429b5c64b03412d39dad",
@@ -27292,6 +27889,15 @@
       ],
       "sources": [
         "packages/subagent/subagent/src/descriptor.ts:72"
+      ]
+    },
+    {
+      "digest": "651df47acd0cd43209bb5054c2ffe761c0c3d486a9c46008ff3cdf614a9f810f",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphRecoveryState"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:262"
       ]
     },
     {
@@ -27397,6 +28003,25 @@
       ]
     },
     {
+      "digest": "6978d6f67d2284814bec59d0132228fd4ae125136bb1b34738b5d682df691b54",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "6990c6c961f62894a9547d937ef2e66f8a498c953bd8b68593b529a1f2ef9af4",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphPlan"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:100"
+      ]
+    },
+    {
+      "digest": "699e1f9dbe6bdbf0bb41c3669d7b8dfc22965481829c7580266afe88e65c20b1",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "69d238a6e9b08d67f601b1825962963d8d3523cb69ebf6208c697dc5d058c199",
       "names": [],
       "sources": []
@@ -27474,7 +28099,17 @@
       "sources": []
     },
     {
+      "digest": "6d27af626def7a874a97e4f750bbd96d015195fd1a8472286d10095c77e16803",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "6d383b9378d8cdf9e590acf864df8d9c26b4e6f385c30a67c8ba71f11e7352bd",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "6d9aca2ef9d3a31ee9655183ed486ce1848d11d965c9324dc38870b442e87278",
       "names": [],
       "sources": []
     },
@@ -27545,6 +28180,11 @@
     },
     {
       "digest": "70b082fe78991edf13cf66e1b4d06cd2dcff9cacfd76f8cfb996bfb61939e7b2",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "717a338750fb12982bff36b8709585773b9ce662bc021add470160202836fee6",
       "names": [],
       "sources": []
     },
@@ -27648,7 +28288,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphNodeBudget"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:43"
+        "packages/experimental/graph-contract/src/types.ts:44"
       ]
     },
     {
@@ -27669,9 +28309,11 @@
     {
       "digest": "78caa9fce210201f30310488a3ea3594fce6179c0ea9605b295b7a1bdbead80d",
       "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphNodeCheck",
         "packages/experimental/verifier-gate/src/types.ts#VerdictCheck"
       ],
       "sources": [
+        "packages/experimental/graph-contract/src/types.ts:268",
         "packages/experimental/verifier-gate/src/types.ts:10"
       ]
     },
@@ -27780,6 +28422,11 @@
       "sources": []
     },
     {
+      "digest": "7f0772be276e64d5f271b94eea7731501bbbf25c693e954f66546a672a3cae05",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "7f13860ee89a2d35ce09f958e85a04566cd59cb1de1d73a9619a9b631961dc71",
       "names": [],
       "sources": []
@@ -27873,6 +28520,11 @@
       ]
     },
     {
+      "digest": "831e16f193f276537679f5281a25c025ba04e387a5ef15e25e526e6c403da73f",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "8338ee303e2bd448e9e6144069942f63e3cfd5868962bddc9347d7009e8919d6",
       "names": [],
       "sources": []
@@ -27885,11 +28537,6 @@
       "sources": [
         "packages/core/tools/src/json-schema.ts:59"
       ]
-    },
-    {
-      "digest": "83b2d5a0d4e2d3674319b473614ede6d8bb9929cdb25fdb6e1db982fefb6fdb8",
-      "names": [],
-      "sources": []
     },
     {
       "digest": "83d6916021eede8f2d83a1872716caa1efdec39a3681890996c55147187fdd12",
@@ -28002,6 +28649,11 @@
       "sources": []
     },
     {
+      "digest": "87484238fd7ada07df02bad82b6bf9d4536fdad265009f6fd310c95ec6923d6a",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "87b1a33564b9a4d63b00988a524c12259243953aebb9c9a05127d87b27464df9",
       "names": [],
       "sources": []
@@ -28034,6 +28686,11 @@
       "sources": [
         "packages/interaction/permission-presets/src/index.ts:59"
       ]
+    },
+    {
+      "digest": "8acdf26cf4112e21e41c4f2490491b49685b2a56e4cf80b4a39bd5ff57660046",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "8ad45ad053b4d89f8865c17cc9ff3b8748e86045f3f0fb816269a34af2619141",
@@ -28137,7 +28794,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphInputBinding"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:31"
+        "packages/experimental/graph-contract/src/types.ts:32"
       ]
     },
     {
@@ -28170,6 +28827,11 @@
       "sources": [
         "packages/interaction/user-approval/src/types.ts:32"
       ]
+    },
+    {
+      "digest": "9329b7b5501f0b1bbdcdad3a6336ef793645c823d0b5c12727b216998d7eb6ea",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "9334b8cb1fc7edb2d81b6e27777b124486966336aa89d714d4ca35bc9b49734c",
@@ -28223,7 +28885,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphEdgeRelation"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:25"
+        "packages/experimental/graph-contract/src/types.ts:26"
       ]
     },
     {
@@ -28232,6 +28894,11 @@
       "sources": [
         "packages/llm/llm/src/types.ts:454"
       ]
+    },
+    {
+      "digest": "9595d814804ea23b6443e4f6af4bfd3d88a715339df027f2ccd9b9c8a9ff842a",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "95c0e88fcf0bafb2087f912ad9e2369de6ae6530cc0c4c2772c96205b57f7f60",
@@ -28464,11 +29131,6 @@
     },
     {
       "digest": "a2066bd52f61218ba15b758def2641cc6a8bd3d4a594a488ee4c65be356d7e39",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "a22510249d0295211d6e1e495b6ad08be111e4f56feb38d5516127e3523a7aa5",
       "names": [],
       "sources": []
     },
@@ -28949,6 +29611,15 @@
       "sources": []
     },
     {
+      "digest": "b7819c1cde4d7eab2f05e0bf96ca2814e55df513135f629bb4e036ea53c60326",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphRunRecord"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:316"
+      ]
+    },
+    {
       "digest": "b79641a9d25e756636dc0c706fdf3c4583ccb7d4920e009e6e86c0759cf4de4c",
       "names": [],
       "sources": []
@@ -29014,7 +29685,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphLevel"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:19"
+        "packages/experimental/graph-contract/src/types.ts:20"
       ]
     },
     {
@@ -29155,6 +29826,15 @@
       "sources": []
     },
     {
+      "digest": "c2dbbd59f321169e709afdce42af893473878715b6538e1c79ae552bf02cd5ac",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphRoute"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:122"
+      ]
+    },
+    {
       "digest": "c2deb7c9183735d4e0fffddf5c623f4e34daa1c8e96b111982e957dfcbbcf896",
       "names": [
         "packages/workflow/workflow/src/types.ts#WorkflowAgentOutcome"
@@ -29162,6 +29842,11 @@
       "sources": [
         "packages/workflow/workflow/src/types.ts:110"
       ]
+    },
+    {
+      "digest": "c33835f468bb82ab8126fcce83ab4ab8c30a59b5487b8d187d21911bdb19612a",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "c43b119ce579b3e9983a0d3adc4ba402ebb9ba773d89738a2dab01ecf5813943",
@@ -29198,6 +29883,11 @@
       "sources": [
         "packages/util/values/src/index.ts:4"
       ]
+    },
+    {
+      "digest": "c6e4fa548c431804f6adebfaed3e343205c813699d2a191f990a7b1133e8c5ba",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "c748fb42c80a120038a8c587af80ec39924803c401364db11c8974d5bf6d0262",
@@ -29254,6 +29944,11 @@
       "sources": []
     },
     {
+      "digest": "cc6686b2bcaffeee039baf30ed02400b27c04e6de10a607eddd19f21383d7b33",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "cd186c309e2bef305705e1d324139240f5e681f4f6a957d6a25b0225f65560df",
       "names": [],
       "sources": []
@@ -29282,6 +29977,11 @@
     },
     {
       "digest": "cdf7588c58ac05454dff9778f8bdbef1fe8e89aab0e103a4cdf710708ddead18",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "ceb8e2992b1c782bbe8fce50e6474daeab5418607df876f56b2dd7a776ffebde",
       "names": [],
       "sources": []
     },
@@ -29315,13 +30015,9 @@
       "sources": []
     },
     {
-      "digest": "d3f9b427fb28eee8a53ff06426affed58be3b5d595c85293fd7bc68d40dc7ede",
-      "names": [
-        "packages/experimental/graph-contract/src/types.ts#GraphNode"
-      ],
-      "sources": [
-        "packages/experimental/graph-contract/src/types.ts:53"
-      ]
+      "digest": "d3c0b323291b3fd396ec50af064f84f347b7d5df62fbec370268a744b856fc4e",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "d4b739491689cc6bb13d07ffac1a32239875abda364c0d5edd8f74faf5e9c00d",
@@ -29467,6 +30163,11 @@
       "sources": []
     },
     {
+      "digest": "df382ace4ed8b36ac6428cefebdddefaa7d10d61b7bc0c97d863c9c54514c619",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "df5d9709b7db2a72510dc52052a23f0c38f39730af1504bab8bccabc14fae528",
       "names": [],
       "sources": []
@@ -29499,6 +30200,20 @@
       "digest": "e0a787e6ec76c7c94fecbc501b489164ab0293db05bc947914077ad01e674f05",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "e138e7e45656af8ee2f6574258dad56f451a4273929eaf06444b9a3b6989a853",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "e16644febf3acf3cd195e8f4f9d9b72148e1c446d273f7148954ebe211d7ceb9",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphPlanRecord"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:187"
+      ]
     },
     {
       "digest": "e2ad8f5bcd813f268ffef1b10a12d7ddd2b8ced8b9b6d0275b3f6b7ed094a187",
@@ -29579,6 +30294,11 @@
       ]
     },
     {
+      "digest": "e5cc07714bb14f73dd4a80e65ef59d458741ac4270c8a4850a0d53bf044d6874",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "e5d3828df1ec3e2a66879de0659e0f4866d9cfffc00825ee731a66f8a0c03d98",
       "names": [],
       "sources": []
@@ -29635,6 +30355,11 @@
       "sources": []
     },
     {
+      "digest": "e86e41494594a9165b16a82bca59468f1e72b9f3da4d4b9f2ce0c8bee31d76d7",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "e89cecac0598d5d6db4952c811e342d257a8ea782fab373130bcf53a4bf060c0",
       "names": [],
       "sources": []
@@ -29660,6 +30385,20 @@
       "sources": [
         "packages/experimental/agent-team/src/types.ts:236"
       ]
+    },
+    {
+      "digest": "ea16f7fe277f3482be85e76c1b994d873a8c77bcc1fe442dabda55f9c6a47701",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphNodeRecord"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:280"
+      ]
+    },
+    {
+      "digest": "ea8ce0ec64f1787c15e7fe5afccb59e9a81131cf66a4fc2e146b5498c2123162",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "eaa71be0fbf0f702df8ea6c11d0aa2f9782263d45a10d0fb14eda662f4bfe04c",
@@ -29811,6 +30550,11 @@
       "sources": []
     },
     {
+      "digest": "f2a1ae539a1818fffb8bc200981b45f96c81854224ede7195aa73d94698d8baf",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "f2abe51d974abfb1a64bd4bd2d4300384045c33265d468eb67b11e61ecf31e7f",
       "names": [],
       "sources": []
@@ -29850,6 +30594,11 @@
     },
     {
       "digest": "f4a66f654996c093aae700ea4c434ff2ee3569fea9c0e5813ccf6afdccabd163",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "f538b5735e665c85782e580c8ca557b51ffb7f4deb80e9f26b01d3c4848d4289",
       "names": [],
       "sources": []
     },
@@ -30028,6 +30777,15 @@
       "sources": []
     },
     {
+      "digest": "fd970cc36ca020cebdb8dabbde45f821782d204f03f7ffff109be3c47c30bb44",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphNode"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:54"
+      ]
+    },
+    {
       "digest": "fe1a7acdeed4d0f5ab483396eaa5b3dc97263b7c10eb4da2f0028cb01728bfc9",
       "names": [],
       "sources": []
@@ -30067,7 +30825,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphRejectionCode"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:119"
+        "packages/experimental/graph-contract/src/types.ts:134"
       ]
     }
   ]

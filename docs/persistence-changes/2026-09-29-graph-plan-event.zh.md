@@ -9,7 +9,7 @@ kind: persistence-change
 
 ## 概述
 
-新增仅记录日志的 graph/plan 会话事件，由 @deepseek-ai/dsh-experimental-graph-contract 在每次输入带有可读计划 id 的 graph_audit 调用时写入。
+新增仅记录日志的 graph/plan 会话事件，由 @deepseek-ai/dsh-experimental-graph-contract 在每次输入带有可读计划 id 的 graph_audit 调用时写入，并带有计划所用类别的可选 routes 与每个计划节点的可选 category。
 
 ## 目录
 
@@ -28,19 +28,19 @@ baseline: false
 changes:
   - root: "event:graph/plan"
     previous: null
-    after: "a22510249d0295211d6e1e495b6ad08be111e4f56feb38d5516127e3523a7aa5"
+    after: "831e16f193f276537679f5281a25c025ba04e387a5ef15e25e526e6c403da73f"
     decision: same-version
 ```
 
 <a id="compatibility"></a>
 ## 兼容性
 
-这是没有前身的新普通事件类型，现有日志和读取方不受影响。它像 loop/verdict 一样在 SessionEventMap 中声明为读取时必需，从不进入模型请求或派生历史，只有 graphPlans 与 graph 投影读取它。模型可见的审计文本属于普通 tool/result 内容。
+这是没有前身的新普通事件类型，现有日志和读取方不受影响。它像 loop/verdict 一样在 SessionEventMap 中声明为读取时必需，从不进入模型请求或派生历史，只有 graphPlans 与 graph 投影、graph 运行器以及不变量伴随插件读取它。模型可见的审计文本属于普通 tool/result 内容。graph 运行器只从该记录读取节点路由，因此每个节点子代理的模型路由都能从日志重建。
 
 <a id="verification"></a>
 ## 验证
 
-pnpm exec vitest run packages/experimental/graph-contract packages/experimental/graph-projection：7 个测试文件，103 个测试通过。
+pnpm exec vitest run packages/experimental/graph-contract packages/experimental/graph-projection packages/experimental/graph-runner：13 个测试文件，177 个测试通过。
 
 <a id="dev-note"></a>
 ## 开发备注

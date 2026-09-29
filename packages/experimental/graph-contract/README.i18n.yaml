@@ -9,8 +9,8 @@
   en: d8a1ee5885811890
   zh: 283ff0a285989b04
 /deepseek-ai-dsh-experimental-graph-contract/summary:
-  en: a52364038e0449b8
-  zh: 16acf6ffdf63d3c5
+  en: 4845b8d340b93d50
+  zh: a880c0959821aef6
 /deepseek-ai-dsh-experimental-graph-contract/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
@@ -21,23 +21,23 @@
   en: 8bb8b847fa0aae9f
   zh: df6b947e3f610c8c
 /deepseek-ai-dsh-experimental-graph-contract/use-this-package/minimal-configuration:
-  en: 294f4f06a88d9d37
-  zh: 9c6a9d430c43a3d0
+  en: 059a65a0e846a412
+  zh: 3acc3cf3666a7e88
 /deepseek-ai-dsh-experimental-graph-contract/use-this-package/what-you-get:
-  en: 076f782d4489efba
-  zh: acea489659e15828
+  en: 24f29dde80438a9a
+  zh: cc09768ae34c7e5a
 /deepseek-ai-dsh-experimental-graph-contract/understand-the-implementation:
   en: ebadd59ad8122ae2
   zh: b0d08fbae2455196
 /deepseek-ai-dsh-experimental-graph-contract/understand-the-implementation/design-notes:
-  en: d56e62519636f9b0
-  zh: 0a347140e817c9af
+  en: 71bd8206d1477aba
+  zh: 923f97ffc4efdacb
 /deepseek-ai-dsh-experimental-graph-contract/understand-the-implementation/source-map:
-  en: bb3aa728ab291b61
-  zh: 5b6e4ca772b17693
+  en: f74925530a0af0a2
+  zh: ee5f763fea950972
 /deepseek-ai-dsh-experimental-graph-contract/further-exploration:
-  en: 0b291f0dae75e975
-  zh: bcf310ade4769584
+  en: 87e634e9b287b522
+  zh: 01e513474fe315fd
 /deepseek-ai-dsh-experimental-graph-contract/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -71,9 +71,24 @@
 /deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-result/kv-cache-effect:
   en: 97d5c01ac4c08a2c
   zh: 5108448b962e2d48
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-capabilities-tool:
+  en: 1d2d5d4f6ed354df
+  zh: dd7a4170586a8d0c
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-capabilities-tool/what-the-model-sees:
+  en: 32a0fc7138eef9e5
+  zh: 25b970ee26c874ab
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-capabilities-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-capabilities-tool/token-effect:
+  en: 814779d4b1beb96e
+  zh: 72da758c72a3163a
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-capabilities-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: e7a86dc3c68f1ba2
 /deepseek-ai-dsh-experimental-graph-contract/known-limitations-and-deferred-work:
-  en: ae689234b99d10ec
-  zh: 4483673c1bc8bb94
+  en: aff54e8eca579e34
+  zh: b1377351c09d870b
 /deepseek-ai-dsh-experimental-graph-contract/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 9c6918ce849f6c93

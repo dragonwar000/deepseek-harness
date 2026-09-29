@@ -1,75 +1,165 @@
 import { describe, expect, it } from 'vitest'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import { graphPlanId, parsePlan } from '@deepseek-ai/dsh-experimental-graph-contract'
-import type { GraphPlan, GraphPlanRecord } from '@deepseek-ai/dsh-experimental-graph-contract'
+import { graphNodeId, graphPlanId, graphRunId, nodeFingerprints, parsePlan } from '@deepseek-ai/dsh-experimental-graph-contract'
+import type { GraphNodeRecord, GraphPlan, GraphPlanRecord, GraphRunRecord } from '@deepseek-ai/dsh-experimental-graph-contract'
 import { applyGraphEvent, emptyGraph, graphProjection, taskOf } from '../src/projection.ts'
 import type { GraphState } from '../src/types.ts'
 
-function plan(id = 'ship', extra: string[] = []): GraphPlan {
+const VERDICT = { type: 'object', properties: { verdict: { type: 'string', enum: ['pass', 'fail'] } }, required: ['verdict'], additionalProperties: false }
+
+function plan(build = 'Build it', extraNeeds: string[] = []): GraphPlan {
   const parsed = parsePlan({
-    format: 'dsh-graph/v1', id, level: 'L1', goal: 'Two steps',
+    format: 'dsh-graph/v1', id: 'ship', level: 'L2', goal: 'Ship',
     nodes: [
-      { id: 'first', kind: 'execution', instruction: 'First' },
-      { id: 'second', kind: 'execution', instruction: 'Second', needs: ['first', ...extra] },
+      { id: 'build', kind: 'execution', instruction: build },
+      { id: 'check', kind: 'verification', instruction: 'Check it', needs: ['build', ...extraNeeds], contextScope: 'fresh-independent', output: VERDICT },
     ],
-    edges: [{ from: 'first', to: 'second', relation: 'hands_off', artifact: 'summary' }],
-    deliverable: 'Done', acceptance: ['done'],
+    edges: [{ from: 'build', to: 'check', relation: 'verifies', artifact: 'src/' }],
+    deliverable: 'Shipped', acceptance: ['tests pass'],
   })
   if (!parsed.ok) throw new Error('fixture plan must parse')
   return parsed.plan
 }
 
-const record = (version: number, overrides: Partial<GraphPlanRecord> = {}): GraphPlanRecord => ({
-  planId: graphPlanId('ship'), version, sha: 'c'.repeat(64), mode: 'enforce', admitted: true, plan: plan(), rejections: [], ...overrides,
+const planRecord = (version: number, graph: GraphPlan = plan(), overrides: Partial<GraphPlanRecord> = {}): GraphPlanRecord => ({
+  planId: graphPlanId('ship'), version, sha: 'e'.repeat(64), mode: 'enforce', admitted: true, plan: graph, rejections: [], ...overrides,
 })
 
-function fold(records: GraphPlanRecord[]): GraphState {
+function nodeRecord(
+  graph: GraphPlan,
+  version: number,
+  node: string,
+  revision: number,
+  overrides: Partial<GraphNodeRecord>,
+): GraphNodeRecord {
+  return {
+    runId: graphRunId('r1'), planId: graphPlanId('ship'), version, nodeId: graphNodeId(node), status: 'running',
+    recoveryState: 'pristine', attempt: 1, revision, fingerprint: nodeFingerprints(graph).get(graphNodeId(node)) ?? '0'.repeat(64), ...overrides,
+  }
+}
+
+const runRecord = (phase: 'start' | 'stop', overrides: Partial<GraphRunRecord> = {}): GraphRunRecord => ({
+  runId: graphRunId('r1'), planId: graphPlanId('ship'), version: 1, phase, mode: 'enforce', ...overrides,
+})
+
+type Entry = ['graph/plan', GraphPlanRecord] | ['graph/node', GraphNodeRecord] | ['graph/run', GraphRunRecord]
+
+function fold(entries: Entry[]): GraphState {
   const session = Session.create(SessionId('graph'))
   let state = emptyGraph()
-  for (const entry of records) state = applyGraphEvent(state, session.append('graph/plan', entry))
+  for (const entry of entries) {
+    const event = entry[0] === 'graph/plan' ? session.append('graph/plan', entry[1])
+      : entry[0] === 'graph/node' ? session.append('graph/node', entry[1])
+        : session.append('graph/run', entry[1])
+    state = applyGraphEvent(state, event)
+  }
   return state
 }
 
-describe('graph projection', () => {
-  it('declares a versioned host-only unit', () => {
-    expect(graphProjection).toMatchObject({ key: 'graph', stateVersion: 1 })
+describe('graph projection v2', () => {
+  it('declares state version 2', () => {
+    expect(graphProjection).toMatchObject({ key: 'graph', stateVersion: 2 })
     expect(graphProjection.init()).toEqual({ graphs: [] })
   })
 
-  it('builds the task graph of the admitted version with derived status and waves', () => {
-    const task = taskOf(fold([record(1)]), graphPlanId('ship'))
-    expect(task).toEqual({
-      planId: 'ship',
+  it('starts an admitted version with pristine pending nodes and derives readiness', () => {
+    const task = taskOf(fold([['graph/plan', planRecord(1)]]), graphPlanId('ship'))
+    expect(task?.nodes.map(node => [node.id, node.status, node.attempt, node.revision])).toEqual([['build', 'ready', 0, 0], ['check', 'pending', 0, 0]])
+    expect(task?.carry).toBeNull()
+    expect(task?.runs).toEqual([])
+  })
+
+  it('folds node changes, re-derives readiness across a verifies edge, and records runs', () => {
+    const graph = plan()
+    const state = fold([
+      ['graph/plan', planRecord(1, graph)],
+      ['graph/run', runRecord('start')],
+      ['graph/node', nodeRecord(graph, 1, 'build', 1, { status: 'running' })],
+      ['graph/node', nodeRecord(graph, 1, 'build', 2, { status: 'unverified', basis: 'agentReported', output: { summary: 'x' }, childSession: SessionId('child-1'), detail: 'done' })],
+      ['graph/run', runRecord('stop', { stopReason: 'NO_FURTHER_WORK' })],
+    ])
+    const task = taskOf(state, graphPlanId('ship'))
+    expect(task?.nodes[0]).toMatchObject({ status: 'unverified', basis: 'agentReported', output: { summary: 'x' }, childSession: 'child-1', attempt: 1, revision: 2 })
+    expect(task?.nodes[1]?.status).toBe('ready')
+    expect(task?.runs).toEqual([{ runId: 'r1', stopReason: 'NO_FURTHER_WORK' }])
+  })
+
+  it('carries executed nodes of the replaced version with their fingerprints', () => {
+    const first = plan()
+    const second = plan('Build it again')
+    const state = fold([
+      ['graph/plan', planRecord(1, first)],
+      ['graph/node', nodeRecord(first, 1, 'build', 1, { status: 'running' })],
+      ['graph/node', nodeRecord(first, 1, 'build', 2, { status: 'executed', basis: 'predicate', output: { summary: 'x' } })],
+      ['graph/node', nodeRecord(first, 1, 'check', 1, { status: 'running' })],
+      ['graph/node', nodeRecord(first, 1, 'check', 2, { status: 'executed', basis: 'verifier' })],
+      ['graph/plan', planRecord(2, second)],
+    ])
+    const task = taskOf(state, graphPlanId('ship'))
+    expect(task?.version).toBe(2)
+    expect(task?.carry).toEqual({
       version: 1,
-      waves: [['first'], ['second']],
       nodes: [
-        { id: 'first', kind: 'execution', needs: [], status: 'ready' },
-        { id: 'second', kind: 'execution', needs: ['first'], status: 'pending' },
+        { nodeId: 'build', fingerprint: nodeFingerprints(first).get(graphNodeId('build')), basis: 'predicate', output: { summary: 'x' } },
+        { nodeId: 'check', fingerprint: nodeFingerprints(first).get(graphNodeId('check')), basis: 'verifier' },
       ],
     })
   })
 
-  it('ignores refused and unparsed versions and replaces the graph on a later admission', () => {
+  it('keeps other plans and runs apart and carries only executed nodes', () => {
+    const graph = plan()
+    const docs = { ...plan(), id: graphPlanId('docs') }
     const state = fold([
-      record(1),
-      record(2, { admitted: false, rejections: [{ check: 'structure', code: 'CYCLE', severity: 'reject', subject: 'x', detail: 'x', remedy: 'x' }] }),
-      record(3, { plan: null, admitted: false, rejections: [{ check: 'schema', code: 'SCHEMA_INVALID', severity: 'reject', subject: 'plan', detail: 'x', remedy: 'x' }] }),
-      record(4, { planId: graphPlanId('docs'), plan: plan('docs') }),
-      record(5),
+      ['graph/plan', planRecord(1, graph)],
+      ['graph/plan', planRecord(1, docs, { planId: graphPlanId('docs') })],
+      ['graph/run', runRecord('start')],
+      ['graph/run', runRecord('start', { runId: graphRunId('r2') })],
+      ['graph/run', runRecord('stop', { runId: graphRunId('r2'), stopReason: 'BUDGET' })],
+      ['graph/node', nodeRecord(graph, 1, 'build', 1, { status: 'running' })],
+      ['graph/node', nodeRecord(graph, 1, 'build', 2, { status: 'executed', basis: 'predicate' })],
+      ['graph/plan', planRecord(2, plan('Build it again'))],
     ])
-    expect(state.graphs.map(task => [task.planId, task.version])).toEqual([['docs', 4], ['ship', 5]])
-    expect(taskOf(state, graphPlanId('none'))).toBeUndefined()
+    expect(taskOf(state, graphPlanId('docs'))?.nodes[0]?.status).toBe('ready')
+    const task = taskOf(state, graphPlanId('ship'))
+    expect(task?.carry).toEqual({ version: 1, nodes: [{ nodeId: 'build', fingerprint: nodeFingerprints(graph).get(graphNodeId('build')), basis: 'predicate' }] })
+    const before = taskOf(fold([
+      ['graph/plan', planRecord(1, graph)],
+      ['graph/run', runRecord('start')],
+      ['graph/run', runRecord('start', { runId: graphRunId('r2') })],
+      ['graph/run', runRecord('stop', { runId: graphRunId('r2'), stopReason: 'BUDGET' })],
+    ]), graphPlanId('ship'))
+    expect(before?.runs).toEqual([{ runId: 'r1' }, { runId: 'r2', stopReason: 'BUDGET' }])
   })
 
-  it('keeps a shadow-admitted plan whose needs cannot all be placed out of the waves', () => {
-    const state = fold([record(1, { mode: 'shadow', plan: plan('ship', ['ghost']) })])
-    expect(taskOf(state, graphPlanId('ship'))?.waves).toEqual([['first']])
+  it('gives a node that cannot be ordered an empty fingerprint and ignores refused versions', () => {
+    const state = fold([
+      ['graph/plan', planRecord(1, plan('Build it', ['ghost']), { mode: 'shadow' })],
+      ['graph/plan', planRecord(2, plan(), { admitted: false })],
+    ])
+    const task = taskOf(state, graphPlanId('ship'))
+    expect(task?.version).toBe(1)
+    expect(task?.nodes[1]?.fingerprint).toBe('')
   })
 
-  it('fails terminally on an undecodable payload and returns the same state for other events', () => {
-    const broken = fold([record(1, { sha: 'nope' }), record(2)])
-    expect(broken.failure).toMatch(/does not decode/)
-    expect(broken.graphs).toEqual([])
+  it.each<[string, Entry[], RegExp]>([
+    ['a node record for a version that is not the task', [['graph/plan', planRecord(1)], ['graph/node', nodeRecord(plan(), 2, 'build', 1, {})]], /has no admitted task/],
+    ['a node record for an unknown node', [['graph/plan', planRecord(1)], ['graph/node', nodeRecord(plan(), 1, 'ghost', 1, {})]], /unknown node ghost/],
+    ['a run stop without a start', [['graph/plan', planRecord(1)], ['graph/run', runRecord('stop', { stopReason: 'GOAL_MET' })]], /no started run/],
+    ['a run for a plan without a task', [['graph/run', runRecord('start')]], /has no admitted task/],
+    ['an undecodable plan record', [['graph/plan', planRecord(1, plan(), { sha: 'x' })]], /does not decode/],
+    ['an undecodable node record', [['graph/plan', planRecord(1)], ['graph/node', nodeRecord(plan(), 1, 'build', 1, { fingerprint: 'x' })]], /does not decode/],
+    ['an undecodable run record', [['graph/plan', planRecord(1)], ['graph/run', runRecord('start', { version: 0 })]], /does not decode/],
+  ])('fails terminally on %s', (_label, entries, message) => {
+    const state = fold([...entries, ['graph/plan', planRecord(9)]])
+    expect(state.failure).toMatch(message)
+  })
+
+  it('keeps a stop recorded without a reason', () => {
+    const state = fold([['graph/plan', planRecord(1)], ['graph/run', runRecord('start')], ['graph/run', runRecord('stop')]])
+    expect(taskOf(state, graphPlanId('ship'))?.runs).toEqual([{ runId: 'r1' }])
+  })
+
+  it('returns the same state for other events', () => {
     const session = Session.create(SessionId('other'))
     const state = emptyGraph()
     expect(applyGraphEvent(state, session.append('turn/start', { turn: 1 }))).toBe(state)

@@ -6,7 +6,7 @@
       "kind": "event",
       "event": "graph/plan",
       "surface": false,
-      "digest": "a22510249d0295211d6e1e495b6ad08be111e4f56feb38d5516127e3523a7aa5",
+      "digest": "831e16f193f276537679f5281a25c025ba04e387a5ef15e25e526e6c403da73f",
       "schema": {
         "root": 0,
         "nodes": [
@@ -20,7 +20,7 @@
               },
               {
                 "name": "ignorable",
-                "type": 96,
+                "type": 101,
                 "optional": true
               },
               {
@@ -35,7 +35,7 @@
               },
               {
                 "name": "type",
-                "type": 97,
+                "type": 102,
                 "optional": false
               }
             ],
@@ -72,6 +72,11 @@
               {
                 "name": "repeatOf",
                 "type": 27,
+                "optional": true
+              },
+              {
+                "name": "routes",
+                "type": 96,
                 "optional": true
               },
               {
@@ -256,15 +261,15 @@
           },
           {
             "kind": "literal",
-            "value": "L2"
-          },
-          {
-            "kind": "literal",
             "value": "L3"
           },
           {
             "kind": "literal",
             "value": "L1"
+          },
+          {
+            "kind": "literal",
+            "value": "L2"
           },
           {
             "kind": "array",
@@ -277,6 +282,11 @@
                 "name": "budget",
                 "type": 26,
                 "optional": false
+              },
+              {
+                "name": "category",
+                "type": 9,
+                "optional": true
               },
               {
                 "name": "contextScope",
@@ -810,6 +820,18 @@
           },
           {
             "kind": "literal",
+            "value": "SCHEMA_INVALID"
+          },
+          {
+            "kind": "literal",
+            "value": "SYNTHESIS_BEFORE_VERIFY"
+          },
+          {
+            "kind": "literal",
+            "value": "VERDICT_UNDECLARED"
+          },
+          {
+            "kind": "literal",
             "value": "BUDGET_EXCEEDED"
           },
           {
@@ -822,15 +844,7 @@
           },
           {
             "kind": "literal",
-            "value": "LINEAR_PLAN"
-          },
-          {
-            "kind": "literal",
             "value": "CAPABILITY_UNVERIFIED"
-          },
-          {
-            "kind": "literal",
-            "value": "MISSING_ANCHOR"
           },
           {
             "kind": "literal",
@@ -838,7 +852,7 @@
           },
           {
             "kind": "literal",
-            "value": "MISSING_HUMAN_GATE"
+            "value": "LINEAR_PLAN"
           },
           {
             "kind": "literal",
@@ -846,11 +860,7 @@
           },
           {
             "kind": "literal",
-            "value": "MISSING_STOP_HANDOFF"
-          },
-          {
-            "kind": "literal",
-            "value": "NOT_CONSUMED"
+            "value": "MISSING_ANCHOR"
           },
           {
             "kind": "literal",
@@ -858,11 +868,7 @@
           },
           {
             "kind": "literal",
-            "value": "ACCEPTANCE_CHANGED"
-          },
-          {
-            "kind": "literal",
-            "value": "SCHEMA_INVALID"
+            "value": "MISSING_HUMAN_GATE"
           },
           {
             "kind": "literal",
@@ -870,15 +876,19 @@
           },
           {
             "kind": "literal",
-            "value": "SYNTHESIS_BEFORE_VERIFY"
+            "value": "MISSING_STOP_HANDOFF"
           },
           {
             "kind": "literal",
-            "value": "VERDICT_UNDECLARED"
+            "value": "ACCEPTANCE_CHANGED"
           },
           {
             "kind": "literal",
             "value": "ISOLATED_NODE"
+          },
+          {
+            "kind": "literal",
+            "value": "NOT_CONSUMED"
           },
           {
             "kind": "union",
@@ -894,6 +904,51 @@
           {
             "kind": "literal",
             "value": "warn"
+          },
+          {
+            "kind": "array",
+            "element": 97
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "category",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "model",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "provider",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "reliability",
+                "type": 98,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              99,
+              100
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "unverified"
+          },
+          {
+            "kind": "literal",
+            "value": "verified"
           },
           {
             "kind": "literal",

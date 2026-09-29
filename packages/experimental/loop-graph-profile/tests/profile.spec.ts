@@ -1,6 +1,6 @@
 /**
  * The loop guards bundle must carry one parseable layer that leaves repeat-tool-reminder running and starts every
- * guard and the graph contract in shadow mode.
+ * guard, the graph contract, and the graph runner in shadow mode.
  */
 
 import { readFileSync } from 'node:fs'
@@ -11,6 +11,7 @@ import * as yaml from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import { Config as DenialBudgetConfig } from '@deepseek-ai/dsh-experimental-denial-budget'
 import { Config as GraphContractConfig } from '@deepseek-ai/dsh-experimental-graph-contract'
+import { Config as GraphRunnerConfig } from '@deepseek-ai/dsh-experimental-graph-runner'
 import { Config as LoopBudgetConfig } from '@deepseek-ai/dsh-experimental-loop-budget'
 import { Config as StationarityConfig } from '@deepseek-ai/dsh-experimental-stationarity-guard'
 import { Config as VerifierGateConfig } from '@deepseek-ai/dsh-experimental-verifier-gate'
@@ -29,6 +30,7 @@ const GUARD_SCHEMAS: Record<string, (config: Record<string, unknown> | undefined
   'denial-budget': config => DenialBudgetConfig(config),
   'loop-budget': config => LoopBudgetConfig(config),
   'graph-contract': config => GraphContractConfig(config),
+  'graph-runner': config => GraphRunnerConfig(config),
 }
 
 describe('loop guards bundle', () => {
@@ -45,6 +47,7 @@ describe('loop guards bundle', () => {
       '@deepseek-ai/dsh-experimental-denial-budget': 'workspace:*',
       '@deepseek-ai/dsh-experimental-graph-contract': 'workspace:*',
       '@deepseek-ai/dsh-experimental-graph-projection': 'workspace:*',
+      '@deepseek-ai/dsh-experimental-graph-runner': 'workspace:*',
       '@deepseek-ai/dsh-experimental-infra-snapshot': 'workspace:*',
       '@deepseek-ai/dsh-experimental-loop-budget': 'workspace:*',
       '@deepseek-ai/dsh-experimental-stationarity-guard': 'workspace:*',
@@ -57,7 +60,7 @@ describe('loop guards bundle', () => {
   })
 
   it('inserts the rows in listener order with verifier-gate before loop-budget', () => {
-    expect(inserted.map(row => row.id)).toEqual(['infra-snapshot', 'verifier-gate', 'stationarity-guard', 'denial-budget', 'loop-budget', 'graph-contract', 'graph-projection'])
+    expect(inserted.map(row => row.id)).toEqual(['infra-snapshot', 'verifier-gate', 'stationarity-guard', 'denial-budget', 'loop-budget', 'graph-contract', 'graph-projection', 'graph-runner'])
   })
 
   it.each(Object.keys(GUARD_SCHEMAS))('starts %s in shadow mode with a valid config and an assumption', (id) => {
@@ -81,6 +84,11 @@ describe('loop guards bundle', () => {
   it('mounts the graph projection without config', () => {
     const row = inserted.find(entry => entry.id === 'graph-projection')
     expect(row).toEqual({ id: 'graph-projection', name: '@deepseek-ai/dsh-experimental-graph-projection' })
+  })
+
+  it('starts the graph runner on the spawn provider with no run limits', () => {
+    const row = inserted.find(entry => entry.id === 'graph-runner')
+    expect(row?.config).toMatchObject({ mode: 'shadow', provider: 'spawn', maxDispatches: 0, maxWallMs: 0 })
   })
 
   it('leaves the dsh-base compaction rows to the profile owner', () => {

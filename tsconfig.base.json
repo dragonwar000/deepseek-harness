@@ -339,6 +339,8 @@
       "@deepseek-ai/dsh-experimental-graph-contract/invariant": ["./packages/experimental/graph-contract/src/invariant.ts"],
       "@deepseek-ai/dsh-experimental-graph-projection": ["./packages/experimental/graph-projection/src"],
       "@deepseek-ai/dsh-experimental-graph-projection/types": ["./packages/experimental/graph-projection/src/types.ts"],
+      "@deepseek-ai/dsh-experimental-graph-runner": ["./packages/experimental/graph-runner/src"],
+      "@deepseek-ai/dsh-experimental-graph-runner/invariant": ["./packages/experimental/graph-runner/src/invariant.ts"],
       "@deepseek-ai/dsh-experimental-webworker-runtime": ["./packages/experimental/webworker-runtime/src"],
       "@deepseek-ai/dsh-experimental-webworker-packer": ["./packages/experimental/webworker-packer/src"],
       "@deepseek-ai/dsh-experimental-inspector": ["./packages/experimental/inspector/src"],

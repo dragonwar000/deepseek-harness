@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包定义 `dsh-graph/v1` 计划格式并注册 `graph_audit` 工具。模型以 JSON 传入一个计划；工具解析它，在不运行任何内容的情况下审计它，并返回每个发现及其固定修复方法。每次输入带有可读计划 id 的调用都会追加一个 `graph/plan` 会话事件，因此计划版本、拒绝记忆与准入都能从日志重建。在 `enforce` 模式下，只有没有严重级别为 `reject` 的发现时版本才被准入；在 `shadow` 模式下每个版本都被准入，发现仍会被报告。本包是实验性的，不承诺稳定性。
+本包定义 `dsh-graph/v1` 计划格式，并注册 `graph_audit` 与 `graph_capabilities` 工具。`graph_audit` 解析一个计划，在不运行任何内容的情况下审计它，返回每个发现及其固定修复方法，并在计划 id 可读时追加一个 `graph/plan` 事件，因此版本、拒绝记忆、准入与能力路由都能从日志重建。`enforce` 只准入没有 `reject` 发现的版本；`shadow` 准入每个版本。本包还声明 `graph/node` 与 `graph/run` 事件，以及 graph 运行器与投影共用的节点生命周期规则。本包是实验性的。
 
 ## 目录
 
@@ -39,6 +39,8 @@ kind: "package-reference"
     mode: shadow
     assumption: the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them
     allowedTools: [read, grep, edit]
+    routes:
+      - { category: coding, provider: deepseek, model: deepseek-chat }
 ```
 
 | 字段 | 默认值 | 含义 |
@@ -49,8 +51,9 @@ kind: "package-reference"
 | `runBudget.steps` | `0` | agent 节点最坏情况步数之和的上限（单次尝试预算 × (retryBudget + 1)）；`0` 表示不限 |
 | `runBudget.tokens` | `0` | token 的同类上限 |
 | `runBudget.wallMs` | `0` | 沿 needs 的最坏情况墙钟时间关键路径的上限；`0` 表示不限 |
+| `routes` | `[]` | 能力路由 `{category, provider, model, reliability}`；节点的 `category` 必须有路由。`reliability` 是部署标签，默认 `unverified` |
 
-当 `assumption` 为空白、`allowedTools` 含 `run_code`，或某个 `runBudget` 字段不是不小于 0 的整数时，加载会以 `graph-contract:` 错误失败。
+当 `assumption` 为空白、`allowedTools` 含 `run_code`，某个 `runBudget` 字段不是不小于 0 的整数、某条路由的 category、provider 或 model 为空白，或某个类别被路由两次时，加载会以 `graph-contract:` 错误失败。
 
 ### 你会得到什么
 
@@ -69,7 +72,7 @@ kind: "package-reference"
 | `MISSING_HUMAN_GATE` | `gates` | reject | L3 计划没有 `human_gate` 节点 |
 | `MISSING_STOP_HANDOFF` | `gates` | reject | L3 计划没有 `stop_handoff` 节点 |
 | `WRITE_SCOPE_OVERLAP` | `writes` | reject | 两个可在同一波次运行的节点写入前缀重叠 |
-| `CAPABILITY_UNVERIFIED` | `capability` | reject | 工具是 `run_code`、不在 `allowedTools` 中或不是已注册的全局工具；`anchor` 或 `human_gate` 节点声明了工具；或存在 agent 节点但未挂载子代理服务 |
+| `CAPABILITY_UNVERIFIED` | `capability` | reject | 工具是 `run_code`、不在 `allowedTools` 中或不是已注册的全局工具；`anchor` 或 `human_gate` 节点声明了工具或类别；agent 节点的类别没有配置路由；或存在 agent 节点但未挂载子代理服务 |
 | `BUDGET_EXCEEDED` | `budget` | reject | 设置了运行上限而某 agent 节点未声明该类预算，或最坏情况超过上限 |
 | `INPUT_MAY_BE_ABSENT` | `inputs` | reject | 输入绑定到 `mayFail: true` 的节点且未声明 `fallback` |
 | `EDGE_WITHOUT_ARTIFACT` | `structure` | reject | 某个 need 没有声明的边，或边的 artifact 为空白 |
@@ -94,6 +97,8 @@ kind: "package-reference"
 - **写入范围是路径前缀。** 它们按 Agent Teams 写入范围的方式规范化；两个节点只有在互不为对方的传递 need 时才可能共享波次，此时它们的前缀不得重叠。
 - **预算没有 USD。** `ctx.llm` 不提供价格，因此运行预算覆盖步数、token（跨尝试求和）与墙钟时间（关键路径，因为一个波次并行运行）。
 - **只支持 DAG。** 本格式版本的边不带环保护；每个环都会被拒绝。
+- **路由被记录，而不是之后再查。** 节点的 `category` 选择其子代理的提供方与模型，而模型选择会进入模型请求，因此 `graph_audit` 把已准入计划所用类别的已配置路由记录在其 `graph/plan` 记录中；graph 运行器只从该记录读取路由。`graph_capabilities` 列出已配置的路由及 `available`（调用时该模型出现在 `ctx.llm.listModels` 中）、已注册的允许工具与委派深度。路由不带价格，因为 `ctx.llm` 不提供价格。
+- **运行器词汇位于本包。** `graph/node` 与 `graph/run` 在本包中声明，连同 `NODE_TRANSITIONS`、`needSatisfied` 与 `nodeFingerprints`，使运行器与投影共用一个定义而不互相依赖。need 在它为 `executed`、带 `mayFail` 的 `failed`，或跨 `verifies` 边的 `unverified` 时被满足。节点指纹摘要节点本身及其 needs 的指纹，因此改变一个节点会改变每个依赖它的节点。
 - **输出 schema 与子代理一致。** `output` 是 `ctx.subagents.start` 接受的、以 object 为根的 JSON Schema 子集。
 - **不变量伴随插件。** `./invariant` 检查版本连续、准入与模式和发现一致、`plan: null` 带有 `SCHEMA_INVALID`，以及变更的 acceptance 带有 `ACCEPTANCE_CHANGED`。组合需把伴随插件与 `@deepseek-ai/dsh-invariants` 一起挂载。
 
@@ -101,12 +106,13 @@ kind: "package-reference"
 
 | 文件 | 作用 |
 |---|---|
-| [`src/index.ts`](src/index.ts) | 插件入口：`Config`、加载时校验、`graph_audit` 工具与结果渲染 |
-| [`src/types.ts`](src/types.ts) | 计划、发现、`graph/plan` 事件与 `graphPlans` 状态类型 |
+| [`src/index.ts`](src/index.ts) | 插件入口：`Config`、加载时校验、`graph_audit` 与 `graph_capabilities` 工具与结果渲染 |
+| [`src/types.ts`](src/types.ts) | 计划、路由、发现、`graph/plan`、`graph/node` 与 `graph/run` 事件，以及 `graphPlans` 状态类型 |
 | [`src/schema.ts`](src/schema.ts) | 模型所写计划的 zod 解析器，以及记录与状态的 schema |
 | [`src/audit.ts`](src/audit.ts) | 拒绝规则、波次、顺序与审计 |
 | [`src/digest.ts`](src/digest.ts) | 规范 JSON 与计划摘要 |
 | [`src/projection.ts`](src/projection.ts) | `graphPlans` 投影 |
+| [`src/run.ts`](src/run.ts) | 节点状态转换表、need 满足条件与节点指纹 |
 | [`src/invariant.ts`](src/invariant.ts) | 针对版本与准入的不变量伴随插件 |
 
 </details>
@@ -117,7 +123,8 @@ kind: "package-reference"
 ## 进一步探索
 
 - [Graph 投影包](../graph-projection/README.zh.md)——已准入计划的任务图，通过 `graph_query` 读取。
-- [Loop graph 配置包](../loop-graph-profile/README.zh.md)——挂载这两个 graph 包的可选包。
+- [Graph 运行器包](../graph-runner/README.zh.md)——在记录的路由上执行已准入计划的 `graph_run` 工具。
+- [Loop graph 配置包](../loop-graph-profile/README.zh.md)——挂载这些 graph 包的可选包。
 - [实验性分组地图](../README.zh.md)——同组实验性包与发布策略。
 
 -----
@@ -140,7 +147,7 @@ Every call with a valid plan id records a new version of that plan. Fix every re
 
 Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).
 
-Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail.
+Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
 
 Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).
 
@@ -183,13 +190,32 @@ warnings (<count>):
 
 只追加：每个结果都是位于可复用请求前缀之后的新工具结果。
 
+### graph_capabilities 工具
+
+#### 模型看到什么
+
+插件挂载时（除 `off` 外的任何模式），模型会得到一个名为 `graph_capabilities` 的只读工具，它没有参数，描述如下。结果是紧凑的 JSON：`{"categories":[{"category","provider","model","reliability","available"}],"tools":[…],"depth":{"current","max"}}`；未挂载子代理服务时没有 `depth`。
+
+##### 该字段的原文
+
+```markdown
+List what graph nodes can use in this deployment: each node category with its provider, model, reliability label, and whether the model is available now; the tools a node may declare; and the current and maximum delegation depth. Use only these categories and tools in a dsh-graph/v1 plan.
+```
+
+#### Token 影响
+
+挂载期间始终生效：工具定义在每个请求中约占 70 个 token。每次调用每条路由返回约 20 个 token。
+
+#### KV Cache 影响
+
+工具定义在插件加载时一次性加入稳定的工具前缀；结果是位于可复用前缀之后、只追加的工具结果。
+
 ## 已知限制与延期工作
 
 <a id="known-limitations-and-deferred-work"></a>
 
 这些限制是本包当前的约束。
 
-- **还没有运行器**——在 graph 运行器包出现之前，已准入的计划不会被执行。
 - **拒绝记忆以会话为范围**——新会话从空历史开始；基于存储的记忆延后实现。
 - **没有 USD 成本**——`runBudget` 只有步数、token 与墙钟时间。
 - **只支持 DAG**——带保护的环不属于本格式版本。

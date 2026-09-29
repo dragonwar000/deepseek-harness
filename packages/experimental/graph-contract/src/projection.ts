@@ -57,7 +57,9 @@ export function applyGraphPlanEvent(state: GraphPlansState, event: SessionEvent)
       },
     ],
     acceptance: previous?.acceptance ?? record.plan?.acceptance ?? null,
-    admitted: record.admitted && record.plan !== null ? { version: record.version, plan: record.plan } : previous?.admitted ?? null,
+    admitted: record.admitted && record.plan !== null
+      ? { version: record.version, plan: record.plan, routes: record.routes ?? [] }
+      : previous?.admitted ?? null,
   }
   const plans = previous === undefined
     ? [...state.plans, history]
@@ -68,7 +70,7 @@ export function applyGraphPlanEvent(state: GraphPlansState, event: SessionEvent)
 /** Host-only projection unit registered by the graph-contract plugin. */
 export const graphPlansProjection = {
   key: 'graphPlans',
-  stateVersion: 1,
+  stateVersion: 2,
   stateSchema: graphPlansStateSchema,
   init: emptyGraphPlans,
   apply: applyGraphPlanEvent,

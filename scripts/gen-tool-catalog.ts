@@ -65,6 +65,7 @@ import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
 import * as GraphContract from '@deepseek-ai/dsh-experimental-graph-contract'
 import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
+import * as GraphRunner from '@deepseek-ai/dsh-experimental-graph-runner'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import type PluginManager from '@deepseek-ai/dsh-plugin-manager'
 import * as PluginManagerTools from '@deepseek-ai/dsh-plugin-manager/tools'
@@ -633,7 +634,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
       })
     },
     note:
-      'Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same tool and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` defaults to none, which only changes audit results, not the schema.',
+      'Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same two tools and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` and `routes` default to none, which only changes audit and capability results, not the schemas.',
   },
   {
     pkg: '@deepseek-ai/dsh-experimental-graph-projection',
@@ -645,6 +646,21 @@ const TOOL_PACKAGES: ToolPackage[] = [
       await ctx.plugin(GraphProjection)
     },
     note: 'Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-graph-runner',
+    dir: 'graph-runner',
+    source: 'packages/experimental/graph-runner/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'ctx.subagents', 'graph-contract and graph-projection mounted', 'owning Agent session'],
+    writes: ['tool/call', 'graph/run', 'graph/node', 'subagent/catalog', 'approval/asked', 'approval/decided', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(SubagentRuntime)
+      await ctx.plugin(GraphRunner, {
+        mode: 'enforce',
+        assumption: 'node agents report completion without proof unless a verifier or a command confirms it',
+      })
+    },
+    note: 'Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-todo',

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "循环护栏",
-    "description": "校验门、停滞护栏、拒绝预算、循环预算与 graph 计划审计（默认 shadow 模式），以及每个 Agent 的基础设施快照与 graph_query 工具；替代重复工具提醒。"
+    "description": "校验门、停滞护栏、拒绝预算、循环预算与 graph 计划审计与运行器（默认 shadow 模式），以及每个 Agent 的基础设施快照与 graph_query 工具；替代重复工具提醒。"
   }
 }

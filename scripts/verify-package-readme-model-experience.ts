@@ -101,7 +101,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/experimental/webworker-packer': { kind: 'none', reason: 'Build-time image writer; its output reaches a model only through the tree the worker then boots.' },
   'packages/experimental/inspector': { kind: 'none', reason: 'Developer diagnostics transport; it observes runtime activity without changing model requests.' },
   'packages/experimental/infra-snapshot': { kind: 'none', reason: 'Appends a log-only infra/snapshot session event at agent creation; the event never enters a model request or derived history.' },
-  'packages/experimental/loop-graph-profile': { kind: 'indirect', reason: 'The bundle only composes the verifier-gate, stationarity-guard, denial-budget, loop-budget, infra-snapshot, graph-contract, and graph-projection rows; the four guards and the two graph packages own every model-visible message and tool definition this bundle can produce.' },
+  'packages/experimental/loop-graph-profile': { kind: 'indirect', reason: 'The bundle only composes the verifier-gate, stationarity-guard, denial-budget, loop-budget, infra-snapshot, graph-contract, graph-projection, and graph-runner rows; the four guards and the three graph packages own every model-visible message and tool definition this bundle can produce.' },
   'packages/client/ui-slots': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-attachment': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-primitives': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
