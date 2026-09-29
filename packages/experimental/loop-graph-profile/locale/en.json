@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Loop guards",
+    "description": "Verifier gate before a turn may end (shadow by default) and an infra snapshot per agent."
+  }
+}

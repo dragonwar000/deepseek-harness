@@ -963,6 +963,22 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
+<a id="deepseek-aidsh-experimental-infra-snapshot"></a>
+
+## `@deepseek-ai/dsh-experimental-infra-snapshot`
+
+- `source`: [`packages/experimental/infra-snapshot/src/index.ts:20`](../packages/experimental/infra-snapshot/src/index.ts)
+
+```ts config-catalog
+/** Plugin config: the event is appended only for agents matching `sources` (default: every source). */
+export interface Config {
+  /** Session start sources to snapshot (`startup` | `resume` | `clear` | `compact`); empty means all. */
+  sources?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
 <a id="deepseek-aidsh-experimental-inspector"></a>
 
@@ -1196,6 +1212,41 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->
+<a id="deepseek-aidsh-experimental-verifier-gate"></a>
+
+## `@deepseek-ai/dsh-experimental-verifier-gate`
+
+- `source`: [`packages/experimental/verifier-gate/src/index.ts:63`](../packages/experimental/verifier-gate/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the gate assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records verdicts only; `enforce` steers. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Verify-command settings. */
+  verify?: VerifyConfig
+  /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
+  maxContinuations?: number
+}
+
+/** Verify-command settings. */
+export interface VerifyConfig {
+  /** Commands run in order at every turn-stopping boundary; empty records `no-commands`. */
+  commands?: string[]
+  /** Per-command timeout in milliseconds, handed to the shell seam (default 300000). */
+  timeoutMs?: number
+  /** Characters of the stdout and stderr tail kept in the verdict and steer (default 2000). */
+  stdoutTailChars?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-file-reference-local -->
 <a id="deepseek-aidsh-file-reference-local"></a>
@@ -4459,6 +4510,7 @@ export interface Config {
 | `@deepseek-ai/dsh-deque` | — | [`packages/util/deque/src/index.ts`](../packages/util/deque/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-agent-team-profile` | — | [`packages/experimental/agent-team-profile/src/index.ts`](../packages/experimental/agent-team-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-browser-use-runtime` | — | [`packages/experimental/browser-use-runtime/src/index.ts`](../packages/experimental/browser-use-runtime/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-loop-graph-profile` | — | [`packages/experimental/loop-graph-profile/src/index.ts`](../packages/experimental/loop-graph-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-schedule-bundle` | — | [`packages/experimental/schedule-bundle/src/index.ts`](../packages/experimental/schedule-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-voice-input-bundle` | — | [`packages/experimental/voice-input-bundle/src/index.ts`](../packages/experimental/voice-input-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-webworker-packer` | — | [`packages/experimental/webworker-packer/src/index.ts`](../packages/experimental/webworker-packer/src/index.ts) |

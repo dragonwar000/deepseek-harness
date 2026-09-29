@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/infra-snapshot/README.md
+/:
+  en: 475328728c42baca
+  zh: d2f0a567ba449222
+/deepseek-ai-dsh-experimental-infra-snapshot:
+  en: ba446ab6b7685294
+  zh: f59dc32c2c1b9d0f
+/deepseek-ai-dsh-experimental-infra-snapshot/summary:
+  en: 68ab3ae2366322c3
+  zh: 5e419ca0576fc937
+/deepseek-ai-dsh-experimental-infra-snapshot/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: fcb8aebace5f460f
+/deepseek-ai-dsh-experimental-infra-snapshot/use-this-package:
+  en: 60e88e05aac638d9
+  zh: 5be55734ff0f3029
+/deepseek-ai-dsh-experimental-infra-snapshot/use-this-package/when-to-choose-it:
+  en: a3c65e3b81ba40d3
+  zh: 2d4b2361e928b670
+/deepseek-ai-dsh-experimental-infra-snapshot/use-this-package/minimal-configuration:
+  en: 825e1bfab47b3323
+  zh: 07c1d4a6e9d59af6
+/deepseek-ai-dsh-experimental-infra-snapshot/understand-the-implementation:
+  en: 7c91982202a6aef8
+  zh: 02f430c75e2b745b
+/deepseek-ai-dsh-experimental-infra-snapshot/understand-the-implementation/source-map:
+  en: 8e7c69d47786a898
+  zh: c25524cb28247230
+/deepseek-ai-dsh-experimental-infra-snapshot/further-exploration:
+  en: 2b6f6312a47f33c8
+  zh: ff9679cac4234482
+/deepseek-ai-dsh-experimental-infra-snapshot/model-experience:
+  en: 3f5b16495033cf7d
+  zh: dfd0637ad560e53e
+/deepseek-ai-dsh-experimental-infra-snapshot/model-experience/kv-cache-effect:
+  en: 59c2b5d0d1d637bf
+  zh: 968c9da1c05125c4
+/deepseek-ai-dsh-experimental-infra-snapshot/known-limitations-and-deferred-work:
+  en: cdf4df31d9c88e91
+  zh: 73824b69b63458d6
+/deepseek-ai-dsh-experimental-infra-snapshot/known-limitations-and-deferred-work/dev-note:
+  en: d9ae93d460e2daf6
+  zh: 0aec7f6364e5a58c

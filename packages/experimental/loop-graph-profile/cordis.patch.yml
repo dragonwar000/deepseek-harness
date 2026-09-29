@@ -1,0 +1,19 @@
+# Experimental loop-engineering guards. Apply after dsh-base. Every row starts in
+# shadow mode: it records what it would do (loop/verdict) and never steers. Flip
+# `mode: enforce` from your profile patch once the shadow record shows zero
+# unwanted blocks over your own turns.
+
+- insert:
+    - id: infra-snapshot
+      name: '@deepseek-ai/dsh-experimental-infra-snapshot'
+
+    - id: verifier-gate
+      name: '@deepseek-ai/dsh-experimental-verifier-gate'
+      config:
+        mode: shadow
+        assumption: "the model declares a task done before its verify commands pass"
+        verify:
+          commands: []
+          timeoutMs: 300000
+          stdoutTailChars: 2000
+        maxContinuations: 8

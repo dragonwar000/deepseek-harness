@@ -1,0 +1,64 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/verifier-gate/README.md
+/:
+  en: a1ab4bb87f629161
+  zh: c5b4fb3aa023a3d7
+/deepseek-ai-dsh-experimental-verifier-gate:
+  en: 55035618f1ae4ca6
+  zh: 675d4713c38d73e8
+/deepseek-ai-dsh-experimental-verifier-gate/summary:
+  en: 7df9f462cb7991ee
+  zh: d5a0c19d7b88b42b
+/deepseek-ai-dsh-experimental-verifier-gate/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-verifier-gate/use-this-package:
+  en: 5bf54a1d2e036d36
+  zh: 9fd6cef0cbab5cfc
+/deepseek-ai-dsh-experimental-verifier-gate/use-this-package/when-to-choose-it:
+  en: bbee12b8b242de07
+  zh: 400e26dee832947b
+/deepseek-ai-dsh-experimental-verifier-gate/use-this-package/minimal-configuration:
+  en: 1a25ec84337efeb9
+  zh: 5cf6419c20893d9a
+/deepseek-ai-dsh-experimental-verifier-gate/use-this-package/what-you-get:
+  en: e3b48e690ee3a5c1
+  zh: c2297b34b3ff1ff0
+/deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation:
+  en: 930e7ed6e0f4cdcd
+  zh: 04d3765bbed2ca68
+/deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation/design-notes:
+  en: 0e470db6f9938c54
+  zh: 57c0c46bdebb6a5d
+/deepseek-ai-dsh-experimental-verifier-gate/understand-the-implementation/source-map:
+  en: 7f1e26ba056721e8
+  zh: 7f37236796b1be59
+/deepseek-ai-dsh-experimental-verifier-gate/further-exploration:
+  en: 0fe7b7ba8bc30ea0
+  zh: ea444c6a22708ad1
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-red-verify-command:
+  en: f85baefd1f1f88ba
+  zh: 51cdc9d1ba7b62c1
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-red-verify-command/what-the-model-sees:
+  en: ba435320fbb6b237
+  zh: 327731e9145369a3
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-red-verify-command/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-red-verify-command/token-effect:
+  en: 7f5e5455d50c8069
+  zh: b813965759ab009f
+/deepseek-ai-dsh-experimental-verifier-gate/model-experience/steer-after-a-red-verify-command/kv-cache-effect:
+  en: 5bece91693202a10
+  zh: 13ee8894c93d8f44
+/deepseek-ai-dsh-experimental-verifier-gate/known-limitations-and-deferred-work:
+  en: 6be7a19e540c486a
+  zh: 9aa0d1b5c3590c6e
+/deepseek-ai-dsh-experimental-verifier-gate/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

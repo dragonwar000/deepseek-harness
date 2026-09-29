@@ -1,0 +1,306 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:infra/snapshot",
+      "kind": "event",
+      "event": "infra/snapshot",
+      "surface": false,
+      "digest": "02c92aa7bc22aac70994b947cab626d33f76c287ecf3382a00b65d862eef14e2",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "arch",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "cpus",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "node",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "platform",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "sandboxMode",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "totalMemMb",
+                "type": 3,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "infra/snapshot"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:loop/verdict",
+      "kind": "event",
+      "event": "loop/verdict",
+      "surface": false,
+      "digest": "7e000510f77bd24377d224040a040112bd0c82b86ceb1710a0e2efa03842274d",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 21,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 22,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "checks",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "continuation",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "continued",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "mode",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "reason",
+                "type": 12,
+                "optional": false
+              },
+              {
+                "name": "turn",
+                "type": 7,
+                "optional": false
+              },
+              {
+                "name": "verdict",
+                "type": 17,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "command",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "exitCode",
+                "type": 5,
+                "optional": false
+              },
+              {
+                "name": "outputTail",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "timedOut",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              6,
+              7
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              11
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "enforce"
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "union",
+            "types": [
+              13,
+              14,
+              15,
+              16
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "all-passed"
+          },
+          {
+            "kind": "literal",
+            "value": "budget-exhausted"
+          },
+          {
+            "kind": "literal",
+            "value": "command-failed"
+          },
+          {
+            "kind": "literal",
+            "value": "no-commands"
+          },
+          {
+            "kind": "union",
+            "types": [
+              18,
+              19,
+              20
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "skipped"
+          },
+          {
+            "kind": "literal",
+            "value": "not-ok"
+          },
+          {
+            "kind": "literal",
+            "value": "ok"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "loop/verdict"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

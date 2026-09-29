@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-实验组包含约定可能变更且不提供支持承诺的原型能力。所有当前包都以 `@deepseek-ai/dsh-experimental-*` 名称发布，包括显式启用的 Agent Teams 组合、Auto review、Cua Driver 提供方、浏览器操作后端、跨 realm Inspector、CPython PTC 后端与浏览器 worker 预览库。组外已发布产品不得依赖实验性包。dsh 安装将 Agent Teams、语音输入、Auto review 与定时包作为可选 bundle 一起发布，可从 Web 侧边栏“插件”页启用（[决策](../../.agents/notes/implemented/architecture/2026-09-21-experimental-capabilities-as-optional-bundles.zh.md)）；其余包是库或显式组合。
+实验组包含约定可能变更且不提供支持承诺的原型能力。所有当前包都以 `@deepseek-ai/dsh-experimental-*` 名称发布，包括显式启用的 Agent Teams 组合、Auto review、Cua Driver 提供方、浏览器操作后端、跨 realm Inspector、CPython PTC 后端与浏览器 worker 预览库。组外已发布产品不得依赖实验性包。dsh 安装将 Agent Teams、语音输入、Auto review、定时与循环护栏包作为可选 bundle 一起发布，可从 Web 侧边栏“插件”页启用（[决策](../../.agents/notes/implemented/architecture/2026-09-21-experimental-capabilities-as-optional-bundles.zh.md)）；其余包是库或显式组合。
 
 ## 目录
 
@@ -45,6 +45,9 @@ kind: "package-group"
 | [`tool-agent-team`](tool-agent-team/README.zh.md) | 让模型创建、发消息与协调 teammate 的九个工具 | 按作用域注册工具到 `ctx.tools` |
 | [`webworker-packer`](webworker-packer/README.zh.md) | 构建浏览器 worker 预览所消费的 gzip 压缩虚拟文件系统（VFS）镜像 | 库与 CLI（命令行界面），不使用 ctx key |
 | [`webworker-runtime`](webworker-runtime/README.zh.md) | 在专用浏览器 worker 中运行 harness 插件树 | 库与 worker 入口，不使用 ctx key |
+| [`verifier-gate`](verifier-gate/README.zh.md) | 回合结束前的校验命令门，shadow 或 enforce | 在 `agent/turn-stopping` 上注册监听器 |
+| [`infra-snapshot`](infra-snapshot/README.zh.md) | 每个 agent 一条 `infra/snapshot` 事件 | — |
+| [`loop-graph-profile`](loop-graph-profile/README.zh.md) | 从插件页开启的循环护栏组合包 | — |
 
 -----
 

@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-09-29-verifier-gate-source-attribution.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-09-29-verifier-gate-source-attribution.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-09-29-verifier-gate-source-attribution:
+  en: d13beb0a3d93f51c
+  zh: d57680cbc17d371e
+/2026-09-29-verifier-gate-source-attribution/summary:
+  en: 7638a1b66ccec101
+  zh: ea2820af4ba8be1c
+/2026-09-29-verifier-gate-source-attribution/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-09-29-verifier-gate-source-attribution/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-09-29-verifier-gate-source-attribution/compatibility:
+  en: 4557c235ecd450e3
+  zh: fa8ae9806f08b799
+/2026-09-29-verifier-gate-source-attribution/verification:
+  en: 401a7b3de6ae70a6
+  zh: 6e6924d33b24b237
+/2026-09-29-verifier-gate-source-attribution/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269
