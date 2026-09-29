@@ -1,0 +1,79 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/graph-contract/README.md
+/:
+  en: c464c2e7b46add42
+  zh: c227142c62a4eca7
+/deepseek-ai-dsh-experimental-graph-contract:
+  en: d8a1ee5885811890
+  zh: 283ff0a285989b04
+/deepseek-ai-dsh-experimental-graph-contract/summary:
+  en: a52364038e0449b8
+  zh: 16acf6ffdf63d3c5
+/deepseek-ai-dsh-experimental-graph-contract/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-graph-contract/use-this-package:
+  en: 56062cfcc0ca48c3
+  zh: 4b6bd3856857cccc
+/deepseek-ai-dsh-experimental-graph-contract/use-this-package/when-to-choose-it:
+  en: 8bb8b847fa0aae9f
+  zh: df6b947e3f610c8c
+/deepseek-ai-dsh-experimental-graph-contract/use-this-package/minimal-configuration:
+  en: 294f4f06a88d9d37
+  zh: 9c6a9d430c43a3d0
+/deepseek-ai-dsh-experimental-graph-contract/use-this-package/what-you-get:
+  en: 076f782d4489efba
+  zh: acea489659e15828
+/deepseek-ai-dsh-experimental-graph-contract/understand-the-implementation:
+  en: ebadd59ad8122ae2
+  zh: b0d08fbae2455196
+/deepseek-ai-dsh-experimental-graph-contract/understand-the-implementation/design-notes:
+  en: d56e62519636f9b0
+  zh: 0a347140e817c9af
+/deepseek-ai-dsh-experimental-graph-contract/understand-the-implementation/source-map:
+  en: bb3aa728ab291b61
+  zh: 5b6e4ca772b17693
+/deepseek-ai-dsh-experimental-graph-contract/further-exploration:
+  en: 0b291f0dae75e975
+  zh: bcf310ade4769584
+/deepseek-ai-dsh-experimental-graph-contract/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-tool:
+  en: cf180c82281b3ef5
+  zh: 3c98b085997c27e6
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-tool/what-the-model-sees:
+  en: a70097dfc15d9450
+  zh: 8ff4561711783f7f
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-tool/token-effect:
+  en: ce1b638416368ff4
+  zh: 030725efdb3ae3f9
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-tool/kv-cache-effect:
+  en: 2ff9e7b19c4a7918
+  zh: da42949d517fe47c
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-result:
+  en: 0564ef0432355140
+  zh: e42c895cc372f186
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-result/what-the-model-sees:
+  en: 4f20698140e5f220
+  zh: 622351dc8a2d7caa
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-result/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-result/token-effect:
+  en: 1c7969eaa12e94fd
+  zh: 8bbef0aa67053f31
+/deepseek-ai-dsh-experimental-graph-contract/model-experience/the-graph-audit-result/kv-cache-effect:
+  en: 97d5c01ac4c08a2c
+  zh: 5108448b962e2d48
+/deepseek-ai-dsh-experimental-graph-contract/known-limitations-and-deferred-work:
+  en: ae689234b99d10ec
+  zh: 4483673c1bc8bb94
+/deepseek-ai-dsh-experimental-graph-contract/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

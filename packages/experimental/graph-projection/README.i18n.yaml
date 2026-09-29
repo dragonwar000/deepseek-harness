@@ -1,0 +1,64 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/graph-projection/README.md
+/:
+  en: 3134bb515926b237
+  zh: 57553fd48280200f
+/deepseek-ai-dsh-experimental-graph-projection:
+  en: 671947a743e2bb40
+  zh: e01b54b0e9d8ab11
+/deepseek-ai-dsh-experimental-graph-projection/summary:
+  en: abd0e7e0e495317d
+  zh: 3cec322133880800
+/deepseek-ai-dsh-experimental-graph-projection/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-graph-projection/use-this-package:
+  en: 822245785ba6ce3d
+  zh: 00b310abaa1dcfa1
+/deepseek-ai-dsh-experimental-graph-projection/use-this-package/when-to-choose-it:
+  en: 7a441c8616639c58
+  zh: 029d4296f0b61f3f
+/deepseek-ai-dsh-experimental-graph-projection/use-this-package/minimal-configuration:
+  en: 7e32fdf2571d190c
+  zh: 0e14b8c3b29a8617
+/deepseek-ai-dsh-experimental-graph-projection/use-this-package/what-you-get:
+  en: df995ca755768807
+  zh: 79d0b50ea785f477
+/deepseek-ai-dsh-experimental-graph-projection/understand-the-implementation:
+  en: 6b44982ef0e0ebe7
+  zh: cf0a2380d18d5eed
+/deepseek-ai-dsh-experimental-graph-projection/understand-the-implementation/design-notes:
+  en: f9e4b4bbeb203982
+  zh: 8f2de32872dc1a18
+/deepseek-ai-dsh-experimental-graph-projection/understand-the-implementation/source-map:
+  en: 273d19015f351d79
+  zh: 0d3f8230b14d10e4
+/deepseek-ai-dsh-experimental-graph-projection/further-exploration:
+  en: 402f1c6ef720fbe5
+  zh: 100ebb8d1002c582
+/deepseek-ai-dsh-experimental-graph-projection/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool:
+  en: a23068e6e7a8856a
+  zh: bba0f88b6f6c2100
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/what-the-model-sees:
+  en: ef8c1e913939393a
+  zh: d554a40eec53a0d2
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/token-effect:
+  en: 30fe3032a655a975
+  zh: 64ea2df59addbd3f
+/deepseek-ai-dsh-experimental-graph-projection/model-experience/the-graph-query-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: e7a86dc3c68f1ba2
+/deepseek-ai-dsh-experimental-graph-projection/known-limitations-and-deferred-work:
+  en: 0a7939ca4c1a0419
+  zh: 2d2aff81e81608ab
+/deepseek-ai-dsh-experimental-graph-projection/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

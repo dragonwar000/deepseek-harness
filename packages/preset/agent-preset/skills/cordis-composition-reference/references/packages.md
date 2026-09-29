@@ -189,6 +189,8 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp` | yes | Experimental computer use through an installed Cua Driver MCP executable |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | no | Experimental computer-use provider embedding the Cua Driver native npm SDK |
 | `@deepseek-ai/dsh-experimental-denial-budget` | yes | Counts policy-denied tool calls, appends fixed safer-approach advice, and asks approval before continuing past a denial budget; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-graph-contract` | yes | dsh-graph/v1 plan contract: deterministic graph_audit admission and graph/plan records with rejection memory; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-graph-projection` | no | Task graphs of admitted dsh-graph/v1 plans folded from the session log, with the read-only graph_query tool |
 | `@deepseek-ai/dsh-experimental-infra-snapshot` | yes | Appends one infra/snapshot session event per agent: node, platform, cpu, memory, sandbox mode |
 | `@deepseek-ai/dsh-experimental-inspector` | yes | Experimental cross-realm CDP hub for Host debugging and Client Runtime inspection |
 | `@deepseek-ai/dsh-experimental-loop-budget` | yes | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor; pauses the goal on a trip; shadow or enforce |

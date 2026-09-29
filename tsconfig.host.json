@@ -214,6 +214,8 @@
     { "path": "./packages/experimental/stationarity-guard" },
     { "path": "./packages/experimental/denial-budget" },
     { "path": "./packages/experimental/loop-budget" },
+    { "path": "./packages/experimental/graph-contract" },
+    { "path": "./packages/experimental/graph-projection" },
     { "path": "./packages/client/locale/tsconfig.host.json" },
     { "path": "./packages/client/ui-theme/tsconfig.host.json" },
     { "path": "./packages/client/ui-chat/tsconfig.host.json" },

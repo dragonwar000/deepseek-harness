@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: 167287d095eee2f5
-  zh: 18720d5e81379d2f
+  en: 9b595bd98fc1b6ee
+  zh: 1ca1e375cbda5b65
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -282,8 +282,20 @@
   en: 2eac7360ba68b1bd
   zh: b5d676bf288c245e
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-agent-team/wait-agent:
-  en: fbc4d75a9bcf6816
-  zh: 672131ac2705f411
+  en: a16bbffd0262e669
+  zh: 83d91b560e9076f2
+/tool-schema-catalog/deepseek-ai-dsh-experimental-graph-contract:
+  en: 6b95f709d4b4c657
+  zh: 6b95f709d4b4c657
+/tool-schema-catalog/deepseek-ai-dsh-experimental-graph-contract/graph-audit:
+  en: 5fca51a82cda38f7
+  zh: f3a2cd7b2d280d93
+/tool-schema-catalog/deepseek-ai-dsh-experimental-graph-projection:
+  en: 4f8c78d03c26040b
+  zh: 4f8c78d03c26040b
+/tool-schema-catalog/deepseek-ai-dsh-experimental-graph-projection/graph-query:
+  en: 2ed0c880319c3c22
+  zh: 8307a7dc173e12bc
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo:
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68

@@ -1016,6 +1016,45 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-denial-budget -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-contract -->
+<a id="deepseek-aidsh-experimental-graph-contract"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-contract`
+
+- `inject`: `tools` · `sessionProjections`
+- `source`: [`packages/experimental/graph-contract/src/index.ts:79`](../packages/experimental/graph-contract/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the audit assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /**
+   * `off` registers nothing; `shadow` admits every version and reports findings; `enforce` admits only
+   * versions without a `reject` finding. Default `shadow`.
+   */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Global tools a graph node may declare; default none. */
+  allowedTools?: string[]
+  /** Run limits per kind for one plan's worst case; 0 (default) is unlimited. */
+  runBudget?: GraphNodeBudget
+}
+
+/** Worst-case spend of one attempt of an agent node; an absent field is unbounded. */
+export interface GraphNodeBudget {
+  /** Agent steps. */
+  steps?: number
+  /** Model tokens. */
+  tokens?: number
+  /** Wall-clock milliseconds. */
+  wallMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-contract -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
 <a id="deepseek-aidsh-experimental-infra-snapshot"></a>
 
@@ -4643,6 +4682,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-experimental-client-ui-agent-team` | — | [`packages/experimental/client-ui-agent-team/src/index.ts`](../packages/experimental/client-ui-agent-team/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | — | [`packages/experimental/client-ui-voice-input/src/index.ts`](../packages/experimental/client-ui-voice-input/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | `computerUse` · `tools` · `systemPrompt` | [`packages/experimental/computer-use-cua-driver-native/src/index.ts`](../packages/experimental/computer-use-cua-driver-native/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-graph-projection` | `tools` · `sessionProjections` | [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts) |
 | `@deepseek-ai/dsh-fs-observation-policy` | — | [`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts) |
 | `@deepseek-ai/dsh-fs-ssh` | `ssh` · `sandboxPolicy` | [`packages/ssh/fs-ssh/src/index.ts`](../packages/ssh/fs-ssh/src/index.ts) |
 | `@deepseek-ai/dsh-goal-round-driver` | `agents` · `goals` · `sessions` | [`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts) |

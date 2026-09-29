@@ -51,6 +51,8 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`stationarity-guard`](stationarity-guard/README.md) | Step-signature guard that reminds or stops repeated tool steps, shadow or enforce | registers listeners on `agent/pre-step` and `session/event` |
 | [`denial-budget`](denial-budget/README.md) | Counts policy denials, advises a safer approach, and asks approval past a budget, shadow or enforce | registers listeners on `tools/*` and `agent/pre-step` |
 | [`loop-budget`](loop-budget/README.md) | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor, shadow or enforce | registers listeners on `agent/pre-step`, `agent/turn-stopping`, and `session/event` |
+| [`graph-contract`](graph-contract/README.md) | Deterministic `dsh-graph/v1` plan audit with rejection memory, shadow or enforce | registers the `graph_audit` tool and the `graphPlans` projection |
+| [`graph-projection`](graph-projection/README.md) | Task graphs of admitted plans with derived status, read through `graph_query` | registers the `graph_query` tool and the `graph` projection |
 
 -----
 

@@ -1,0 +1,911 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:graph/plan",
+      "kind": "event",
+      "event": "graph/plan",
+      "surface": false,
+      "digest": "a22510249d0295211d6e1e495b6ad08be111e4f56feb38d5516127e3523a7aa5",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 96,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 27,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 27,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 97,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "admitted",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "mode",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "plan",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "planId",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "rejections",
+                "type": 59,
+                "optional": false
+              },
+              {
+                "name": "repeatOf",
+                "type": 27,
+                "optional": true
+              },
+              {
+                "name": "sha",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 27,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "enforce"
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              36
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "acceptance",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "deliverable",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "edges",
+                "type": 10,
+                "optional": false
+              },
+              {
+                "name": "format",
+                "type": 19,
+                "optional": false
+              },
+              {
+                "name": "goal",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "level",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "nodes",
+                "type": 24,
+                "optional": false
+              },
+              {
+                "name": "runInputs",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "array",
+            "element": 9
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 11
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "allowedFields",
+                "type": 8,
+                "optional": true
+              },
+              {
+                "name": "artifact",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "from",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "relation",
+                "type": 12,
+                "optional": false
+              },
+              {
+                "name": "to",
+                "type": 9,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "anchors"
+          },
+          {
+            "kind": "literal",
+            "value": "constrains"
+          },
+          {
+            "kind": "literal",
+            "value": "feeds"
+          },
+          {
+            "kind": "literal",
+            "value": "hands_off"
+          },
+          {
+            "kind": "literal",
+            "value": "verifies"
+          },
+          {
+            "kind": "literal",
+            "value": "vetoes"
+          },
+          {
+            "kind": "literal",
+            "value": "dsh-graph/v1"
+          },
+          {
+            "kind": "union",
+            "types": [
+              21,
+              22,
+              23
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "L2"
+          },
+          {
+            "kind": "literal",
+            "value": "L3"
+          },
+          {
+            "kind": "literal",
+            "value": "L1"
+          },
+          {
+            "kind": "array",
+            "element": 25
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "budget",
+                "type": 26,
+                "optional": false
+              },
+              {
+                "name": "contextScope",
+                "type": 28,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "inputs",
+                "type": 31,
+                "optional": false
+              },
+              {
+                "name": "instruction",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "kind",
+                "type": 37,
+                "optional": false
+              },
+              {
+                "name": "mayFail",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "needs",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "output",
+                "type": 45,
+                "optional": false
+              },
+              {
+                "name": "retryBudget",
+                "type": 27,
+                "optional": false
+              },
+              {
+                "name": "tools",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "verify",
+                "type": 8,
+                "optional": false
+              },
+              {
+                "name": "writes",
+                "type": 8,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "steps",
+                "type": 27,
+                "optional": true
+              },
+              {
+                "name": "tokens",
+                "type": 27,
+                "optional": true
+              },
+              {
+                "name": "wallMs",
+                "type": 27,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              29,
+              30
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "execution-only"
+          },
+          {
+            "kind": "literal",
+            "value": "fresh-independent"
+          },
+          {
+            "kind": "array",
+            "element": 32
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "fallback",
+                "type": 33,
+                "optional": true
+              },
+              {
+                "name": "field",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "from",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "name",
+                "type": 9,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              9,
+              27,
+              34,
+              35,
+              36
+            ]
+          },
+          {
+            "kind": "array",
+            "element": 33
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 9,
+                "value": 33
+              }
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "union",
+            "types": [
+              38,
+              39,
+              40,
+              41,
+              42,
+              43,
+              44
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "anchor"
+          },
+          {
+            "kind": "literal",
+            "value": "execution"
+          },
+          {
+            "kind": "literal",
+            "value": "human_gate"
+          },
+          {
+            "kind": "literal",
+            "value": "reducer"
+          },
+          {
+            "kind": "literal",
+            "value": "stop_handoff"
+          },
+          {
+            "kind": "literal",
+            "value": "synthesis"
+          },
+          {
+            "kind": "literal",
+            "value": "verification"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "additionalProperties",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "const",
+                "type": 46,
+                "optional": true
+              },
+              {
+                "name": "default",
+                "type": 33,
+                "optional": true
+              },
+              {
+                "name": "description",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "enum",
+                "type": 47,
+                "optional": true
+              },
+              {
+                "name": "examples",
+                "type": 33,
+                "optional": true
+              },
+              {
+                "name": "items",
+                "type": 48,
+                "optional": true
+              },
+              {
+                "name": "oneOf",
+                "type": 49,
+                "optional": true
+              },
+              {
+                "name": "properties",
+                "type": 50,
+                "optional": true
+              },
+              {
+                "name": "required",
+                "type": 8,
+                "optional": true
+              },
+              {
+                "name": "title",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "type",
+                "type": 57,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              9,
+              27,
+              36
+            ]
+          },
+          {
+            "kind": "array",
+            "element": 46
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "additionalProperties",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "const",
+                "type": 46,
+                "optional": true
+              },
+              {
+                "name": "default",
+                "type": 33,
+                "optional": true
+              },
+              {
+                "name": "description",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "enum",
+                "type": 47,
+                "optional": true
+              },
+              {
+                "name": "examples",
+                "type": 33,
+                "optional": true
+              },
+              {
+                "name": "items",
+                "type": 48,
+                "optional": true
+              },
+              {
+                "name": "oneOf",
+                "type": 49,
+                "optional": true
+              },
+              {
+                "name": "properties",
+                "type": 50,
+                "optional": true
+              },
+              {
+                "name": "required",
+                "type": 8,
+                "optional": true
+              },
+              {
+                "name": "title",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "type",
+                "type": 51,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "array",
+            "element": 48
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 9,
+                "value": 48
+              }
+            ]
+          },
+          {
+            "kind": "union",
+            "types": [
+              52,
+              53,
+              54,
+              55,
+              56,
+              57,
+              58
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "array"
+          },
+          {
+            "kind": "literal",
+            "value": "boolean"
+          },
+          {
+            "kind": "literal",
+            "value": "integer"
+          },
+          {
+            "kind": "literal",
+            "value": "null"
+          },
+          {
+            "kind": "literal",
+            "value": "number"
+          },
+          {
+            "kind": "literal",
+            "value": "object"
+          },
+          {
+            "kind": "literal",
+            "value": "string"
+          },
+          {
+            "kind": "array",
+            "element": 60
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "check",
+                "type": 61,
+                "optional": false
+              },
+              {
+                "name": "code",
+                "type": 74,
+                "optional": false
+              },
+              {
+                "name": "detail",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "remedy",
+                "type": 9,
+                "optional": false
+              },
+              {
+                "name": "severity",
+                "type": 93,
+                "optional": false
+              },
+              {
+                "name": "subject",
+                "type": 9,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              38,
+              62,
+              63,
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70,
+              71,
+              72,
+              73
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "budget"
+          },
+          {
+            "kind": "literal",
+            "value": "capability"
+          },
+          {
+            "kind": "literal",
+            "value": "closeness"
+          },
+          {
+            "kind": "literal",
+            "value": "depth"
+          },
+          {
+            "kind": "literal",
+            "value": "freeze"
+          },
+          {
+            "kind": "literal",
+            "value": "freshness"
+          },
+          {
+            "kind": "literal",
+            "value": "gates"
+          },
+          {
+            "kind": "literal",
+            "value": "inputs"
+          },
+          {
+            "kind": "literal",
+            "value": "order"
+          },
+          {
+            "kind": "literal",
+            "value": "schema"
+          },
+          {
+            "kind": "literal",
+            "value": "structure"
+          },
+          {
+            "kind": "literal",
+            "value": "writes"
+          },
+          {
+            "kind": "union",
+            "types": [
+              75,
+              76,
+              77,
+              78,
+              79,
+              80,
+              81,
+              82,
+              83,
+              84,
+              85,
+              86,
+              87,
+              88,
+              89,
+              90,
+              91,
+              92
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "BUDGET_EXCEEDED"
+          },
+          {
+            "kind": "literal",
+            "value": "VERIFIER_NOT_FRESH"
+          },
+          {
+            "kind": "literal",
+            "value": "WRITE_SCOPE_OVERLAP"
+          },
+          {
+            "kind": "literal",
+            "value": "LINEAR_PLAN"
+          },
+          {
+            "kind": "literal",
+            "value": "CAPABILITY_UNVERIFIED"
+          },
+          {
+            "kind": "literal",
+            "value": "MISSING_ANCHOR"
+          },
+          {
+            "kind": "literal",
+            "value": "CYCLE"
+          },
+          {
+            "kind": "literal",
+            "value": "MISSING_HUMAN_GATE"
+          },
+          {
+            "kind": "literal",
+            "value": "DEPTH_EXCEEDED"
+          },
+          {
+            "kind": "literal",
+            "value": "MISSING_STOP_HANDOFF"
+          },
+          {
+            "kind": "literal",
+            "value": "NOT_CONSUMED"
+          },
+          {
+            "kind": "literal",
+            "value": "EDGE_WITHOUT_ARTIFACT"
+          },
+          {
+            "kind": "literal",
+            "value": "ACCEPTANCE_CHANGED"
+          },
+          {
+            "kind": "literal",
+            "value": "SCHEMA_INVALID"
+          },
+          {
+            "kind": "literal",
+            "value": "INPUT_MAY_BE_ABSENT"
+          },
+          {
+            "kind": "literal",
+            "value": "SYNTHESIS_BEFORE_VERIFY"
+          },
+          {
+            "kind": "literal",
+            "value": "VERDICT_UNDECLARED"
+          },
+          {
+            "kind": "literal",
+            "value": "ISOLATED_NODE"
+          },
+          {
+            "kind": "union",
+            "types": [
+              94,
+              95
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "reject"
+          },
+          {
+            "kind": "literal",
+            "value": "warn"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "graph/plan"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

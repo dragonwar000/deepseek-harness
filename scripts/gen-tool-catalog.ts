@@ -63,6 +63,8 @@ import BrowserUseRegistry from '@deepseek-ai/dsh-browser-use'
 import * as StagehandBrowserTools from '@deepseek-ai/dsh-experimental-browser-use-stagehand-native'
 import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
+import * as GraphContract from '@deepseek-ai/dsh-experimental-graph-contract'
+import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import type PluginManager from '@deepseek-ai/dsh-plugin-manager'
 import * as PluginManagerTools from '@deepseek-ai/dsh-plugin-manager/tools'
@@ -617,6 +619,32 @@ const TOOL_PACKAGES: ToolPackage[] = [
     scope: ctx => catalogChildScopes.get(ctx) as Agent,
     note:
       'All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-graph-contract',
+    dir: 'graph-contract',
+    source: 'packages/experimental/graph-contract/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'owning Agent session', 'optional ctx.subagents for the depth check'],
+    writes: ['tool/call', 'graph/plan', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(GraphContract, {
+        mode: 'enforce',
+        assumption: 'the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them',
+      })
+    },
+    note:
+      'Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same tool and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` defaults to none, which only changes audit results, not the schema.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-graph-projection',
+    dir: 'graph-projection',
+    source: 'packages/experimental/graph-projection/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'owning Agent session'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(GraphProjection)
+    },
+    note: 'Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-todo',

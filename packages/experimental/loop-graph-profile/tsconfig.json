@@ -25,6 +25,12 @@
     },
     {
       "path": "../loop-budget"
+    },
+    {
+      "path": "../graph-contract"
+    },
+    {
+      "path": "../graph-projection"
     }
   ]
 }

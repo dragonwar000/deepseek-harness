@@ -41,6 +41,8 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`, `list_agents`, `send_message` | `ctx.tools`, `ctx.subagents`, `ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`, `tool/result`, `child session events through ctx.subagents` | - | The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries). |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
+| `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.subagents for the depth check` | `tool/call`, `graph/plan`, `tool/result` | - | Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same tool and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` defaults to none, which only changes audit results, not the schema. |
+| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_query` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session` | `tool/call`, `tool/result` | - | Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2504,6 +2506,77 @@ Wait for the next teammate status, mailbox, or shared-task change after this cal
 Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/experimental/tool-agent-team/src/index.ts)
 
 All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
+
+<a id="deepseek-aidsh-experimental-graph-contract"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-contract`
+
+### `graph_audit`
+
+Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version.
+
+Every call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.
+
+Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).
+
+Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema; verification nodes require verdict with enum ["pass","fail"]); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail.
+
+Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional).
+
+Status, basis, and version belong to the harness and are rejected inside a plan.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "plan": {
+      "description": "One dsh-graph/v1 plan object."
+    }
+  },
+  "required": [
+    "plan"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-contract/src/index.ts`](../packages/experimental/graph-contract/src/index.ts)
+
+Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same tool and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` defaults to none, which only changes audit results, not the schema.
+
+<a id="deepseek-aidsh-experimental-graph-projection"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-projection`
+
+### `graph_query`
+
+Read the admitted task graphs of this session. scope "plans" lists each admitted plan with its version, node count, and ready count. scope "plan" with plan_id returns that plan's nodes with their needs and derived status, and the waves of nodes that can run together. Status is derived from the session log; it cannot be set.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "description": "plans lists admitted plans; plan returns one plan.",
+      "enum": [
+        "plans",
+        "plan"
+      ]
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Plan id; required for scope \"plan\"."
+    }
+  },
+  "required": [
+    "scope"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+Experimental and read-only: it folds graph/plan events written by @deepseek-ai/dsh-experimental-graph-contract and writes no session event of its own.
 
 <a id="deepseek-aidsh-tool-todo"></a>
 
