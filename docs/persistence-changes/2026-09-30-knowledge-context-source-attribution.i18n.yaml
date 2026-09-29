@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-09-30-knowledge-context-source-attribution.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-09-30-knowledge-context-source-attribution.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-09-30-knowledge-context-source-attribution:
+  en: cc3a56dd250d02f6
+  zh: cfa9537b8af71f42
+/2026-09-30-knowledge-context-source-attribution/summary:
+  en: aa4013bde8841fc8
+  zh: a1fafc5a86de4b2e
+/2026-09-30-knowledge-context-source-attribution/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-09-30-knowledge-context-source-attribution/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-09-30-knowledge-context-source-attribution/compatibility:
+  en: 3dfb2955fe50f2b5
+  zh: a163d5b38975b147
+/2026-09-30-knowledge-context-source-attribution/verification:
+  en: 74ab7850270b8de1
+  zh: a8e7a4547a460ad4
+/2026-09-30-knowledge-context-source-attribution/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

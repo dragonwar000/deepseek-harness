@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod'
-import { pathArgument } from '@deepseek-ai/dsh-experimental-knowledge'
+import { foldToolPath } from '@deepseek-ai/dsh-experimental-knowledge'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
 
@@ -45,23 +45,8 @@ export function emptyEvidence(): EvidenceState {
  * @returns the state after the event.
  */
 export function applyEvidence(tools: ReadonlySet<string>, state: EvidenceState, event: SessionEvent): EvidenceState {
-  switch (event.type) {
-    case 'tool/call': {
-      if (!tools.has(event.data.name)) return state
-      const path = pathArgument(event.data.arguments)
-      if (path === undefined) return state
-      return { ...state, pending: { ...state.pending, [event.data.callId]: path } }
-    }
-    case 'tool/result': {
-      const callId = event.data.message.toolCallId
-      const path = state.pending[callId]
-      if (path === undefined) return state
-      const pending = Object.fromEntries(Object.entries(state.pending).filter(([key]) => key !== callId))
-      if (event.data.message.isError === true) return { ...state, pending }
-      return { pending, reads: { ...state.reads, [path]: event.seq } }
-    }
-    default:
-      // SessionEventMap is merge-extensible; every other event leaves the evidence unchanged.
-      return state
-  }
+  const folded = foldToolPath(tools, state.pending, event)
+  if (folded === undefined) return state
+  const { pending, completed } = folded
+  return completed === undefined ? { ...state, pending } : { pending, reads: { ...state.reads, [completed.path]: completed.seq } }
 }

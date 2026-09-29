@@ -11,6 +11,7 @@ import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-test
 import * as KnowledgeInvariant from '@deepseek-ai/dsh-experimental-knowledge/invariant'
 import WikiFilesystemKnowledge from '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
+import InvariantService from '@deepseek-ai/dsh-invariants'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -66,6 +67,7 @@ export async function run(options: HarnessOptions = {}): Promise<Run> {
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   // Every applied knowledge/write these tests produce must cite a successful tool/result of its session.
+  await ctx.plugin(InvariantService, { enabled: true })
   await ctx.plugin(KnowledgeInvariant)
   await ctx.plugin(LocalFileSystem, { cwd: dir })
   await ctx.plugin(FsPolicy)

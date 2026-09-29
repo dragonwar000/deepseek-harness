@@ -1,0 +1,9 @@
+version: 1
+scenario: knowledge-query
+profile: headless
+composition: knowledge-query
+recording: authored
+header:
+  class: knowledge-query
+  pin: true
+  systemPromptSource: text-turn

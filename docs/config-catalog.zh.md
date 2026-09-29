@@ -993,6 +993,25 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-context-knowledge -->
+<a id="deepseek-aidsh-experimental-context-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-context-knowledge`
+
+- `inject`: `knowledge` · `sessionProjections`
+- `source`: [`packages/experimental/context-knowledge/src/index.ts:53`](../packages/experimental/context-knowledge/src/index.ts)
+
+```ts config-catalog
+/** Caps of the index message. Invalid values fail plugin load. */
+export interface Config {
+  /** Most lines of the index message, header and footers included; at least 3 (default 200). */
+  maxLines?: number
+  /** Most UTF-8 bytes of the index message; at least 1024 (default 25600). */
+  maxBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-context-knowledge -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-denial-budget -->
 <a id="deepseek-aidsh-experimental-denial-budget"></a>
 
@@ -1331,6 +1350,40 @@ export interface RoutePrice {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-loop-budget -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-distill -->
+<a id="deepseek-aidsh-experimental-memory-distill"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-distill`
+
+- `inject`: `knowledge` · `sessionProjections`
+- `source`: [`packages/experimental/memory-distill/src/index.ts:36`](../packages/experimental/memory-distill/src/index.ts)
+
+```ts config-catalog
+/** Distillation settings. `assumption` is mandatory outside `off`. */
+export interface Config {
+  /** `off` registers nothing; `shadow` records the write it would make; `enforce` writes. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Distill only after a `loop/verdict` of `ok` for the final response (default true). */
+  requireVerdict?: boolean
+  /** Store directory for episode pages; must be a content directory of the store (default `episodes`). */
+  dir?: string
+  /** Tools whose successful calls change their `file_path` or `path` (default `write`, `edit`). */
+  changeTools?: string[]
+  /** Characters of the request kept (default 1000). */
+  maxRequestChars?: number
+  /** Characters of the final response kept (default 2000). */
+  maxOutcomeChars?: number
+  /**
+   * Markers of temporary statements, dropped sentence by sentence
+   * (default `this session`, `for now`, `today only`, `temporarily`, `for this turn`).
+   */
+  transientMarkers?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-distill -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
@@ -4929,6 +4982,7 @@ export interface Config {
 | `@deepseek-ai/dsh-deque` | — | [`packages/util/deque/src/index.ts`](../packages/util/deque/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-agent-team-profile` | — | [`packages/experimental/agent-team-profile/src/index.ts`](../packages/experimental/agent-team-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-browser-use-runtime` | — | [`packages/experimental/browser-use-runtime/src/index.ts`](../packages/experimental/browser-use-runtime/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-knowledge-profile` | — | [`packages/experimental/knowledge-profile/src/index.ts`](../packages/experimental/knowledge-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-loop-graph-profile` | — | [`packages/experimental/loop-graph-profile/src/index.ts`](../packages/experimental/loop-graph-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-schedule-bundle` | — | [`packages/experimental/schedule-bundle/src/index.ts`](../packages/experimental/schedule-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-voice-input-bundle` | — | [`packages/experimental/voice-input-bundle/src/index.ts`](../packages/experimental/voice-input-bundle/src/index.ts) |

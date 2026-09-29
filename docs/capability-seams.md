@@ -245,6 +245,8 @@ flowchart LR
   pkg_experimental_knowledge_wiki_filesystem["experimental-knowledge-wiki-filesystem"]
   pkg_experimental_knowledge_rules["experimental-knowledge-rules"]
   pkg_experimental_tool_knowledge["experimental-tool-knowledge"]
+  pkg_experimental_context_knowledge["experimental-context-knowledge"]
+  pkg_experimental_memory_distill["experimental-memory-distill"]
   pkg_inspector["inspector"]
   svc_inspector["ctx.inspector<br/>Cross-realm runtime inspection"]
   pkg_jobs["jobs"]
@@ -483,7 +485,9 @@ flowchart LR
   svc_jobs --> pkg_tool_pwsh
   svc_jobs --> pkg_tool_subagent
   svc_jobs --> pkg_tool_terminal
+  svc_knowledge --> pkg_experimental_context_knowledge
   svc_knowledge --> pkg_experimental_knowledge_rules
+  svc_knowledge --> pkg_experimental_memory_distill
   svc_knowledge --> pkg_experimental_tool_knowledge
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
@@ -668,7 +672,7 @@ flowchart LR
 | `ctx.subagents` | `seam` | [`subagent`](../packages/subagent/subagent) | [`subagent-spawn-in-process`](../packages/subagent/subagent-spawn-in-process), [`subagent-fork-in-process`](../packages/subagent/subagent-fork-in-process), [`subagent-acp`](../packages/subagent/subagent-acp), [`subagent-codex`](../packages/subagent/subagent-codex), [`subagent-claude-code`](../packages/subagent/subagent-claude-code), [`subagent-dsh-sdk`](../packages/subagent/subagent-dsh-sdk) | [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-subagent-control`](../packages/subagent/tool-subagent-control), [`tool-ralph`](../packages/workflow/tool-ralph), [`experimental-verifier-gate`](../packages/experimental/verifier-gate) | - | Providers implement transports; the service also owns optional Activation-based continuation orchestration, tool-subagent selects one-shot or continuable delegation, tool-subagent-control delivers follow-ups, and tool-ralph requires one fresh structured-output route. |
 | `ctx.speechToText` | `seam` | [`experimental-speech-to-text`](../packages/experimental/speech-to-text) | [`experimental-speech-to-text-sensevoice`](../packages/experimental/speech-to-text-sensevoice) | [`experimental-api-speech-to-text`](../packages/experimental/api-speech-to-text) | - | Routes explicit recognizers; the browser uses the authenticated Remote and keeps transcripts in the draft until submission. |
 | `ctx.agentTeams` | `core` | [`experimental-agent-team`](../packages/experimental/agent-team) | - | [`experimental-tool-agent-team`](../packages/experimental/tool-agent-team) | - | Owns the implicit-root roster, durable peer mailbox, shared task DAG, and continuable-child lifecycle; tool-agent-team contributes model controls. |
-| `ctx.knowledge` | `seam` | [`experimental-knowledge`](../packages/experimental/knowledge) | [`experimental-knowledge-wiki-filesystem`](../packages/experimental/knowledge-wiki-filesystem) | [`experimental-knowledge-rules`](../packages/experimental/knowledge-rules), [`experimental-tool-knowledge`](../packages/experimental/tool-knowledge) | - | The experimental Service Definition lists, searches, reads, cites, and writes pages of one knowledge store; providers derive edges and staleness on every read and refuse writes that cite no session event. |
+| `ctx.knowledge` | `seam` | [`experimental-knowledge`](../packages/experimental/knowledge) | [`experimental-knowledge-wiki-filesystem`](../packages/experimental/knowledge-wiki-filesystem) | [`experimental-knowledge-rules`](../packages/experimental/knowledge-rules), [`experimental-tool-knowledge`](../packages/experimental/tool-knowledge), [`experimental-context-knowledge`](../packages/experimental/context-knowledge), [`experimental-memory-distill`](../packages/experimental/memory-distill) | - | The experimental Service Definition lists, searches, reads, cites, and writes pages of one knowledge store; providers derive edges and staleness on every read and refuse writes that cite no session event. |
 | `ctx.inspector` | `core` | `inspector` | - | - | - | Owns the Worker-hosted CDP target and the transport-independent Host and Client observation and Cordis-tree query API. |
 | `ctx.jobs` | `seam` | [`jobs`](../packages/jobs/jobs) | [`jobs-local`](../packages/jobs/jobs-local) | [`tool-bash`](../packages/shell/tool-bash), [`tool-pwsh`](../packages/shell/tool-pwsh), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-jobs`](../packages/jobs/tool-jobs), [`api-job-controller`](../packages/api/job-controller) | - | Producers (background bash/pwsh, PTY sends, and subagent delegations) register running work; record-declaring jobs additionally stream raw output for non-consuming observers; tool-jobs is the model-facing controller that reads, lists, and kills it; jobs-local is the process-local registry. |
 | `ctx.web` | `seam` | [`web`](../packages/web/web) | [`web-search-exa`](../packages/web/web-search-exa), [`web-search-perplexity`](../packages/web/web-search-perplexity), [`web-search-deepseek`](../packages/web/web-search-deepseek), [`web-fetch-http`](../packages/web/web-fetch-http) | [`tool-web`](../packages/web/tool-web) | - | Search and fetch providers register into one ctx.web seam; tool-web owns the stable model-facing names. |

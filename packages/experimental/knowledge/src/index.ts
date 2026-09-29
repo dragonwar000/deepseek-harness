@@ -20,7 +20,8 @@ import type {
 } from './types.ts'
 
 export { DECLARED_RELATIONS, edgeId, isDeclaredRelation, knowledgePageId } from './edge.ts'
-export { pathArgument } from './tool-path.ts'
+export { foldToolPath, pathArgument } from './tool-path.ts'
+export type { PendingToolPaths, ToolPathFold } from './tool-path.ts'
 export type {
   KnowledgeDeclaredRelation,
   KnowledgeEdge,

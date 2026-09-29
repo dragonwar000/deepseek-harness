@@ -105,6 +105,8 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/experimental/knowledge': { kind: 'indirect', reason: 'The Service Definition declares types, an abstract service, and two log-only session events; providers and consumers of ctx.knowledge own every model-visible tool and message.' },
   'packages/experimental/knowledge-wiki-filesystem': { kind: 'indirect', reason: 'The provider registers no tool, message, or prompt text; consumers of ctx.knowledge own every model-visible result, including refusal reasons.' },
   'packages/experimental/knowledge-rules': { kind: 'indirect', reason: 'The guard only turns refused file and shell tool calls into error results with a fixed reason; it registers no tool, prompt, or message.' },
+  'packages/experimental/memory-distill': { kind: 'indirect', reason: 'Episode pages reach the model only through the knowledge index message and the knowledge tools; the plugin adds no message, tool, or prompt text.' },
+  'packages/experimental/knowledge-profile': { kind: 'indirect', reason: 'The bundle only composes the knowledge-wiki-filesystem, knowledge-rules, tool-knowledge, context-knowledge, and memory-distill rows; tool-knowledge and context-knowledge own every model-visible tool definition and message this bundle can produce.' },
   'packages/client/ui-slots': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-attachment': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-primitives': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },

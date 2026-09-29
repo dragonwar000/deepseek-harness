@@ -35,6 +35,8 @@ Both are log-only and required-on-read; the injected index itself is an ordinary
 | Service Provider | [dsh-experimental-knowledge-wiki-filesystem](../../packages/experimental/knowledge-wiki-filesystem/README.md) |
 | Guard | [dsh-experimental-knowledge-rules](../../packages/experimental/knowledge-rules/README.md) |
 | Consumer | [dsh-experimental-tool-knowledge](../../packages/experimental/tool-knowledge/README.md) — `knowledge_query`, `knowledge_read`, `knowledge_cite`, `knowledge_write` |
+| Consumer | [dsh-experimental-context-knowledge](../../packages/experimental/context-knowledge/README.md) — index message and `knowledge/inject` |
+| Consumer | [dsh-experimental-memory-distill](../../packages/experimental/memory-distill/README.md) — episode pages after a verified turn |
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

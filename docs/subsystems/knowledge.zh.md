@@ -35,6 +35,8 @@
 | Service Provider | [dsh-experimental-knowledge-wiki-filesystem](../../packages/experimental/knowledge-wiki-filesystem/README.zh.md) |
 | 守卫 | [dsh-experimental-knowledge-rules](../../packages/experimental/knowledge-rules/README.zh.md) |
 | 消费方 | [dsh-experimental-tool-knowledge](../../packages/experimental/tool-knowledge/README.zh.md) — `knowledge_query`、`knowledge_read`、`knowledge_cite`、`knowledge_write` |
+| 消费方 | [dsh-experimental-context-knowledge](../../packages/experimental/context-knowledge/README.zh.md) — 索引消息与 `knowledge/inject` |
+| 消费方 | [dsh-experimental-memory-distill](../../packages/experimental/memory-distill/README.zh.md) — 校验通过的 turn 之后的 episode 页面 |
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

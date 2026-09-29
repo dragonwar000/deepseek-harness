@@ -58,6 +58,9 @@ kind: "package-group"
 | [`knowledge-wiki-filesystem`](knowledge-wiki-filesystem/README.zh.md) | 会话工作区内的 Markdown wiki 知识库：推导的边与过期状态、经规则校验的写入 | `ctx.knowledge` |
 | [`knowledge-rules`](knowledge-rules/README.zh.md) | 失败即拒绝的守卫：拒绝绕过 `knowledge_write` 的文件与 shell 写入 | 注册 `fs/write-intent`/`fs/edit-intent` 监听器与工具守卫 |
 | [`tool-knowledge`](tool-knowledge/README.zh.md) | `knowledge_query`、`knowledge_read`、`knowledge_cite` 与需审批、带出处的 `knowledge_write` | 在 `ctx.tools` 上注册四个工具 |
+| [`context-knowledge`](context-knowledge/README.zh.md) | 知识库变化时，在 turn 第一步加入有上限的知识索引消息 | 在 `agent/pre-step` 注册监听器与 `knowledgeContext` 投影 |
+| [`memory-distill`](memory-distill/README.zh.md) | 校验门记录 ok 后写入引用变更工具结果的 episode 页面（shadow 或 enforce） | 在 `agent/turn-stopping` 与 `session/event` 注册监听器及 `memoryDistill` 投影 |
+| [`knowledge-profile`](knowledge-profile/README.zh.md) | 从插件页开启的知识库组合包 | — |
 
 -----
 

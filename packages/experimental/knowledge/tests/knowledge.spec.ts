@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { createToolResultMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
-import { DECLARED_RELATIONS, edgeId, isDeclaredRelation, KnowledgeService, knowledgePageId, pathArgument } from '../src/index.ts'
+import { DECLARED_RELATIONS, edgeId, isDeclaredRelation, KnowledgeService, knowledgePageId, pathArgument, foldToolPath } from '../src/index.ts'
 import type {
   KnowledgeEdge,
   KnowledgeEntry,
@@ -94,6 +95,24 @@ describe('knowledge vocabulary', () => {
     expect(pathArgument('{"command":"cat a"}')).toBeUndefined()
     expect(pathArgument('[1]')).toBeUndefined()
     expect(pathArgument('{not json')).toBeUndefined()
+  })
+
+  it('tracks the path of a pending tool call until its result settles it', () => {
+    const tools = new Set(['write'])
+    const session = Session.create(SessionId('tool-path'))
+    const call = (callId: string, name: string, args: string) => session.append('tool/call', { turn: 1, step: 1, callId: ToolCallId(callId), name, arguments: args })
+    const result = (callId: string, isError: boolean) => session.append('tool/result', {
+      turn: 1, step: 1, message: createToolResultMessage({ callId: ToolCallId(callId), content: [{ type: 'text', text: 'ok' }], isError }),
+    }, { surfaceOp: 'append' })
+    expect(foldToolPath(tools, {}, call('r1', 'read', '{"file_path":"a.ts"}'))).toBeUndefined()
+    expect(foldToolPath(tools, {}, call('w0', 'write', '{}'))).toBeUndefined()
+    expect(foldToolPath(tools, {}, session.append('turn/start', { turn: 1 }))).toBeUndefined()
+    const pending = foldToolPath(tools, { w0: 'b.ts' }, call('w1', 'write', '{"file_path":"a.ts"}'))?.pending ?? {}
+    expect(pending).toEqual({ w0: 'b.ts', w1: 'a.ts' })
+    expect(foldToolPath(tools, pending, result('other', false))).toBeUndefined()
+    const done = result('w1', false)
+    expect(foldToolPath(tools, pending, done)).toEqual({ pending: { w0: 'b.ts' }, completed: { path: 'a.ts', seq: done.seq } })
+    expect(foldToolPath(tools, pending, result('w0', true))).toEqual({ pending: { w1: 'a.ts' } })
   })
 
   it('appends both knowledge events to a session', () => {

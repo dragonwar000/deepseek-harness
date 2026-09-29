@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/context-knowledge/README.md
+/:
+  en: 369d6c2df9c71505
+  zh: 5c26d850bad5c0df
+/deepseek-ai-dsh-experimental-context-knowledge:
+  en: 79def904a48489cf
+  zh: 98d1195cdae7d5e4
+/deepseek-ai-dsh-experimental-context-knowledge/summary:
+  en: f13efb0d07b1adf4
+  zh: bbe2ce6bd4f73398
+/deepseek-ai-dsh-experimental-context-knowledge/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-context-knowledge/use-this-package:
+  en: 834b258ec52ae035
+  zh: 2886eb4946601fcb
+/deepseek-ai-dsh-experimental-context-knowledge/use-this-package/when-to-choose-it:
+  en: 7b92d2428b3d4ca6
+  zh: 62794bc0bed8c8e2
+/deepseek-ai-dsh-experimental-context-knowledge/use-this-package/minimal-configuration:
+  en: 644ed8bba714f17b
+  zh: 4c6b3ccd0e46ec13
+/deepseek-ai-dsh-experimental-context-knowledge/understand-the-implementation:
+  en: 16d24f3fea529fdb
+  zh: 307bef5b7d0b713f
+/deepseek-ai-dsh-experimental-context-knowledge/understand-the-implementation/design-notes:
+  en: 17bc990f54a1ece8
+  zh: e9e3e1b0d9c8047c
+/deepseek-ai-dsh-experimental-context-knowledge/understand-the-implementation/source-map:
+  en: 1f3c0dec66c98f22
+  zh: 73fb8dcf40b72fc7
+/deepseek-ai-dsh-experimental-context-knowledge/further-exploration:
+  en: b4ae30c7d5853672
+  zh: 5bbb883fda33e7a8
+/deepseek-ai-dsh-experimental-context-knowledge/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-context-knowledge/model-experience/the-knowledge-index-message:
+  en: d318a00e84649f17
+  zh: 4a3f66d8ae626f29
+/deepseek-ai-dsh-experimental-context-knowledge/model-experience/the-knowledge-index-message/what-the-model-sees:
+  en: 0fa70e393880e781
+  zh: 74a0a887240df062
+/deepseek-ai-dsh-experimental-context-knowledge/model-experience/the-knowledge-index-message/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-context-knowledge/model-experience/the-knowledge-index-message/token-effect:
+  en: 519e1f2f9ac96986
+  zh: 6f5644ab8df7d064
+/deepseek-ai-dsh-experimental-context-knowledge/model-experience/the-knowledge-index-message/kv-cache-effect:
+  en: 92ec43f52374b6eb
+  zh: 29acdebfb502e665
+/deepseek-ai-dsh-experimental-context-knowledge/known-limitations-and-deferred-work:
+  en: 28c4a63edb212934
+  zh: 313060879bdb9534
+/deepseek-ai-dsh-experimental-context-knowledge/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 975625e42085937f

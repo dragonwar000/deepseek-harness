@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-09-30-knowledge-store-citations.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-30-knowledge-store-citations.md
+/agent-note-knowledge-store-pages-change-only-through-citation-checked-writes:
+  en: a949d3aa543d09d8
+  zh: d02881a6cdcc98f1
+/agent-note-knowledge-store-pages-change-only-through-citation-checked-writes/problem:
+  en: d285c3b125741220
+  zh: eaa7e11808e5c6f1
+/agent-note-knowledge-store-pages-change-only-through-citation-checked-writes/decision:
+  en: 9e8e48a09970fbe9
+  zh: 1a5f4e2c61b6404d
+/agent-note-knowledge-store-pages-change-only-through-citation-checked-writes/alternatives-considered:
+  en: 9c5a90344b702d02
+  zh: e4e8740114f22560
+/agent-note-knowledge-store-pages-change-only-through-citation-checked-writes/consequences:
+  en: c0c5c7fd929c4132
+  zh: bfd3dda13105800e

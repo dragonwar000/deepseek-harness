@@ -58,6 +58,9 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`knowledge-wiki-filesystem`](knowledge-wiki-filesystem/README.md) | Markdown wiki store in the session workspace with derived edges, staleness, and rule-checked writes | `ctx.knowledge` |
 | [`knowledge-rules`](knowledge-rules/README.md) | Fail-closed guard refusing file and shell writes that bypass `knowledge_write` | registers `fs/write-intent`/`fs/edit-intent` listeners and a tool guard |
 | [`tool-knowledge`](tool-knowledge/README.md) | `knowledge_query`, `knowledge_read`, `knowledge_cite`, and approval-gated `knowledge_write` that cites session reads | registers four tools on `ctx.tools` |
+| [`context-knowledge`](context-knowledge/README.md) | Capped knowledge index message at the first step of a turn when the store changed | registers a listener on `agent/pre-step` and the `knowledgeContext` projection |
+| [`memory-distill`](memory-distill/README.md) | Episode page after the verifier gate records ok, citing the changing tool results, shadow or enforce | registers listeners on `agent/turn-stopping` and `session/event` and the `memoryDistill` projection |
+| [`knowledge-profile`](knowledge-profile/README.md) | Knowledge bundle switched on from the Plugins page | — |
 
 -----
 

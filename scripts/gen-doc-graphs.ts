@@ -755,7 +755,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Knowledge store seam',
     mode: 'seam',
     implementations: ['experimental-knowledge-wiki-filesystem'],
-    consumers: ['experimental-knowledge-rules', 'experimental-tool-knowledge'],
+    consumers: ['experimental-knowledge-rules', 'experimental-tool-knowledge', 'experimental-context-knowledge', 'experimental-memory-distill'],
     note: 'The experimental Service Definition lists, searches, reads, cites, and writes pages of one knowledge store; providers derive edges and staleness on every read and refuse writes that cite no session event.',
   },
   {

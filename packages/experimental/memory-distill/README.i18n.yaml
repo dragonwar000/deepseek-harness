@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/memory-distill/README.md
+/:
+  en: 21cafdb31fd96ac1
+  zh: 53c70ed63d20f8b6
+/deepseek-ai-dsh-experimental-memory-distill:
+  en: 66fb18b4a0f34b57
+  zh: ed069269bad5c1c9
+/deepseek-ai-dsh-experimental-memory-distill/summary:
+  en: 5bd1217940d75ca5
+  zh: 74c2d33990d892bd
+/deepseek-ai-dsh-experimental-memory-distill/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-memory-distill/use-this-package:
+  en: 321e0be21b62899e
+  zh: dfde31a4d5aa4728
+/deepseek-ai-dsh-experimental-memory-distill/use-this-package/minimal-configuration:
+  en: d5e9419da44cc392
+  zh: ec706ad4662f2b33
+/deepseek-ai-dsh-experimental-memory-distill/use-this-package/order-with-the-verifier-gate:
+  en: a2b3cf27df5f14ae
+  zh: e858dfbce70a45cc
+/deepseek-ai-dsh-experimental-memory-distill/use-this-package/verify-commands-decide:
+  en: cdbd93be5fee874b
+  zh: a8bb2fd21989f657
+/deepseek-ai-dsh-experimental-memory-distill/understand-the-implementation:
+  en: 98aebf8992ddee72
+  zh: 41766d48f0bf7414
+/deepseek-ai-dsh-experimental-memory-distill/understand-the-implementation/design-notes:
+  en: 7512e00f7bacc80b
+  zh: a878959c54fbe52d
+/deepseek-ai-dsh-experimental-memory-distill/understand-the-implementation/source-map:
+  en: ec3317f836bd574e
+  zh: 0d38ed77b94d0a15
+/deepseek-ai-dsh-experimental-memory-distill/further-exploration:
+  en: 82ea532e84847afd
+  zh: 5b2f0355de27dc44
+/deepseek-ai-dsh-experimental-memory-distill/model-experience:
+  en: 112b15c7d6d09c12
+  zh: 49e075adccf6d317
+/deepseek-ai-dsh-experimental-memory-distill/model-experience/kv-cache-effect:
+  en: 951e16e0c497683b
+  zh: 6fd302de56fba884
+/deepseek-ai-dsh-experimental-memory-distill/known-limitations-and-deferred-work:
+  en: a895c5fc96efe63c
+  zh: d83702e81cd66cb6
+/deepseek-ai-dsh-experimental-memory-distill/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 975625e42085937f

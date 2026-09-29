@@ -188,6 +188,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | no | Record speech and insert editable text into the conversation draft |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp` | yes | Experimental computer use through an installed Cua Driver MCP executable |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | no | Experimental computer-use provider embedding the Cua Driver native npm SDK |
+| `@deepseek-ai/dsh-experimental-context-knowledge` | yes | Knowledge index context: page ids, titles, types, update dates, and stale marks of the knowledge store, capped by lines and bytes, added at the first step of a turn when the index changed |
 | `@deepseek-ai/dsh-experimental-denial-budget` | yes | Counts policy-denied tool calls, appends fixed safer-approach advice, and asks approval before continuing past a denial budget; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-graph-contract` | yes | dsh-graph/v1 plan contract: deterministic graph_audit admission and graph/plan records with rejection memory; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-graph-projection` | yes | Task graphs, turn evidence, and compacted history folded from the session log, with the read-only graph_query, graph_cite, and history_read tools |
@@ -197,6 +198,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-knowledge-rules` | yes | Fail-closed guard of the knowledge store: refuses file tool writes and edits and shell commands that change store pages without going through knowledge_write |
 | `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem` | yes | Wiki filesystem provider of the knowledge seam: Markdown pages with YAML frontmatter in the session workspace, derived links, relations, touches edges and staleness, and rule-checked writes that cite session events |
 | `@deepseek-ai/dsh-experimental-loop-budget` | yes | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor; pauses the goal on a trip; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-memory-distill` | yes | Episode distillation into the knowledge store: after the verifier gate records verdict ok, one episode page with the request, the filtered final response, and the changed files, citing their tool results; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-ptc-runtime-python` | yes | CPython subprocess implementation of the DeepSeek Harness PTC execution seam |
 | `@deepseek-ai/dsh-experimental-speech-to-text` | yes | Experimental speech recognition with independently selectable providers |
 | `@deepseek-ai/dsh-experimental-speech-to-text-sensevoice` | yes | Local SenseVoice ONNX transcription with a managed sherpa-onnx process |

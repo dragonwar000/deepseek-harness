@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Knowledge",
+    "description": "A Markdown wiki knowledge store in the workspace with a write guard, read-only knowledge tools, a capped index in context, and episode distillation after verified turns in shadow mode."
+  }
+}

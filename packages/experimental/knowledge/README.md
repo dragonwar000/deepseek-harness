@@ -57,7 +57,7 @@ Every method takes a `KnowledgeScope` with the session working directory and a c
 | [`src/index.ts`](src/index.ts) | `KnowledgeService` and the `ctx.knowledge` declaration |
 | [`src/types.ts`](src/types.ts) | Vocabulary and the two `SessionEventMap` members |
 | [`src/edge.ts`](src/edge.ts) | `edgeId`, relation list, id branding |
-| [`src/tool-path.ts`](src/tool-path.ts) | `pathArgument` for consumers that derive sources from logged tool calls |
+| [`src/tool-path.ts`](src/tool-path.ts) | `pathArgument` and `foldToolPath` for consumers that derive sources from logged tool calls |
 | [`src/invariant.ts`](src/invariant.ts) | Citation invariant companion |
 
 </details>

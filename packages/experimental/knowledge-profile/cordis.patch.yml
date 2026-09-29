@@ -1,0 +1,57 @@
+# Experimental knowledge layer. Apply after dsh-base, and after the loop guards
+# bundle when both are enabled: memory-distill reads the verifier gate's verdict
+# at agent/turn-stopping, whose listeners run in row order.
+# knowledge-wiki-filesystem keeps pages under <session cwd>/knowledge. Pages
+# change only through knowledge_write or memory-distill: knowledge-rules refuses
+# file tool writes and shell commands that would change the store directly.
+# tool-knowledge starts read-only: knowledge_query, knowledge_read, and
+# knowledge_cite join every request; knowledge_write is added by a row patch with
+# mode: read-write, and every write then asks for approval and cites reads.
+# context-knowledge adds the store index (never page content) at the first step
+# of a turn when it changed, capped at 200 lines and 25600 bytes.
+# memory-distill starts in shadow mode: after the verifier gate records verdict
+# ok it records the episode page it would write (knowledge/write, applied false).
+# Without the loop guards bundle, or with a gate that has no verify commands, it
+# records nothing.
+
+- insert:
+    - id: knowledge-wiki-filesystem
+      name: '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
+      config:
+        root: knowledge
+        contentDirs: [concepts, entities, sources, architecture, tours, episodes]
+        readOnlyDirs: [raw]
+        codeExtensions: [py, js, ts, sh, yaml, yml, json, html]
+        maxPages: 2000
+
+    - id: knowledge-rules
+      name: '@deepseek-ai/dsh-experimental-knowledge-rules'
+      config:
+        shellTools: [bash, pwsh]
+
+    - id: tool-knowledge
+      name: '@deepseek-ai/dsh-experimental-tool-knowledge'
+      config:
+        mode: read-only
+        evidenceTools: [read]
+        maxResults: 10
+        maxPageChars: 20000
+        maxDepth: 2
+
+    - id: context-knowledge
+      name: '@deepseek-ai/dsh-experimental-context-knowledge'
+      config:
+        maxLines: 200
+        maxBytes: 25600
+
+    - id: memory-distill
+      name: '@deepseek-ai/dsh-experimental-memory-distill'
+      config:
+        mode: shadow
+        assumption: "a turn whose verify commands passed holds project facts worth recalling in later sessions"
+        requireVerdict: true
+        dir: episodes
+        changeTools: [write, edit]
+        maxRequestChars: 1000
+        maxOutcomeChars: 2000
+        transientMarkers: [this session, for now, today only, temporarily, for this turn]

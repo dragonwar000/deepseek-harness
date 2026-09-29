@@ -57,7 +57,7 @@ kind: "package-reference"
 | [`src/index.ts`](src/index.ts) | `KnowledgeService` 与 `ctx.knowledge` 声明 |
 | [`src/types.ts`](src/types.ts) | 词汇与两个 `SessionEventMap` 成员 |
 | [`src/edge.ts`](src/edge.ts) | `edgeId`、关系列表、id 品牌化 |
-| [`src/tool-path.ts`](src/tool-path.ts) | 供从已记录工具调用推导来源的消费方使用的 `pathArgument` |
+| [`src/tool-path.ts`](src/tool-path.ts) | 供从已记录工具调用推导来源的消费方使用的 `pathArgument` 与 `foldToolPath` |
 | [`src/invariant.ts`](src/invariant.ts) | 出处不变量伴随插件 |
 
 </details>
