@@ -77,6 +77,9 @@ function snapshotMode(value: string | undefined): SnapshotMode {
 }
 
 const mode = snapshotMode(process.env.DSH_SNAPSHOT)
+/** Live recording waits on real model latency, so a multi-step or multi-agent scenario needs more than the replay deadline. */
+const RECORD_PROCESS_TIMEOUT_MS = 600_000
+const SCENARIO_TEST_TIMEOUT_MS = mode === 'record' ? RECORD_PROCESS_TIMEOUT_MS + 15_000 : LOADER_SMOKE_TEST_TIMEOUT_MS
 const RUNTIME_WORKSPACE_ENTRIES = ['.agents', '.dsh', '.snapshot-patches'] as const
 
 interface JsonObject {
@@ -752,7 +755,16 @@ async function verifyProviderCwdResume(
   }
 }
 
-async function verifyHeaders(scenario: HeadlessScenario, actualLogs: readonly SessionLog[], ctx: NormalizeContext): Promise<void> {
+/**
+ * Check request headers against the pin and the readable sidecars. A child with its own tool-schema sidecar
+ * compares against its expected fixture header, because subagent runs may resolve request options differently.
+ */
+async function verifyHeaders(
+  scenario: HeadlessScenario,
+  actualLogs: readonly SessionLog[],
+  ctx: NormalizeContext,
+  expectedLogs: readonly string[],
+): Promise<void> {
   const pin = pinOf(scenario)
   const fixture = await readFile(join(pin.dir, await primaryFixtureFile(pin.dir)), 'utf8')
   const pinned = normalizedHeaders(fixture, fixtureContext(fixture))
@@ -791,10 +803,18 @@ async function verifyHeaders(scenario: HeadlessScenario, actualLogs: readonly Se
       expect(prompts.length, `${scenario.name}: system/message count`)
         .toBe(1 + (logIndex === 0 ? pin.manifest.header.promptChanges ?? 0 : 0))
     }
+    const expectedLog = expectedLogs[logIndex]
+    const childHeaders = childSchemas.has(logIndex) && expectedLog !== undefined
+      ? normalizedHeaders(expectedLog, fixtureContext(expectedLog)) : undefined
     for (const [index, header] of headers.entries()) {
       const selectedSchemas = childSchemas.get(logIndex)?.[index]
+      const childHeader = childHeaders?.[index]
       const base = reconstructed[index] ?? reconstructed[0]
-      const expected = selectedSchemas === undefined ? base : { ...base as JsonObject, tools: selectedSchemas }
+      const expected = selectedSchemas === undefined
+        ? base
+        : childHeader === undefined
+          ? { ...base as JsonObject, tools: selectedSchemas }
+          : restorePinnedToolSchemas(childHeader, selectedSchemas)
       expect(header, `${scenario.name}: request header ${index + 1}`).toEqual(expected)
     }
     if (prompts.length > 0) {
@@ -1124,6 +1144,7 @@ describe('headless recorded-session snapshots', () => {
         result = await runLoaderSmoke({
           label: `${scenario.name} headless snapshot`,
           tempDirPrefix: 'dsh-log-snap-',
+          ...(mode === 'record' ? { processTimeoutMs: RECORD_PROCESS_TIMEOUT_MS } : {}),
           ...(scenario.manifest.workspace?.parent === 'outside-temp' ? { tempDirParent: outsideTempWorkspaceParent() } : {}),
           binScript: dshBin,
           sourceImport: 'tsx/esm',
@@ -1270,7 +1291,7 @@ describe('headless recorded-session snapshots', () => {
           : records(expectedSnapshots[index] as string)
         expect(actualRecords, `${scenario.name}: session ${index}`).toEqual(expectedRecords)
       }
-      await verifyHeaders(scenario, actualLogs, actualContext)
+      await verifyHeaders(scenario, actualLogs, actualContext, expected)
 
       if (initialWorkspace === undefined || finalWorkspace === undefined) {
         throw new Error(`${scenario.name}: workspace was not captured around the profile run`)
@@ -1281,6 +1302,6 @@ describe('headless recorded-session snapshots', () => {
       } else {
         expect(finalWorkspace, `${scenario.name}: a changed workspace requires workspace.final`).toEqual(initialWorkspace)
       }
-    }, scenario.name === 'provider-cwd' ? 3 * LOADER_SMOKE_TEST_TIMEOUT_MS : LOADER_SMOKE_TEST_TIMEOUT_MS)
+    }, scenario.name === 'provider-cwd' ? 3 * SCENARIO_TEST_TIMEOUT_MS : SCENARIO_TEST_TIMEOUT_MS)
   }
 })

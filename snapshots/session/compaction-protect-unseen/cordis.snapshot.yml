@@ -1,0 +1,42 @@
+# Keyless replay of pressure compaction with unseen tool-result protection.
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  config:
+    thresholdRatio: 0.8
+    headroomTokens: 1800
+    retainTokens: 20
+
+- id: tool-result-pruner
+  name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+  config:
+    thresholdChars: 2048
+    headChars: 512
+    tailChars: 256
+    protectUnseen: true
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              # Capability parity with the live adapter so replay
+              # reconstructs the freshly recorded request header.
+              - id: deepseek-v4-flash
+                contextWindow: 11382
+                defaultMaxTokens: 1000
+                reasoningEfforts: ['off', 'low', 'high', 'max']
+                defaultReasoningEffort: high

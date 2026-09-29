@@ -1,0 +1,22 @@
+# Pressure compaction while the pruner protects the unanswered tool result.
+# Config patches replace whole plugin configs, so the pruner row restates its budgets.
+
+- id: llm-deepseek
+  config:
+    models:
+      - id: deepseek-v4-flash
+        contextWindow: 11382
+        maxTokens: 1000
+
+- id: compaction-basic
+  config:
+    thresholdRatio: 0.8
+    headroomTokens: 1800
+    retainTokens: 20
+
+- id: tool-result-pruner
+  config:
+    thresholdChars: 2048
+    headChars: 512
+    tailChars: 256
+    protectUnseen: true

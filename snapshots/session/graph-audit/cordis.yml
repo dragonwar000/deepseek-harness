@@ -1,0 +1,12 @@
+# The ordinary headless composition plus the graph contract (enforce) and the
+# graph projection: the model audits and queries a dsh-graph/v1 plan.
+
+- insert:
+    - id: graph-contract
+      name: '@deepseek-ai/dsh-experimental-graph-contract'
+      config:
+        mode: enforce
+        assumption: "the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them"
+        allowedTools: [read, grep, edit]
+    - id: graph-projection
+      name: '@deepseek-ai/dsh-experimental-graph-projection'
