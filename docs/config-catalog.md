@@ -1372,7 +1372,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-verifier-gate`
 
-- `source`: [`packages/experimental/verifier-gate/src/index.ts:73`](../packages/experimental/verifier-gate/src/index.ts)
+- `source`: [`packages/experimental/verifier-gate/src/index.ts:145`](../packages/experimental/verifier-gate/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1388,6 +1388,8 @@ export interface Config {
   verify?: VerifyConfig
   /** Blank-response settings. */
   blankResponse?: BlankResponseConfig
+  /** Evaluator settings. */
+  evaluator?: EvaluatorConfig
   /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
   maxContinuations?: number
 }
@@ -1406,6 +1408,36 @@ export interface VerifyConfig {
 export interface BlankResponseConfig {
   /** Steers per turn after a response with no tool call and no visible text; `0` disables the check (default 1). */
   maxSteers?: number
+}
+
+/** Evaluator settings; the evaluator runs only with `enabled`. */
+export interface EvaluatorConfig {
+  /** Start a fresh evaluator after the verify commands pass (default false). */
+  enabled?: boolean
+  /** `ctx.subagents` provider for evaluator children; it must start children without the parent conversation (default `spawn`). */
+  provider?: string
+  /** Fixed criteria `c1`, `c2`, …; empty lets the first evaluator of a turn write them (default none). */
+  rubric?: string[]
+  /** Global tools the evaluator may call; list read-only tools only (default none). */
+  tools?: string[]
+  /** Persona that replaces the deployment persona for the evaluator child. */
+  persona?: string
+  /** Output-token cap for each evaluator request; unset inherits the parent route. Needs the provider's `agentOptions` capability. */
+  maxOutputTokens?: number
+  /** Evaluation rounds per turn (default 3). */
+  maxRounds?: number
+  /** Wall-clock limit per evaluator run in milliseconds (default 300000). */
+  timeoutMs?: number
+  /** Characters of the human request and of the goal objective quoted to the evaluator (default 4000). */
+  maxSpecChars?: number
+  /** Characters of the evaluator reason kept in the verdict and the steer (default 2000). */
+  maxFeedbackChars?: number
+  /** Independent evaluators per round, run one after another; above 1 needs `rubric` (default 1). */
+  count?: number
+  /** With `count` above 1, the ceiling on evaluator runs per turn; `count × maxRounds` above it fails the load (default 3). */
+  maxRuns?: number
+  /** Seed of each evaluator's order of criteria and verify results when `count` is above 1 (default 0). */
+  seed?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->

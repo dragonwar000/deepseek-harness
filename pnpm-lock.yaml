@@ -8278,6 +8278,18 @@ importers:
       '@deepseek-ai/dsh-shell':
         specifier: workspace:*
         version: link:../../shell/shell
+      '@deepseek-ai/dsh-subagent':
+        specifier: workspace:*
+        version: link:../../subagent/subagent
+      '@deepseek-ai/dsh-subagent-in-process-driver':
+        specifier: workspace:*
+        version: link:../../subagent/subagent-in-process-driver
+      '@deepseek-ai/dsh-subagent-spawn-in-process':
+        specifier: workspace:*
+        version: link:../../subagent/subagent-spawn-in-process
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../core/tools
 
   packages/experimental/voice-input-bundle:
     dependencies:

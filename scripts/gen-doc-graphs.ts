@@ -729,7 +729,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Subagent provider and continuation service',
     mode: 'seam',
     implementations: ['subagent-spawn-in-process', 'subagent-fork-in-process', 'subagent-acp', 'subagent-codex', 'subagent-claude-code', 'subagent-dsh-sdk'],
-    consumers: ['tool-subagent', 'tool-subagent-control', 'tool-ralph'],
+    consumers: ['tool-subagent', 'tool-subagent-control', 'tool-ralph', 'experimental-verifier-gate'],
     note: 'Providers implement transports; the service also owns optional Activation-based continuation orchestration, tool-subagent selects one-shot or continuable delegation, tool-subagent-control delivers follow-ups, and tool-ralph requires one fresh structured-output route.',
   },
   {

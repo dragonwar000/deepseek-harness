@@ -1,0 +1,19 @@
+# The ordinary headless composition plus the verifier gate enforcing two
+# sequential evaluators per round on the shipped spawn provider.
+
+- insert:
+    - id: verifier-gate
+      name: '@deepseek-ai/dsh-experimental-verifier-gate'
+      config:
+        mode: enforce
+        assumption: "the model ends a turn before independent reviewers would accept the work"
+        evaluator:
+          enabled: true
+          provider: spawn
+          rubric:
+            - The assistant has replied FIRST
+            - The assistant has replied SECOND
+          count: 2
+          maxRounds: 2
+          maxRuns: 4
+          seed: 7

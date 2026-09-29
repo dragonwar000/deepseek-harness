@@ -14,6 +14,9 @@
     { "path": "../../goal/goal" },
     { "path": "../../llm/llm" },
     { "path": "../../shell/shell" },
+    { "path": "../../subagent/subagent" },
+    { "path": "../../subagent/subagent-in-process-driver" },
+    { "path": "../../core/tools" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]
 }

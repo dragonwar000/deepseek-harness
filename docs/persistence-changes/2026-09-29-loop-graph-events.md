@@ -9,7 +9,7 @@ English | [中文](2026-09-29-loop-graph-events.zh.md)
 
 ## Summary
 
-Adds two log-only session events: infra/snapshot (host facts per agent) and loop/verdict (turn-stopping verify-command gate decisions).
+Adds two log-only session events: infra/snapshot (host facts per agent) and loop/verdict (turn-stopping gate decisions from verify commands and, when enabled, fresh evaluator children, including the evaluation round, criteria, runs, and disagreement).
 
 ## Table of Contents
 
@@ -32,19 +32,19 @@ changes:
     decision: same-version
   - root: "event:loop/verdict"
     previous: null
-    after: "ff1573c509c7c7166f1a2d81a0475d4434597c43e21306e5b51c7097c1077f77"
+    after: "bf8e92bb0c4c730845aa82729f21e6769c5524b467ed92d3428e3d36f4d35aab"
     decision: same-version
 ```
 
 <a id="compatibility"></a>
 ## Compatibility
 
-Both are new ordinary event types with no predecessor; existing logs and readers are unaffected. infra/snapshot is appended once per agent creation by @deepseek-ai/dsh-experimental-infra-snapshot; loop/verdict is appended once per turn-stopping boundary by @deepseek-ai/dsh-experimental-verifier-gate. Both are declared required-on-read in SessionEventMap like todo/write; a build that does not know either type refuses the log unless the event carries ignorable: true. Neither event enters a model request or derived history, so no compaction, projection, or replay path needs to interpret them to reconstruct session state; only the verifier-gate steer message (a separate user/message event) is model-visible.
+Both are new ordinary event types with no predecessor; existing logs and readers are unaffected. infra/snapshot is appended once per agent creation by @deepseek-ai/dsh-experimental-infra-snapshot; loop/verdict is appended once per turn-stopping boundary by @deepseek-ai/dsh-experimental-verifier-gate. Both are declared required-on-read in SessionEventMap like todo/write; a build that does not know either type refuses the log unless the event carries ignorable: true. Neither event enters a model request or derived history, so no compaction, projection, or replay path needs to interpret them to reconstruct session state; only the verifier-gate steer message (a separate user/message event) is model-visible. Each evaluator prompt is recorded in its own child session.
 
 <a id="verification"></a>
 ## Verification
 
-pnpm exec vitest run packages/experimental/verifier-gate packages/experimental/infra-snapshot: 3 test files, 29 tests passed. pnpm run gen-persistence-catalog and pnpm run gen-config-catalog regenerated known-event-types.ts, persistence-catalog.md/.zh.md/.i18n.yaml, persistence-schema.json, and config-catalog.md/.zh.md/.i18n.yaml from the two packages' SessionEventMap and Config declarations.
+pnpm exec vitest run packages/experimental/verifier-gate packages/experimental/infra-snapshot: all test files passed, including the evaluator and evaluator.count suites. pnpm run gen-persistence-catalog and pnpm run gen-config-catalog regenerated known-event-types.ts, persistence-catalog.md/.zh.md/.i18n.yaml, persistence-schema.json, and config-catalog.md/.zh.md/.i18n.yaml from the two packages' SessionEventMap and Config declarations.
 
 <a id="dev-note"></a>
 ## Dev Note

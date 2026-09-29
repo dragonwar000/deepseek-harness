@@ -4,6 +4,8 @@
  * @module @deepseek-ai/dsh-experimental-verifier-gate/types
  */
 
+import type { SessionId } from '@deepseek-ai/dsh-session'
+
 /** One verify command the gate ran for a turn-stopping decision. */
 export interface VerdictCheck {
   /** The exact command handed to the shell seam. */
@@ -16,11 +18,103 @@ export interface VerdictCheck {
   outputTail: string
 }
 
-/** Gate decision for one turn-stopping boundary. */
-export type LoopVerdictKind = 'ok' | 'not-ok' | 'skipped'
+/**
+ * Gate decision for one turn-stopping boundary. `impossible`, `unverifiable`,
+ * and `grader-error` come only from the evaluator; none of them counts as done.
+ */
+export type LoopVerdictKind = 'ok' | 'not-ok' | 'skipped' | 'impossible' | 'unverifiable' | 'grader-error'
 
-/** Why the gate reached its decision. `blank-response`: the settled response had no tool call and no visible text. */
-export type LoopVerdictReason = 'all-passed' | 'command-failed' | 'budget-exhausted' | 'no-commands' | 'blank-response'
+/**
+ * Why the gate reached its decision. `blank-response`: the settled response had
+ * no tool call and no visible text. `evaluator-*`: an evaluator report decided;
+ * `evaluator-error`: no evaluator run produced a usable report.
+ */
+export type LoopVerdictReason =
+  | 'all-passed'
+  | 'command-failed'
+  | 'budget-exhausted'
+  | 'no-commands'
+  | 'blank-response'
+  | 'evaluator-passed'
+  | 'evaluator-failed'
+  | 'evaluator-impossible'
+  | 'evaluator-unverifiable'
+  | 'evaluator-error'
+
+/** What one evaluator reported about the work. */
+export type EvaluatorVerdict = 'ok' | 'not-ok' | 'impossible' | 'unverifiable'
+
+/** One criterion as an evaluator judged it. */
+export interface EvaluationCriterion {
+  /** Stable id (`c1`, `c2`, …), unchanged once the criteria freeze. */
+  id: string
+  /** Checkable wording; the frozen wording wins over a later rewording. */
+  text: string
+  /** Whether the evaluator found the criterion satisfied. */
+  met: boolean
+}
+
+/**
+ * Why an evaluator run produced no usable report: no subagent service, the
+ * child failed to start or to complete, no or malformed structured report, a
+ * verdict that contradicts the criteria, criteria that differ from the frozen
+ * set, or `unverifiable` without any inspecting tool call.
+ */
+export type GraderErrorCode =
+  | 'no-subagents'
+  | 'start-failed'
+  | 'run-failed'
+  | 'no-report'
+  | 'malformed-report'
+  | 'inconsistent-report'
+  | 'criteria-changed'
+  | 'unverifiable-without-attempt'
+
+/** One evaluator child run. */
+export interface EvaluationRun {
+  /** Child session id; absent when the child never started. */
+  childId?: SessionId
+  /**
+   * The child's `SubagentStopReason` (`completed`, `aborted`, `error`, `max-tokens`, `refusal`, or a provider-added
+   * reason); absent when it never started. Typed as a string so this module, which `loop-budget` imports, pulls in no
+   * `dsh-subagent` project.
+   */
+  stopReason?: string
+  /** Tool calls the evaluator made besides its structured report. */
+  toolCalls: number
+  /** The reported verdict; absent on a grader error. */
+  verdict?: EvaluatorVerdict
+  /** The report reason capped by `evaluator.maxFeedbackChars`, or the grader-error detail. */
+  reason: string
+  /** Criteria as this run judged them, in canonical order; empty on a grader error. */
+  criteria: EvaluationCriterion[]
+  /** Set exactly when the run produced no usable report. */
+  error?: GraderErrorCode
+  /** Canonical positions of the criteria in the order this run was shown them; present when `evaluator.count` is above 1. */
+  order?: number[]
+}
+
+/** How the evaluators of one round disagreed. */
+export interface EvaluationDisagreement {
+  /** True when the runs did not all report the same verdict. */
+  verdicts: boolean
+  /** Ids of criteria some runs found met and others did not. */
+  criteria: string[]
+}
+
+/** The evaluator's part of one gate decision. */
+export interface EvaluationRecord {
+  /** 1-based evaluation round within the turn. */
+  round: number
+  /** True when the criteria were fixed before this round (rubric or an earlier round). */
+  frozen: boolean
+  /** Criteria the decision used, in canonical order. */
+  criteria: EvaluationCriterion[]
+  /** Evaluator runs in run order. */
+  runs: EvaluationRun[]
+  /** Disagreement between the round's runs; present when `evaluator.count` is above 1. */
+  disagreement?: EvaluationDisagreement
+}
 
 /**
  * The durable record of one gate decision. `continued: true` means the gate
@@ -35,12 +129,17 @@ export interface LoopVerdict {
   verdict: LoopVerdictKind
   /** Why the gate decided `verdict`. */
   reason: LoopVerdictReason
-  /** Commands run in order; the first failing command ends the list. Empty for `no-commands` and `blank-response`. */
+  /**
+   * Commands run in order; the first failing command ends the list. Empty for `no-commands`, `blank-response`, and a
+   * gate without commands.
+   */
   checks: VerdictCheck[]
   /** Continuations already spent on this turn before this decision. */
   continuation: number
   /** True iff this decision steered the agent to keep working. */
   continued: boolean
+  /** The evaluator's round, criteria, and runs; present when an evaluator round ran. */
+  evaluation?: EvaluationRecord
 }
 
 declare module '@deepseek-ai/dsh-session/types' {
