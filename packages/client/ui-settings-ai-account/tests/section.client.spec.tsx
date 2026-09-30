@@ -3,16 +3,19 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
-import type { AiAccountId, AiAccountSignInId, AiAccountSignInView, AiAccountsView } from '@deepseek-ai/dsh-ai-account/types'
+import type {
+  AiAccountId, AiAccountSignInId, AiAccountSignInView, AiAccountStatusView, AiAccountsView,
+} from '@deepseek-ai/dsh-ai-account/types'
 import { AiAccountSection, type AiAccountSectionInjected, type AiAccountSectionProps } from '../src/client/AiAccountSection.tsx'
 import type {} from '../src/client/index.ts'
 import { en, zh, type AiAccountLocaleKey } from '../src/client/locales.ts'
 
 afterEach(() => { cleanup() })
 
-const claudeDefault = { id: 'c1' as AiAccountId, kind: 'claude' as const, email: 'me@example.com', plan: 'max', createdAt: 1, isDefault: true }
-const claudeOther = { id: 'c2' as AiAccountId, kind: 'claude' as const, email: 'work@example.com', plan: null, createdAt: 2, isDefault: false }
-const chatgpt = { id: 'g1' as AiAccountId, kind: 'chatgpt' as const, email: null, plan: null, createdAt: 3, isDefault: true }
+const unknown: AiAccountStatusView = { status: 'unknown', checkedAt: null, message: null }
+const claudeDefault = { id: 'c1' as AiAccountId, kind: 'claude' as const, email: 'me@example.com', plan: 'max', createdAt: 1, isDefault: true, status: unknown }
+const claudeOther = { id: 'c2' as AiAccountId, kind: 'claude' as const, email: 'work@example.com', plan: null, createdAt: 2, isDefault: false, status: unknown }
+const chatgpt = { id: 'g1' as AiAccountId, kind: 'chatgpt' as const, email: null, plan: null, createdAt: 3, isDefault: true, status: unknown }
 
 function attempt(value: Partial<AiAccountSignInView>): AiAccountSignInView {
   return {

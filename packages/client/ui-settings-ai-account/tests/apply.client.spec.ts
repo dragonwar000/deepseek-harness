@@ -13,7 +13,7 @@ const it = createClientTest({ roster: webApp })
 const SELF = '@deepseek-ai/dsh-client-ui-settings-ai-account'
 const empty: AiAccountsView = { accounts: [], signIn: null }
 const added: AiAccountsView = {
-  accounts: [{ id: 'a' as AiAccountId, kind: 'claude', email: 'me@example.com', plan: 'max', createdAt: 1, isDefault: true }],
+  accounts: [{ id: 'a' as AiAccountId, kind: 'claude', email: 'me@example.com', plan: 'max', createdAt: 1, isDefault: true, status: { status: 'unknown', checkedAt: null, message: null } }],
   signIn: null,
 }
 

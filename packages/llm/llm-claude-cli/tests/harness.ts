@@ -301,6 +301,10 @@ export class FakeAiAccount extends AiAccount {
     throw new Error('the fake AI Account provider answers only defaultHome')
   }
 
+  override checkStatus(): Promise<AiAccountsView> {
+    throw new Error('the fake AI Account provider answers only defaultHome')
+  }
+
   override watch(_signal: AbortSignal): AsyncIterable<AiAccountsView> {
     throw new Error('the fake AI Account provider answers only defaultHome')
   }

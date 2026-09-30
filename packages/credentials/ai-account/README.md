@@ -32,10 +32,13 @@ Account consumers list Claude and ChatGPT subscription accounts, add one through
 | `submitSignInCode(id, code)` | Hands the authorization code the vendor's browser page displayed to a login command reading one; a stale id or an attempt reading none changes nothing |
 | `setDefault(id)` | Makes one account the default of its kind |
 | `remove(id)` | Signs the account out through its CLI, deletes its directory, and forgets it; removing the default promotes the oldest remaining account of that kind |
+| `checkStatus()` | Runs every account's official CLI status command and records each conclusive answer; a call during a running check joins it |
 | `watch(signal)` | Complete snapshots starting with the current one; ending the subscription never cancels a sign-in |
 | `defaultHome(kind)` | Host-only absolute directory of the default account, or `undefined` when the kind has none |
 
 An attempt moves through `starting`, then `waiting-browser` (Claude) or `waiting-device-code` (ChatGPT), then `verifying`, and ends as `succeeded`, `cancelled`, or `failed` with an `errorCode` of `executable-missing`, `login-failed`, `timeout`, `identity-unavailable`, or `store-failed`. `login-failed` is the CLI's own refusal; `store-failed` means the CLI signed in but the account could not be recorded, so it was signed back out. `url` carries the browser or verification URL the CLI printed and `userCode` the Codex one-time code. `awaitingCode` is set while the login command reads an authorization code from its terminal, which is the channel `submitSignInCode` answers; the Claude browser page ends on such a code, while ChatGPT polls and never reads one. The first account of a kind becomes its default. Every default change, including to none, emits `ai-account/default-changed` with the kind after the change is stored.
+
+Each account view carries `status`: `status` is `signedIn`, `signedOut`, or `unknown`; `checkedAt` is the completion time of the check that produced it (`null` while `unknown`); `message` is the first line the CLI printed with a `signedOut` answer (`null` otherwise). `unknown` means no check has answered conclusively since the provider started, and an inconclusive check leaves the recorded status unchanged. Every transition emits `ai-account/status-changed` once with an `AiAccountStatusChange`: the account `id` and `kind`, whether it was its kind's default, the `previous` status, and the `current` status view. A check that confirms the recorded status emits nothing.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation

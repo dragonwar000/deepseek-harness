@@ -35,6 +35,9 @@ The base Bundle mounts the provider as row `ai-account`. Its configuration:
 | `loginRows` | `40` | Rows of the terminal allocated for the login command (1–1000) |
 | `loginCols` | `200` | Columns of that terminal (40–1000); a narrow terminal can wrap the URL the CLI prints |
 | `loginTerminalType` | `xterm-256color` | `TERM` advertised to the login command; the Host must have its terminfo entry |
+| `statusCheckIntervalMs` | `300000` | Interval between periodic sign-in status checks; `0` disables them, otherwise at least 30 s |
+| `statusCheckTimeoutMs` | `15000` | Deadline for one account's status command during a status check (1–120 s) |
+| `statusCheckConcurrency` | `2` | Status commands one status check runs at the same time (1–8) |
 
 | Kind | Account directory | Login | Identity | Sign-out |
 |---|---|---|---|---|
@@ -46,6 +49,8 @@ The login command runs on a terminal, not on pipes. Both official login commands
 The login command's output is scanned for the first `https://` URL, and for ChatGPT the one-time device code printed after it; both appear in the attempt view. The Claude browser page ends on an authorization code, so a Claude attempt reports `awaitingCode` and completes when `submitSignInCode` writes that code to the login command's terminal; the code is passed straight through and is never stored, logged, or matched against the CLI's output. ChatGPT's device flow polls for authorization and reads nothing, so it never reports `awaitingCode`.
 
 A zero exit alone does not add an account: the status command must report a signed-in account, otherwise the provider runs the logout command, deletes the directory, and fails the attempt with `identity-unavailable`. A failure to record the account is reported as `store-failed` rather than `login-failed`, because the vendor did sign in and only this Harness's own write failed; the provider then runs the logout command so the discarded directory cannot keep a credential no account record points at. Every attempt that does not succeed deletes its directory, and also the `<root>/<kind>/` directory that held it when no other account of that kind remains, so an empty kind directory never looks like a registered account.
+
+A sign-in status check runs every registered account's status command against its directory and records the answer in the account's `status` view: `signedIn`, or `signedOut` with the first line the CLI printed. The provider runs one check when it starts and one every `statusCheckIntervalMs`, and `checkStatus()` runs one on demand; a check requested while another runs joins it, so checks never overlap. Output that states neither answer, a missing executable, a failed command, and a command stopped by `statusCheckTimeoutMs` or unload leave the recorded status unchanged. Each transition, including the first answer after `unknown`, emits `ai-account/status-changed` once. Status lives in memory only, so every account is `unknown` until the first check after start; a newly added account starts `signedIn` because its identity read is a status answer. The check only runs the status command: it never reads, copies, or refreshes the stored credentials, and it never signs an account back in.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -75,7 +80,8 @@ No model request prefix changes.
 
 - **Login runs on the Host** — the Claude CLI opens the browser on the Host machine; a remote browser user opens the surfaced URL instead and pastes the resulting code back through the attempt view.
 - **One login attempt at a time, and no view of its terminal** — the provider surfaces only the URL, the device code, and `awaitingCode`; a login command that asks anything else on its terminal cannot be answered, and the attempt ends at `loginTimeoutMs`.
-- **CLI output formats are not versioned** — URL and device-code extraction and the Codex status text match current official CLI output; a changed format can leave `url` or `userCode` empty or fail identity.
+- **CLI output formats are not versioned** — URL and device-code extraction and the Codex status text match current official CLI output; a changed format can leave `url` or `userCode` empty, fail identity, or leave status checks inconclusive.
+- **Status checks report what the CLI reports** — a status command may answer from the credential the CLI stores without contacting the vendor, so a subscription revoked on the vendor's side can read `signedIn` until the CLI itself notices.
 - **Interrupted logins can leave directories** — a Host crash during login leaves its directory under `root` without an account record; such directories are not cleaned up.
 - **A rejected authorization code ends the attempt** — the CLI exits non-zero on a code it refuses, which the provider reports as `login-failed`; the user starts a new attempt rather than retyping into the same one.
 
