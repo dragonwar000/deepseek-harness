@@ -3,8 +3,10 @@
  * verifier gate recorded verdict `ok` for its final response, the plugin writes
  * one `episode` page through `ctx.knowledge.write`: the human request, the
  * final response without statements marked temporary, the files the turn
- * changed, and the verdict, citing the changing tool results. `shadow` records
- * the `knowledge/write` it would make without writing. No model is called.
+ * changed, and the verdict, citing the changing tool results. With a positive
+ * `maxEpisodes`, episodes go to that many slot pages and the least recently
+ * updated slot is replaced once all are used. `shadow` records the
+ * `knowledge/write` it would make without writing. No model is called.
  * @module @deepseek-ai/dsh-experimental-memory-distill
  */
 
@@ -18,11 +20,14 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 import { episodeEntry } from './episode.ts'
 import { applyDistill, distillStateSchema, emptyDistill, parseVerdict } from './fold.ts'
 import type { DistillState } from './fold.ts'
+import { nextSlot, resolveRetention } from './retention.ts'
 
 export { episodeEntry, episodeId, filterTransient } from './episode.ts'
 export type { EpisodeInput } from './episode.ts'
 export { applyDistill, distillStateSchema, emptyDistill, parseVerdict } from './fold.ts'
 export type { DistillState } from './fold.ts'
+export { nextSlot, resolveRetention, slotId } from './retention.ts'
+export type { EpisodeRetention } from './retention.ts'
 
 /** Cordis plugin name. */
 export const name = 'memory-distill'
@@ -42,6 +47,11 @@ export interface Config {
   requireVerdict?: boolean
   /** Store directory for episode pages; must be a content directory of the store (default `episodes`). */
   dir?: string
+  /**
+   * Episode pages kept. `0` writes every episode to its own dated page and replaces none (default `0`); a positive
+   * value writes episodes to that many `<dir>/slot-<k>.md` pages and replaces the least recently updated one.
+   */
+  maxEpisodes?: number
   /** Tools whose successful calls change their `file_path` or `path` (default `write`, `edit`). */
   changeTools?: string[]
   /** Characters of the request kept (default 1000). */
@@ -61,6 +71,7 @@ export const Config: z<Config> = z.object({
   assumption: z.string().default(''),
   requireVerdict: z.boolean().default(true),
   dir: z.string().default('episodes'),
+  maxEpisodes: z.number().default(0),
   changeTools: z.array(z.string()).default(['write', 'edit']),
   maxRequestChars: z.number().default(1000),
   maxOutcomeChars: z.number().default(2000),
@@ -97,6 +108,7 @@ export function apply(ctx: Context, config: Config): void {
   const markers = config.transientMarkers as string[]
   if (markers.some(marker => marker.trim() === '')) throw new Error('memory-distill: transientMarkers entries must not be blank')
   const requireVerdict = config.requireVerdict as boolean
+  const retention = resolveRetention(config.maxEpisodes as number)
   const tools = new Set(changeTools)
 
   ctx.sessionProjections.register({
@@ -137,7 +149,8 @@ export function apply(ctx: Context, config: Config): void {
       return
     }
     if ((verdict !== null && verdict.verdict !== 'ok') || state.changes.length === 0) return
-    const entry = episodeEntry({
+    const scope = { cwd: agent.session.header.cwd, signal }
+    const dated = episodeEntry({
       dir,
       sessionId: agent.session.id,
       turn,
@@ -150,6 +163,7 @@ export function apply(ctx: Context, config: Config): void {
       maxRequestChars,
       maxOutcomeChars,
     })
+    const entry = retention.kind === 'every' ? dated : { ...dated, id: nextSlot(dir, retention.count, (await ctx.knowledge.index(scope)).entries) }
     const sourceEventSeqs = state.changes.map(change => SessionSeq(change.seq))
     const sources = state.changes.map(change => change.path)
     const base = { id: entry.id, writer: 'distill' as const, mode, sourceEventSeqs, sources }
@@ -157,7 +171,7 @@ export function apply(ctx: Context, config: Config): void {
       agent.session.append('knowledge/write', { ...base, applied: false, stale: [] })
       return
     }
-    const result = await ctx.knowledge.write({ cwd: agent.session.header.cwd, signal }, entry, { sessionId: agent.session.id, sourceEventSeqs, sources, writer: 'distill' })
+    const result = await ctx.knowledge.write(scope, entry, { sessionId: agent.session.id, sourceEventSeqs, sources, writer: 'distill' })
     const record: KnowledgeWriteRecord = result.kind === 'written'
       ? { ...base, applied: true, operation: result.operation, stale: result.stale }
       : { ...base, applied: false, stale: [], refusal: { rule: result.rule, reason: result.reason } }

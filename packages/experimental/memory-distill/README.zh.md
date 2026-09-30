@@ -42,12 +42,13 @@ kind: "package-reference"
 | `assumption` | 无 | 本机制对模型所做的假设；在 `off` 之外为空白即加载错误 |
 | `requireVerdict` | `true` | 仅在 turn 的最终回复有 `ok` 的 `loop/verdict` 之后提炼 |
 | `dir` | `episodes` | episode 页面所在的知识库目录；必须是知识库的内容目录 |
+| `maxEpisodes` | `0` | 保留的 episode 页面数：`0` 把每个 episode 写入各自带日期的页面且不替换任何页面；正数把 episode 写入这么多个 `<dir>/slot-<k>.md` 页面，全部存在后替换最早更新的那一个 |
 | `changeTools` | `write`、`edit` | 成功调用会改变其 `file_path` 或 `path` 的工具 |
 | `maxRequestChars` | `1000` | 保留的请求字符数 |
 | `maxOutcomeChars` | `2000` | 保留的最终回复字符数 |
 | `transientMarkers` | `this session`、`for now`、`today only`、`temporarily`、`for this turn` | 临时语句的标记，按句删除 |
 
-当 `assumption` 在 `off` 之外为空白、`dir` 不是单个路径段、`changeTools` 为空或含空白项、某个字符上限不是正整数，或某个标记为空白时，加载以 `memory-distill:` 错误失败。
+当 `assumption` 在 `off` 之外为空白、`dir` 不是单个路径段、`changeTools` 为空或含空白项、某个字符上限不是正整数、`maxEpisodes` 不是至少为 0 的整数，或某个标记为空白时，加载以 `memory-distill:` 错误失败。
 
 ### 与校验门的顺序
 
@@ -73,7 +74,8 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
 
 ### 设计说明
 
-- **页面内容。** `episodes/<YYYY-MM-DD>-<session>-t<turn>.md`，类型为 `episode`，含 Request、Outcome、Files changed 与 Verification 各节；提供方加入 frontmatter、标题行与 Origin 一节。
+- **页面内容。** `episodes/<YYYY-MM-DD>-<session>-t<turn>.md`（`maxEpisodes` 为正数时为 `episodes/slot-<k>.md`），类型为 `episode`，含 Request、Outcome、Files changed 与 Verification 各节；提供方加入 frontmatter、标题行与 Origin 一节。
+- **保留经由写入路径。** `resolveRetention` 把 `maxEpisodes` 解析为每个 episode 一个带日期的页面（`0`）或若干槽位。使用槽位时，插件读取知识库索引，写入最低的没有可读页面的槽位，否则写入最早更新的槽位（并列时取最低槽位），写入经由 `ctx.knowledge.write`，因此替换会经过知识库规则检查，并以 operation 为 `update` 的 `knowledge/write` 记录。知识 seam 没有删除操作，因此不会删除任何页面。
 - **引用来自变更。** 页面引用每个变更文件最近一次变更的成功 `tool/result`；没有变更文件的 turn 不会被提炼，因为它的页面无从引用。
 - **删除临时语句。** 请求与回复中包含已配置标记（不区分大小写）的句子会被删除。
 - **每个 turn 一次。** 折叠在本写入方的第一条 `knowledge/write` 时把 turn 标记为已提炼，因此同一 turn 中被引导继续的部分不会再次提炼。
@@ -87,6 +89,7 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
 |---|---|
 | [`src/index.ts`](src/index.ts) | `Config`、投影注册、turn-stopping 监听器与顺序警告 |
 | [`src/fold.ts`](src/fold.ts) | `memoryDistill` 投影折叠与结论解析 |
+| [`src/retention.ts`](src/retention.ts) | `maxEpisodes` 解析与槽位选择 |
 | [`src/episode.ts`](src/episode.ts) | episode 页面 id、标记过滤与页面条目 |
 
 </details>
@@ -117,7 +120,7 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
 
 - **层顺序** — 校验门必须先注册其 `agent/turn-stopping` 监听器；本插件只发出警告，不会重新排序。
 - **不提炼摘要** — 压缩摘要不会被提炼。
-- **episode 使知识库增长** — episode 页面从不自动删除；提供方的 `maxPages` 限制一次读取加载的页面数。
+- **默认情况下 episode 使知识库增长** — `maxEpisodes: 0` 时 episode 页面从不删除；提供方的 `maxPages` 限制一次读取加载的页面数。正数的 `maxEpisodes` 只约束槽位页面：设置它之前写入的带日期页面会一直保留，直到有人删除；被替换的槽位页面保留其 id，因此指向它的关系现在指向更新的 episode。
 
 <a id="dev-note"></a>
 ### 开发备注

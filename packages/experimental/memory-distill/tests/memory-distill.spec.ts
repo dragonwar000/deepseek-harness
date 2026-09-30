@@ -176,6 +176,32 @@ describe('memory-distill', () => {
     expect(warnings.filter(format => format === ORDER_WARNING)).toHaveLength(1)
   })
 
+  it('keeps exactly maxEpisodes slot pages and replaces the least recently updated one', async () => {
+    const turn = (n: number): StreamChunk[][] => [
+      toolCallResponse(`w${n}`, 'write', { file_path: 'src/retry.ts', content: `export const attempts = ${n}\n` }),
+      textResponse(`Set attempts to ${n}.`),
+    ]
+    const { agent, dir } = await run({ distill: { mode: 'enforce', assumption: ASSUMPTION, maxEpisodes: 2 }, responses: [...turn(1), ...turn(2), ...turn(3)] })
+    for (const [hour, text] of [[11, 'Second change'], [12, 'Third change']] as const) {
+      vi.setSystemTime(new Date(`2026-09-30T${hour}:00:00.000Z`))
+      agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
+      await agent.whenIdle()
+    }
+    expect(writes(agent).map(record => [record.id, record.operation])).toEqual([
+      ['episodes/slot-1.md', 'create'], ['episodes/slot-2.md', 'create'], ['episodes/slot-1.md', 'update'],
+    ])
+    expect(readFileSync(join(dir, 'knowledge/episodes/slot-1.md'), 'utf8')).toContain('title: "Turn 3: Third change"')
+    expect(readFileSync(join(dir, 'knowledge/episodes/slot-2.md'), 'utf8')).toContain('title: "Turn 2: Second change"')
+    expect(existsSync(join(dir, 'knowledge/episodes/slot-3.md'))).toBe(false)
+    expect(existsSync(join(dir, PAGE))).toBe(false)
+  })
+
+  it('names the slot it would write in shadow mode without writing', async () => {
+    const { agent, dir } = await run({ distill: { mode: 'shadow', assumption: ASSUMPTION, maxEpisodes: 1 } })
+    expect(writes(agent)).toEqual([expect.objectContaining({ id: 'episodes/slot-1.md', mode: 'shadow', applied: false })])
+    expect(existsSync(join(dir, 'knowledge/episodes/slot-1.md'))).toBe(false)
+  })
+
   it('records a write the store refuses', async () => {
     const { agent } = await run({ distill: { mode: 'enforce', assumption: ASSUMPTION, dir: 'notes' } })
     expect(writes(agent)).toEqual([expect.objectContaining({ applied: false })])
@@ -194,6 +220,7 @@ describe('memory-distill', () => {
     [{ mode: 'enforce' as const, assumption: ASSUMPTION, changeTools: [] }, 'changeTools must name at least one tool'],
     [{ mode: 'enforce' as const, assumption: ASSUMPTION, maxOutcomeChars: 0 }, 'maxOutcomeChars must be a positive integer'],
     [{ mode: 'enforce' as const, assumption: ASSUMPTION, transientMarkers: [''] }, 'transientMarkers entries must not be blank'],
+    [{ mode: 'enforce' as const, assumption: ASSUMPTION, maxEpisodes: -1 }, 'maxEpisodes must be an integer >= 0'],
   ])('fails loud on invalid configuration %#', async (config, message) => {
     const ctx = new Context()
     await mountAgentLoopTestDependencies(ctx)

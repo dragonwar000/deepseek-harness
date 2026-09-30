@@ -42,12 +42,13 @@ Mount the plugin after a knowledge store provider, the session projection servic
 | `assumption` | none | The assumption this mechanism encodes about the model; blank outside `off` is a load error |
 | `requireVerdict` | `true` | Distill only after a `loop/verdict` of `ok` for the turn's final response |
 | `dir` | `episodes` | Store directory for episode pages; must be a content directory of the store |
+| `maxEpisodes` | `0` | Episode pages kept: `0` writes each episode to its own dated page and replaces none; a positive value writes episodes to that many `<dir>/slot-<k>.md` pages and, once all exist, replaces the least recently updated one |
 | `changeTools` | `write`, `edit` | Tools whose successful calls change their `file_path` or `path` |
 | `maxRequestChars` | `1000` | Characters of the request kept |
 | `maxOutcomeChars` | `2000` | Characters of the final response kept |
 | `transientMarkers` | `this session`, `for now`, `today only`, `temporarily`, `for this turn` | Markers of temporary statements, dropped sentence by sentence |
 
-Loading fails with a `memory-distill:` error when `assumption` is blank outside `off`, `dir` is not one path segment, `changeTools` is empty or has a blank entry, a character cap is not a positive integer, or a marker is blank.
+Loading fails with a `memory-distill:` error when `assumption` is blank outside `off`, `dir` is not one path segment, `changeTools` is empty or has a blank entry, a character cap is not a positive integer, `maxEpisodes` is not an integer of at least 0, or a marker is blank.
 
 ### Order with the verifier gate
 
@@ -73,7 +74,8 @@ The `memoryDistill` projection folds the open turn: the first `user/message` wit
 
 ### Design notes
 
-- **Page content.** `episodes/<YYYY-MM-DD>-<session>-t<turn>.md`, type `episode`, with Request, Outcome, Files changed, and Verification sections; the provider adds frontmatter, the title heading, and the Origin section.
+- **Page content.** `episodes/<YYYY-MM-DD>-<session>-t<turn>.md` (or `episodes/slot-<k>.md` with a positive `maxEpisodes`), type `episode`, with Request, Outcome, Files changed, and Verification sections; the provider adds frontmatter, the title heading, and the Origin section.
+- **Retention through the write path.** `resolveRetention` turns `maxEpisodes` into one dated page per episode (`0`) or a number of slots. With slots, the plugin reads the store index and writes the lowest slot without a readable page, otherwise the slot updated first (the lowest slot on a tie), through `ctx.knowledge.write`, so a replacement is checked by the store rules and logged as a `knowledge/write` with operation `update`. The knowledge seam has no removal, so no page is deleted.
 - **Citations from changes.** The page cites the successful `tool/result` of each changed file's latest change; a turn that changed no file is not distilled, because its page could cite nothing.
 - **Temporary statements dropped.** Sentences containing a configured marker, case-insensitively, are removed from the request and the outcome.
 - **Once per turn.** The fold marks a turn distilled at its first `knowledge/write` by this writer, so a steered continuation of the same turn is not distilled again.
@@ -87,6 +89,7 @@ The `memoryDistill` projection folds the open turn: the first `user/message` wit
 |---|---|
 | [`src/index.ts`](src/index.ts) | `Config`, the projection registration, the turn-stopping listener, and the order warning |
 | [`src/fold.ts`](src/fold.ts) | The `memoryDistill` projection fold and the verdict parser |
+| [`src/retention.ts`](src/retention.ts) | `maxEpisodes` resolution and slot selection |
 | [`src/episode.ts`](src/episode.ts) | Episode page id, marker filter, and page entry |
 
 </details>
@@ -117,7 +120,7 @@ Independent: nothing from this plugin enters a request directly.
 
 - **Layer order** — the gate must register its `agent/turn-stopping` listener first; the plugin warns instead of reordering.
 - **No summaries** — compaction summaries are not distilled.
-- **Episodes grow the store** — episode pages are never removed automatically; the provider's `maxPages` caps what one read loads.
+- **Episodes grow the store by default** — with `maxEpisodes: 0` episode pages are never removed; the provider's `maxPages` caps what one read loads. A positive `maxEpisodes` bounds only the slot pages: dated pages written before it was set stay until someone removes them, and a replaced slot page keeps its id, so a relation to it now names the newer episode.
 
 <a id="dev-note"></a>
 ### Dev Note

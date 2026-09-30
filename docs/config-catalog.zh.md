@@ -1357,7 +1357,7 @@ export interface RoutePrice {
 ## `@deepseek-ai/dsh-experimental-memory-distill`
 
 - `inject`: `knowledge` · `sessionProjections`
-- `source`: [`packages/experimental/memory-distill/src/index.ts:36`](../packages/experimental/memory-distill/src/index.ts)
+- `source`: [`packages/experimental/memory-distill/src/index.ts:41`](../packages/experimental/memory-distill/src/index.ts)
 
 ```ts config-catalog
 /** Distillation settings. `assumption` is mandatory outside `off`. */
@@ -1370,6 +1370,11 @@ export interface Config {
   requireVerdict?: boolean
   /** Store directory for episode pages; must be a content directory of the store (default `episodes`). */
   dir?: string
+  /**
+   * Episode pages kept. `0` writes every episode to its own dated page and replaces none (default `0`); a positive
+   * value writes episodes to that many `<dir>/slot-<k>.md` pages and replaces the least recently updated one.
+   */
+  maxEpisodes?: number
   /** Tools whose successful calls change their `file_path` or `path` (default `write`, `edit`). */
   changeTools?: string[]
   /** Characters of the request kept (default 1000). */
