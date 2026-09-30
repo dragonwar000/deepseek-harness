@@ -4,20 +4,22 @@
  * cache lives in one credential-store grant record, and access tokens refresh silently from it.
  */
 import { randomUUID } from 'node:crypto'
-import {
-  InteractionRequiredAuthError, PublicClientApplication, type AccountInfo, type AuthenticationResult, type Configuration,
-  type InteractiveRequest, type SilentFlowRequest,
-} from '@azure/msal-node'
+import { InteractionRequiredAuthError, PublicClientApplication, type AccountInfo, type Configuration } from '@azure/msal-node'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import {
   CotecconsSso, CotecconsSsoTokenUnavailableError, type CotecconsSsoError, type CotecconsSsoSetting, type CotecconsSsoSignInId,
-  type CotecconsSsoView,
+  type CotecconsSsoView, type M365ConnectAttemptId, type M365ConnectorId, type M365ConnectorView,
 } from '@deepseek-ai/dsh-coteccons-sso'
 import { credentialKey } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-credentials'
 import open from 'open'
 import { credentialCachePlugin } from './cache.ts'
+import { M365Connector } from './connector.ts'
+import { abortable, failureLabel, releaseLoopback, watchSnapshots, type MsalClient } from './util.ts'
+
+export type { MsalClient } from './util.ts'
+export { classifyEntraError } from './connector.ts'
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TENANT = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[a-z0-9-]+(?:\.[a-z0-9-]+)+)$/i
@@ -42,9 +44,38 @@ export interface Config {
   openBrowser?: boolean
   /** Deadline for one interactive sign-in, including the time the user spends in the browser, in milliseconds. */
   signInTimeoutMs?: number
+  /**
+   * Microsoft 365 connectors, one Entra ID enterprise app per data kind. IT grants or revokes a kind by
+   * assigning users to that app; an omitted connector stays `not-configured`.
+   */
+  m365?: Partial<Record<M365ConnectorId, M365ConnectorConfig>>
 }
 
+/** One Microsoft 365 connector's enterprise app. */
+export interface M365ConnectorConfig {
+  /** Application (client) id of the connector's public-client app registration; unset leaves the connector `not-configured`. */
+  clientId?: string
+  /** Microsoft Graph delegated scopes; unset or empty uses the read-only scopes of the data kind. */
+  scopes?: string[]
+}
+
+/** Read-only Microsoft Graph delegated scopes each data kind needs. */
+export const M365_DEFAULT_SCOPES: Readonly<Record<M365ConnectorId, readonly string[]>> = {
+  mail: ['User.Read', 'Mail.Read'],
+  chat: ['User.Read', 'Chat.Read'],
+  files: ['User.Read', 'Files.Read.All', 'Sites.Read.All'],
+}
+
+/** Connector ids in the order views report them. */
+export const M365_CONNECTORS: readonly M365ConnectorId[] = ['mail', 'chat', 'files']
+
 type ValidConfig = Required<Omit<Config, 'tenantId' | 'clientId' | 'authority'>> & Pick<Config, 'tenantId' | 'clientId' | 'authority'>
+
+/** Schemastery validates an omitted connector as an empty object, so {@link resolveConfig} treats an unset `clientId` as not configured. */
+const ConnectorConfig: Schema<M365ConnectorConfig> = Schema.object({
+  clientId: Schema.string().pattern(GUID),
+  scopes: Schema.array(Schema.string().min(1)),
+})
 
 /** Validated deployment settings. */
 export const Config: Schema<Config, ValidConfig> = Schema.object({
@@ -56,6 +87,7 @@ export const Config: Schema<Config, ValidConfig> = Schema.object({
   allowedDomains: Schema.array(Schema.string().pattern(DOMAIN)).default([]),
   openBrowser: Schema.boolean().default(true),
   signInTimeoutMs: Schema.number().min(10_000).max(1_800_000).default(300_000),
+  m365: Schema.object({ mail: ConnectorConfig, chat: ConnectorConfig, files: ConnectorConfig }).default({}),
 })
 
 /** App registration facts every MSAL call needs. */
@@ -74,6 +106,19 @@ export interface ResolvedConfig {
   readonly allowedDomains: readonly string[]
   readonly openBrowser: boolean
   readonly signInTimeoutMs: number
+  /** Each configured connector's app and Graph scopes (full resource URIs). */
+  readonly m365: Partial<Record<M365ConnectorId, { readonly clientId: string; readonly scopes: readonly string[] }>>
+}
+
+/**
+ * Qualify a bare Graph permission name with the Graph resource URI so MSAL requests a Graph token.
+ * @param scope - permission name or full scope.
+ * @returns the full scope.
+ */
+function graphScope(scope: string): string {
+  return scope.includes('/') || ['openid', 'profile', 'offline_access', 'email'].includes(scope)
+    ? scope
+    : `https://graph.microsoft.com/${scope}`
 }
 
 /**
@@ -99,15 +144,16 @@ export function resolveConfig(config: Config): ResolvedConfig {
     allowedDomains: valid.allowedDomains,
     openBrowser: valid.openBrowser,
     signInTimeoutMs: valid.signInTimeoutMs,
+    m365: Object.fromEntries(M365_CONNECTORS.flatMap((id) => {
+      const connector = valid.m365[id]
+      const scopes = connector?.scopes ?? []
+      if (connector?.clientId === undefined) {
+        if (scopes.length > 0) throw new TypeError(`coteccons-sso: m365.${id} sets scopes without clientId`)
+        return []
+      }
+      return [[id, { clientId: connector.clientId, scopes: (scopes.length > 0 ? scopes : M365_DEFAULT_SCOPES[id]).map(graphScope) }]]
+    })),
   }
-}
-
-/** The MSAL operations this provider uses; tests substitute a fake. */
-export interface MsalClient {
-  acquireTokenInteractive(request: InteractiveRequest): Promise<AuthenticationResult>
-  acquireTokenSilent(request: SilentFlowRequest): Promise<AuthenticationResult>
-  getAllAccounts(): Promise<AccountInfo[]>
-  getTokenCache(): { removeAccount(account: AccountInfo): Promise<void> }
 }
 
 /** Replaceable process edges: MSAL client construction and browser launch. */
@@ -126,58 +172,6 @@ interface Attempt {
   url: string | null
   readonly controller: AbortController
   done: Promise<void>
-}
-
-/**
- * Describe a caught failure for the Host log without its payload.
- * @param error - caught value.
- * @returns the error name and code, never token material.
- */
-function failureLabel(error: unknown): string {
-  if (!(error instanceof Error)) return typeof error
-  const code = (error as { errorCode?: unknown }).errorCode
-  return typeof code === 'string' ? `${error.name}: ${code}` : error.name
-}
-
-/**
- * Race an operation against caller cancellation.
- * @param operation - pending operation.
- * @param signal - caller cancellation.
- * @returns the operation's result.
- */
-async function abortable<T>(operation: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
-  if (signal === undefined) return operation
-  signal.throwIfAborted()
-  let stop: (() => void) | undefined
-  const aborted = new Promise<never>((_resolve, reject) => {
-    stop = () => { reject(signal.reason as Error) }
-    signal.addEventListener('abort', stop, { once: true })
-  })
-  try {
-    return await Promise.race([operation, aborted])
-  } finally {
-    signal.removeEventListener('abort', stop as () => void)
-  }
-}
-
-/**
- * Deliver an OAuth error to MSAL's loopback listener so an abandoned interactive request settles and closes it.
- * @param redirectUri - loopback redirect URI of the pending request.
- */
-async function releaseLoopback(redirectUri: string): Promise<void> {
-  const target = new URL(redirectUri)
-  if (target.hostname === 'localhost') target.hostname = '127.0.0.1'
-  target.pathname = '/'
-  try {
-    const response = await fetch(target, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: 'error=access_denied&error_description=cancelled',
-    })
-    await response.body?.cancel()
-  } catch (error) {
-    console.info('[coteccons-sso] loopback release failed', { error: failureLabel(error) })
-  }
 }
 
 /**
@@ -202,6 +196,8 @@ export class MsalCotecconsSso extends CotecconsSso {
   private attempt: Attempt | undefined
   private lastError: CotecconsSsoError | undefined
   private readonly listeners = new Set<() => void>()
+  private readonly m365Listeners = new Set<() => void>()
+  private readonly connectors: ReadonlyMap<M365ConnectorId, M365Connector>
   private queue: Promise<unknown> = Promise.resolve()
   private closed = false
 
@@ -216,16 +212,36 @@ export class MsalCotecconsSso extends CotecconsSso {
     this.aiScope = this.config.aiScope
     this.createClient = internals.createClient ?? (configuration => new PublicClientApplication(configuration))
     this.launchBrowser = internals.openBrowser ?? openInDefaultBrowser
+    const registration = this.registration()
+    this.connectors = new Map(M365_CONNECTORS.map((id) => {
+      const connector = this.config.m365[id]
+      return [id, new M365Connector({
+        id,
+        registration: registration === undefined || connector === undefined
+          ? undefined
+          : { clientId: connector.clientId, authority: registration.authority },
+        scopes: connector?.scopes ?? [],
+        credentials: ctx.credentials,
+        createClient: this.createClient,
+        launchBrowser: this.config.openBrowser ? this.launchBrowser : undefined,
+        signInTimeoutMs: this.config.signInTimeoutMs,
+        allowed: account => this.allowed(account),
+        changed: () => { this.publishM365() },
+      })]
+    }))
     ctx.effect(() => async () => {
       this.closed = true
       this.attempt?.controller.abort()
       await this.attempt?.done
+      await Promise.all([...this.connectors.values()].map(connector => connector.close()))
       await this.queue
       this.publish()
+      this.publishM365()
     }, 'coteccons-sso: sign-in lifetime')
   }
 
   async [Service.init](): Promise<void> {
+    await Promise.all([...this.connectors.values()].map(connector => connector.init()))
     const registration = this.registration()
     if (registration === undefined) return
     this.client = this.newClient(registration)
@@ -281,29 +297,51 @@ export class MsalCotecconsSso extends CotecconsSso {
     })
   }
 
-  /* jscpd:ignore-start -- the coalescing snapshot stream follows the account providers' shared watch semantics
-     (one snapshot per burst of changes, ended by close or abort) that each provider's listener set owns. */
-  override async *watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView> {
-    let dirty = true
-    let wake: (() => void) | undefined
-    const changed = (): void => { dirty = true; wake?.() }
-    this.listeners.add(changed)
-    signal.addEventListener('abort', changed, { once: true })
-    try {
-      while (!this.closed && !signal.aborted) {
-        if (dirty) {
-          dirty = false
-          yield this.snapshot()
-          continue
-        }
-        await new Promise<void>((resolve) => { wake = resolve })
-      }
-    } finally {
-      this.listeners.delete(changed)
-      signal.removeEventListener('abort', changed)
-    }
+  override watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView> {
+    return watchSnapshots(this.listeners, () => this.closed, () => this.snapshot(), signal)
   }
-  /* jscpd:ignore-end */
+
+  override getM365State(): Promise<readonly M365ConnectorView[]> {
+    return Promise.resolve(this.m365Snapshot())
+  }
+
+  override connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]> {
+    if (this.closed) return Promise.reject(new Error('coteccons-sso: provider closed'))
+    this.connector(id).connect()
+    return this.getM365State()
+  }
+
+  override async cancelM365Connect(id: M365ConnectorId, attemptId: M365ConnectAttemptId): Promise<readonly M365ConnectorView[]> {
+    await this.connector(id).cancel(attemptId)
+    return this.m365Snapshot()
+  }
+
+  override async disconnectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]> {
+    await this.connector(id).disconnect()
+    return this.m365Snapshot()
+  }
+
+  override watchM365(signal: AbortSignal): AsyncIterable<readonly M365ConnectorView[]> {
+    return watchSnapshots(this.m365Listeners, () => this.closed, () => this.m365Snapshot(), signal)
+  }
+
+  override getM365AccessToken(id: M365ConnectorId, signal?: AbortSignal): Promise<string> {
+    return this.connector(id).token(signal)
+  }
+
+  private connector(id: M365ConnectorId): M365Connector {
+    const connector = this.connectors.get(id)
+    if (connector === undefined) throw new TypeError(`coteccons-sso: unknown Microsoft 365 connector ${id}`)
+    return connector
+  }
+
+  private m365Snapshot(): readonly M365ConnectorView[] {
+    return M365_CONNECTORS.map(id => this.connector(id).view())
+  }
+
+  private publishM365(): void {
+    for (const listener of this.m365Listeners) listener()
+  }
 
   override async getAccessToken(scope: string, signal?: AbortSignal): Promise<string> {
     const client = this.client

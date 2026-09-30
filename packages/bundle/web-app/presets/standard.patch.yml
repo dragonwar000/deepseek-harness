@@ -137,6 +137,8 @@
             config:
               fetch: true
               searchTimeoutMs: 60000
+          - id: tool-m365
+            name: '@deepseek-ai/dsh-tool-m365'
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
           - id: tool-plugin-manager

@@ -46,3 +46,56 @@ export const zh: { [Key in CotecconsSsoLocaleKey]: string } = {
   errorExpired: '登录已过期，请重新登录。',
   errorAction: '请求失败，请重试。',
 }
+
+/** Microsoft 365 group copy (English, the key-set source of truth). */
+export const m365En = {
+  title: 'Microsoft 365 — data the assistant may read',
+  description: 'Let the assistant read your Outlook mail, Teams chats, and OneDrive/SharePoint files with your own permissions. IT grants or revokes each kind in Microsoft Entra ID.',
+  loading: 'Loading the Microsoft 365 access state…',
+  unavailable: 'Lost the connection to the Microsoft 365 access state. Reload the page to retry.',
+  mail: 'Outlook mail',
+  chat: 'Teams chats',
+  files: 'OneDrive and SharePoint files',
+  notConfigured: 'Not configured on this Host.',
+  disconnected: 'Not connected.',
+  preparing: 'Opening the Microsoft sign-in page…',
+  connecting: 'Finish connecting in the browser window that opened. If no window opened, open this link:',
+  connected: 'Connected as {account}.',
+  connect: 'Connect',
+  cancel: 'Cancel',
+  disconnect: 'Disconnect',
+  errorNotAssigned: 'IT has not granted you access. Ask IT to add you, then connect again.',
+  errorDisabled: 'IT has turned this access off.',
+  errorConsent: 'IT has not approved this access yet.',
+  errorRevoked: 'Access was revoked or expired. Connect again; if it fails, IT has removed your access.',
+  errorFailed: 'Connecting did not complete. Try again.',
+  errorAction: 'The request failed. Try again.',
+} satisfies Record<string, string>
+
+/** Keys of the Microsoft 365 dictionary. */
+export type M365LocaleKey = keyof typeof m365En
+
+/** Simplified Chinese Microsoft 365 dictionary (same keys as {@link m365En}). */
+export const m365Zh: { [Key in M365LocaleKey]: string } = {
+  title: 'Microsoft 365 — 助手可读取的数据',
+  description: '允许助手以你本人的权限读取 Outlook 邮件、Teams 聊天以及 OneDrive/SharePoint 文件。IT 在 Microsoft Entra ID 中逐类授予或撤销访问权限。',
+  loading: '正在加载 Microsoft 365 访问状态…',
+  unavailable: '与 Microsoft 365 访问状态的连接已断开。请刷新页面后重试。',
+  mail: 'Outlook 邮件',
+  chat: 'Teams 聊天',
+  files: 'OneDrive 与 SharePoint 文件',
+  notConfigured: '此主机未配置。',
+  disconnected: '未连接。',
+  preparing: '正在打开 Microsoft 登录页面…',
+  connecting: '请在已打开的浏览器窗口中完成连接。如果没有打开窗口，请打开此链接：',
+  connected: '已以 {account} 连接。',
+  connect: '连接',
+  cancel: '取消',
+  disconnect: '断开连接',
+  errorNotAssigned: 'IT 尚未授予你访问权限。请联系 IT 添加后再连接。',
+  errorDisabled: 'IT 已关闭此访问。',
+  errorConsent: 'IT 尚未批准此访问。',
+  errorRevoked: '访问已被撤销或过期。请重新连接；如果失败，说明 IT 已移除你的访问权限。',
+  errorFailed: '连接未完成，请重试。',
+  errorAction: '请求失败，请重试。',
+}

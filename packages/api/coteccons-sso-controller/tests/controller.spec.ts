@@ -3,7 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import type { CotecconsSso } from '@deepseek-ai/dsh-coteccons-sso'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { afterEach, expect, it, vi } from 'vitest'
-import type { CotecconsSsoSignInId, CotecconsSsoView } from '../src/types.ts'
+import type { CotecconsSsoSignInId, CotecconsSsoView, M365ConnectAttemptId } from '../src/types.ts'
 import CotecconsSsoController from '../src/index.ts'
 
 const roots: Context[] = []
@@ -50,5 +50,34 @@ it('passes the subscriber lifetime to the provider and returns its stream', () =
 it('publishes no token operation', () => {
   const { controller } = fixture()
   expect(controller.typertRemote.namespace).toBe('cotecconsSso')
-  expect(remoteMethods(controller).map(marker => marker.method).sort()).toEqual(['cancelSignIn', 'getState', 'signOut', 'startSignIn', 'watch'])
+  expect(remoteMethods(controller).map(marker => marker.method).sort()).toEqual([
+    'cancelM365Connect', 'cancelSignIn', 'connectM365', 'disconnectM365', 'getM365State', 'getState', 'signOut', 'startSignIn', 'watch', 'watchM365',
+  ])
+})
+
+it('delegates every Microsoft 365 connector command and stream to the provider', async () => {
+  const ctx = new Context()
+  roots.push(ctx)
+  const views = [{ id: 'mail', status: 'disconnected' }] as const
+  const stream: AsyncIterable<typeof views> = { async *[Symbol.asyncIterator]() { yield views } }
+  const provider = {
+    getM365State: vi.fn(() => Promise.resolve(views)),
+    connectM365: vi.fn(() => Promise.resolve(views)),
+    cancelM365Connect: vi.fn(() => Promise.resolve(views)),
+    disconnectM365: vi.fn(() => Promise.resolve(views)),
+    watchM365: vi.fn(() => stream),
+  }
+  ctx.provide('cotecconsSso', provider as never)
+  const controller = new CotecconsSsoController(ctx)
+  const attempt = 'attempt' as M365ConnectAttemptId
+  expect(await controller.getM365State()).toBe(views)
+  expect(await controller.connectM365('mail')).toBe(views)
+  expect(provider.connectM365).toHaveBeenCalledExactlyOnceWith('mail')
+  expect(await controller.cancelM365Connect('chat', attempt)).toBe(views)
+  expect(provider.cancelM365Connect).toHaveBeenCalledExactlyOnceWith('chat', attempt)
+  expect(await controller.disconnectM365('files')).toBe(views)
+  expect(provider.disconnectM365).toHaveBeenCalledExactlyOnceWith('files')
+  const lifetime = new AbortController()
+  expect(controller.watchM365(lifetime.signal)).toBe(stream)
+  expect(provider.watchM365).toHaveBeenCalledExactlyOnceWith(lifetime.signal)
 })
