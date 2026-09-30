@@ -1,6 +1,6 @@
 /** Agent-level harness: the real local subprocess provider running the scripted `zm`, driven by a scripted model. */
 
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,7 +18,7 @@ import ApprovalService from '@deepseek-ai/dsh-user-approval'
 import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import * as MemoryZeromem from '../src/index.ts'
 import type { Config, SpoolTurn } from '../src/index.ts'
-import { resolveStore } from '../src/index.ts'
+import { resolveStore, ZEROMEM_MODEL_FILES, ZEROMEM_MODEL_FOLDER } from '../src/index.ts'
 import { MockAdapter } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
 /** The scripted `zm` entry file. */
@@ -161,7 +161,7 @@ export function spooled(home: string): SpoolTurn[] {
  * @returns the store directory.
  */
 export function workspaceHome(booted: Booted, cwd = booted.workspace): string {
-  return resolveStore({ scope: 'workspace', storeRoot: booted.storeRoot, cwd }).home
+  return resolveStore({ scope: 'workspace', storeRoot: booted.storeRoot, cwd, models: join(booted.storeRoot, 'models') }).home
 }
 
 /**
@@ -184,4 +184,24 @@ export function results(agent: Agent): { text: string; isError: boolean }[] {
   return agent.session.snapshotEvents().flatMap(event => (event.type === 'tool/result'
     ? [{ text: event.data.message.content.map(block => (block.type === 'text' ? block.text : '')).join(''), isError: event.data.message.isError === true }]
     : []))
+}
+
+/** Commit id the fake model directory's `refs/main` names. */
+export const FAKE_MODEL_REVISION = 'ea104dacec62c0de699686887e3f920caeb4f3e3'
+
+/**
+ * A model directory holding empty stand-ins for every file `zm` reads, in the Hugging Face cache layout.
+ * @param directory - where to create it; the default is a fresh temporary directory.
+ * @returns the model directory.
+ */
+export function fakeModel(directory = join(tempRoot().root, 'model')): string {
+  const folder = join(directory, ZEROMEM_MODEL_FOLDER)
+  for (const file of ZEROMEM_MODEL_FILES) {
+    const path = join(folder, 'snapshots', FAKE_MODEL_REVISION, ...file.split('/'))
+    mkdirSync(join(path, '..'), { recursive: true })
+    writeFileSync(path, '')
+  }
+  mkdirSync(join(folder, 'refs'), { recursive: true })
+  writeFileSync(join(folder, 'refs', 'main'), FAKE_MODEL_REVISION)
+  return directory
 }

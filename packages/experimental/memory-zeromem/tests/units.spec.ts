@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readFileSync, readlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -7,10 +7,11 @@ import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { applyZeromemTurn, emptyZeromemTurn } from '../src/fold.ts'
+import { checkZeromemModel, resolveModelDir, ZEROMEM_MODEL_FOLDER, ZeromemEmbedderError, ZeromemModelError } from '../src/model.ts'
 import { deletedTurnsOf, recallOf, statsOf } from '../src/results.ts'
 import { isForgotten, markForgotten, prepareStore, resolveStore, resolveStoreRoot, sourceUuid, spoolTurns, ZeromemStoreError } from '../src/store.ts'
 import { ZeromemProcessError } from '../src/zm.ts'
-import { cleanup, tempRoot } from './harness.ts'
+import { cleanup, FAKE_MODEL_REVISION, fakeModel, tempRoot } from './harness.ts'
 
 afterEach(cleanup)
 
@@ -73,22 +74,32 @@ describe('store', () => {
   })
 
   it('keys workspace stores by working directory and needs one', () => {
-    const a = resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: '/work/a' })
+    const a = resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: '/work/a', models: '/m' })
     expect(a.home).toMatch(/^\/r\/workspaces\/[0-9a-f]{16}$/)
-    expect(resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: '/work/a/' }).home).toBe(a.home)
-    expect(resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: '/work/b' }).home).not.toBe(a.home)
-    expect(a.models).toBe('/r/models')
-    expect(() => resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: undefined })).toThrow(/no workspace directory/)
+    expect(resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: '/work/a/', models: '/m' }).home).toBe(a.home)
+    expect(resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: '/work/b', models: '/m' }).home).not.toBe(a.home)
+    expect(a.models).toBe('/m')
+    expect(() => resolveStore({ scope: 'workspace', storeRoot: '/r', cwd: undefined, models: '/m' })).toThrow(/no workspace directory/)
   })
 
-  it('prepares owner-only directories with a shared model cache link, idempotently', async () => {
+  it('prepares an owner-only store linked to the model directory, idempotently, and relinks a changed one', async () => {
     const { root } = tempRoot()
-    const spec = resolveStore({ scope: 'global', storeRoot: root, cwd: undefined })
+    const spec = resolveStore({ scope: 'global', storeRoot: root, cwd: undefined, models: join(root, 'models') })
     await prepareStore(spec)
     await prepareStore(spec)
     expect(lstatSync(join(spec.home, 'models')).isSymbolicLink()).toBe(true)
     expect(readlinkSync(join(spec.home, 'models')).replace(/[\\/]$/, '')).toBe(spec.models)
     if (process.platform !== 'win32') expect(lstatSync(spec.home).mode & 0o777).toBe(0o700)
+    const moved = { ...spec, models: join(root, 'bundled', 'models') }
+    await prepareStore(moved)
+    expect(readlinkSync(join(spec.home, 'models')).replace(/[\\/]$/, '')).toBe(moved.models)
+  })
+
+  it('refuses to replace a models entry that is not a link', async () => {
+    const { root } = tempRoot()
+    const spec = resolveStore({ scope: 'global', storeRoot: root, cwd: undefined, models: join(root, 'models') })
+    mkdirSync(join(spec.home, 'models'), { recursive: true })
+    await expect(prepareStore(spec)).rejects.toMatchObject({ code: 'EINVAL' })
   })
 
   it('writes spool files zm drains and records forgotten sessions', async () => {
@@ -134,5 +145,37 @@ describe('results', () => {
     expect(() => deletedTurnsOf({})).toThrow(/zeromem_forget_session/)
     expect(statsOf({ turns: 3, sessions: 2, embedder_is_fallback: true })).toEqual({ turns: 3, sessions: 2, fallbackEmbedder: true })
     expect(deletedTurnsOf({ session_id: 'x', deleted_turns: 4 })).toBe(4)
+  })
+})
+
+describe('embedding model', () => {
+  it('resolves modelDir, then DSH_ZEROMEM_MODELS, then <store root>/models', () => {
+    expect(resolveModelDir({ modelDir: '/m', storeRoot: '/r', environment: '/e' })).toBe('/m')
+    expect(resolveModelDir({ modelDir: '~/m', storeRoot: '', environment: undefined })).toBe(join(homedir(), 'm'))
+    expect(resolveModelDir({ modelDir: '', storeRoot: '/r', environment: '/e/' })).toBe('/e')
+    expect(resolveModelDir({ modelDir: '', storeRoot: '/r', environment: '' })).toBe(join('/r', 'models'))
+    expect(resolveModelDir({ modelDir: '', storeRoot: '/r', environment: undefined })).toBe(join('/r', 'models'))
+    expect(() => resolveModelDir({ modelDir: 'm', storeRoot: '/r', environment: undefined })).toThrow('memory-zeromem: modelDir must be an absolute path or start with ~, got m')
+    expect(() => resolveModelDir({ modelDir: '', storeRoot: '/r', environment: 'e' })).toThrow('memory-zeromem: DSH_ZEROMEM_MODELS must be an absolute path, got e')
+  })
+
+  it('accepts a complete model directory and names what an incomplete one lacks', async () => {
+    const directory = fakeModel()
+    await checkZeromemModel(directory)
+    const folder = join(directory, ZEROMEM_MODEL_FOLDER)
+    rmSync(join(folder, 'snapshots', FAKE_MODEL_REVISION, 'tokenizer.json'))
+    const missing = checkZeromemModel(directory)
+    await expect(missing).rejects.toBeInstanceOf(ZeromemModelError)
+    await expect(missing).rejects.toThrow(`memory-zeromem: embedder default needs the bge-small-en-v1.5 model in ${directory}, which lacks ${ZEROMEM_MODEL_FOLDER}/snapshots/${FAKE_MODEL_REVISION}/tokenizer.json; CTD Core Desktop carries the model and names it with DSH_ZEROMEM_MODELS`)
+    writeFileSync(join(folder, 'refs', 'main'), `${FAKE_MODEL_REVISION}\n`)
+    await expect(checkZeromemModel(directory)).rejects.toThrow(`which lacks a commit id in ${ZEROMEM_MODEL_FOLDER}/refs/main`)
+    await expect(checkZeromemModel(join(tempRoot().root, 'empty'))).rejects.toThrow(`which lacks ${ZEROMEM_MODEL_FOLDER}/refs/main;`)
+  })
+
+  it('names the zm, the model directory, and the zm stderr when zm answered on its hash embedder', () => {
+    const error = new ZeromemEmbedderError('/bin/zm', '/m', 'zeromem: fastembed unavailable (x)')
+    expect(error.name).toBe('ZeromemEmbedderError')
+    expect(error.message).toBe("memory-zeromem: /bin/zm answered on its hash embedder although embedder is default, so it was built without zeromem's fastembed feature or could not load onnxruntime or the model in /m; use a zm built with default features, or set embedder: hash for lexical recall; zm stderr: zeromem: fastembed unavailable (x)")
+    expect(new ZeromemEmbedderError('/bin/zm', '/m', '').message).toMatch(/lexical recall$/u)
   })
 })

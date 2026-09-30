@@ -53,7 +53,7 @@ import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
-import { bundledZeromemExecutable, zeromemHostEnvironment } from './zeromem.ts'
+import { zeromemHostEnvironment } from './zeromem.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { DesktopUpdateOverlays } from './update-overlay.ts'
@@ -440,7 +440,7 @@ async function main(): Promise<void> {
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
       hostInspectPort, {
         ...hostEnvironment,
-        ...zeromemHostEnvironment(bundledZeromemExecutable(dirname(primaryRuntime)), hostEnvironment),
+        ...zeromemHostEnvironment(dirname(primaryRuntime), hostEnvironment),
         DSH_CLIENT_VERSION: desktopClientVersion(),
       }, onFailure,
       primaryRuntime,

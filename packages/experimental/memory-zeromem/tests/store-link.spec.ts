@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { prepareStore, resolveStore } from '../src/store.ts'
 import { cleanup, tempRoot } from './harness.ts'
@@ -10,8 +11,8 @@ vi.mock('node:fs/promises', async original => ({
 afterEach(cleanup)
 
 describe('prepareStore', () => {
-  it('fails when the model cache link cannot be created for a reason other than an existing link', async () => {
+  it('fails when the model link cannot be created for a reason other than an existing link', async () => {
     const { root } = tempRoot()
-    await expect(prepareStore(resolveStore({ scope: 'global', storeRoot: root, cwd: undefined }))).rejects.toMatchObject({ code: 'EPERM' })
+    await expect(prepareStore(resolveStore({ scope: 'global', storeRoot: root, cwd: undefined, models: join(root, 'models') }))).rejects.toMatchObject({ code: 'EPERM' })
   })
 })

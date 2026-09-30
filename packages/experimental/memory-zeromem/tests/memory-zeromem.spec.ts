@@ -1,11 +1,11 @@
-import { mkdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readlinkSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import * as MemoryZeromem from '../src/index.ts'
-import { FALLBACK_EMBEDDER_WARNING, MEMORY_FORGET_SESSION_DESCRIPTION, MEMORY_STATS_DESCRIPTION, memoryRecallDescription, resolveStore, resolveZm, ZeromemExecutableError, ZM_PATH_ENV } from '../src/index.ts'
-import { boot, cleanup, FAKE_ZM, flush, results, spooled, tempRoot, turn, workspaceHome, zmCalls } from './harness.ts'
+import { MEMORY_FORGET_SESSION_DESCRIPTION, MEMORY_STATS_DESCRIPTION, memoryRecallDescription, resolveStore, resolveZm, ZEROMEM_MODEL_FOLDER, ZeromemExecutableError, ZeromemModelError, ZM_MODELS_ENV, ZM_PATH_ENV } from '../src/index.ts'
+import { boot, cleanup, FAKE_MODEL_REVISION, FAKE_ZM, fakeModel, flush, results, spooled, tempRoot, turn, workspaceHome, zmCalls } from './harness.ts'
 import type { Booted } from './harness.ts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import { Context } from '@deepseek-ai/cordis'
@@ -167,20 +167,37 @@ describe('memory-zeromem tools', () => {
     await chat(shared, 'g-a', 'Kafka topic is orders-v2.', 'ok')
     const global = await callTool(shared, 'g-b', 'memory_recall', { query: 'kafka topic orders' }, { cwd: elsewhere })
     expect((firstValue(global) as { turns: { session: string }[] }).turns.map(entry => entry.session)).toEqual(['g-a'])
-    expect(resolveStore({ scope: 'global', storeRoot: shared.storeRoot, cwd: undefined }).home).toBe(join(shared.storeRoot, 'global'))
+    expect(resolveStore({ scope: 'global', storeRoot: shared.storeRoot, cwd: undefined, models: '/m' }).home).toBe(join(shared.storeRoot, 'global'))
   })
 
-  it('logs the fallback embedder warning once, and not when the hash embedder was configured', async () => {
-    const booted = await boot({ mode: 'fallback', config: { embedder: 'default' } })
-    await callTool(booted, 'fb-1', 'memory_stats', {})
-    await callTool(booted, 'fb-2', 'memory_recall', { query: 'anything at all' })
-    expect(booted.warnings.filter(warning => warning === FALLBACK_EMBEDDER_WARNING)).toHaveLength(1)
-    expect(zmCalls(workspaceHome(booted)).every(call => !call.argv.includes('--no-model'))).toBe(true)
+  it('runs the default embedder with the store linked to the model directory', async () => {
+    const models = fakeModel()
+    const booted = await boot({ config: { embedder: 'default', modelDir: models } })
+    const agent = await callTool(booted, 'semantic', 'memory_stats', {})
+    expect(firstValue(agent)).toEqual({ turns: 0, sessions: 0 })
+    expect(zmCalls(workspaceHome(booted)).map(call => call.argv.includes('--no-model'))).toEqual([false])
+    expect(readlinkSync(join(workspaceHome(booted), 'models')).replace(/[\\/]$/, '')).toBe(models)
+  })
 
-    const hashed = await boot()
-    await callTool(hashed, 'h-1', 'memory_stats', {})
-    await callTool(hashed, 'h-2', 'memory_recall', { query: 'anything' })
-    expect(hashed.warnings).not.toContain(FALLBACK_EMBEDDER_WARNING)
+  it('refuses answers zm computed on its hash embedder under the default embedder, with zm stderr', async () => {
+    const booted = await boot({ mode: 'fallback', config: { embedder: 'default', modelDir: fakeModel() } })
+    const stats = await callTool(booted, 'fb-1', 'memory_stats', {})
+    expectToolError(stats, /answered on its hash embedder although embedder is default.*zm stderr: zeromem: fastembed unavailable \(Failed/)
+    const recall = await callTool(booted, 'fb-2', 'memory_recall', { query: 'anything at all' })
+    expectToolError(recall, /ZeromemEmbedderError|answered on its hash embedder/)
+
+    const hashed = await boot({ mode: 'fallback' })
+    expect(firstValue(await callTool(hashed, 'h-1', 'memory_stats', {}))).toEqual({ turns: 0, sessions: 0 })
+    expect(firstValue(await callTool(hashed, 'h-2', 'memory_recall', { query: 'anything' }))).toEqual({ turns: [] })
+  })
+
+  it('fails a tool call without running zm once a model file is gone', async () => {
+    const models = fakeModel()
+    const booted = await boot({ config: { embedder: 'default', modelDir: models } })
+    rmSync(join(models, ZEROMEM_MODEL_FOLDER, 'snapshots', FAKE_MODEL_REVISION, 'onnx', 'model.onnx'))
+    const agent = await callTool(booted, 'gone', 'memory_recall', { query: 'anything' })
+    expectToolError(agent, /embedder default needs the bge-small-en-v1\.5 model/)
+    expect(zmCalls(workspaceHome(booted))).toEqual([])
   })
 
   it('reports a failing zm as a named tool error with its stderr', async () => {
@@ -374,6 +391,16 @@ describe('memory-zeromem load', () => {
     const agent = await callTool(booted, 'env', 'memory_stats', {})
     expect(firstValue(agent)).toEqual({ turns: 0, sessions: 0 })
     expect(zmCalls(workspaceHome(booted))).toHaveLength(1)
+  })
+
+  it('fails with a named error when the default embedder has no model, and reads DSH_ZEROMEM_MODELS', async () => {
+    const { root } = tempRoot()
+    const error = await load({ zmPath: process.execPath, embedder: 'default', storeRoot: join(root, 'stores') })
+    expect(error).toBeInstanceOf(ZeromemModelError)
+    expect(String(error)).toContain(`the bge-small-en-v1.5 model in ${join(root, 'stores', 'models')}, which lacks`)
+    vi.stubEnv(ZM_MODELS_ENV, fakeModel())
+    expect(await load({ zmPath: process.execPath, embedder: 'default' })).toBeUndefined()
+    expect(String(await load({ zmPath: process.execPath, embedder: 'default', modelDir: 'relative' }))).toContain('modelDir must be an absolute path')
   })
 
   it('fails on a relative store root and a default above the largest limit', async () => {

@@ -285,6 +285,7 @@ flowchart TD
     pkg_experimental_loop_budget["experimental-loop-budget"]
     pkg_experimental_loop_graph_profile["experimental-loop-graph-profile"]
     pkg_experimental_memory_distill["experimental-memory-distill"]
+    pkg_experimental_memory_zeromem["experimental-memory-zeromem"]
     pkg_experimental_ptc_runtime_python["experimental-ptc-runtime-python"]
     pkg_experimental_schedule_bundle["experimental-schedule-bundle"]
     pkg_experimental_speech_to_text["experimental-speech-to-text"]
@@ -978,6 +979,12 @@ flowchart TD
   pkg_experimental_knowledge_rules --> pkg_experimental_knowledge
   pkg_experimental_knowledge_rules --> pkg_fs
   pkg_experimental_knowledge_rules --> pkg_tools
+  pkg_experimental_memory_zeromem --> pkg_agent
+  pkg_experimental_memory_zeromem --> pkg_llm
+  pkg_experimental_memory_zeromem --> pkg_session
+  pkg_experimental_memory_zeromem --> pkg_session_projection
+  pkg_experimental_memory_zeromem --> pkg_subprocess
+  pkg_experimental_memory_zeromem --> pkg_tools
   pkg_experimental_stationarity_guard --> pkg_agent
   pkg_experimental_stationarity_guard --> pkg_goal
   pkg_experimental_stationarity_guard --> pkg_invariants
@@ -1779,6 +1786,7 @@ flowchart TD
 | [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | `experimental` | [`computer-use`](../packages/computer-use/computer-use), [`system-prompt`](../packages/core/system-prompt), [`tools`](../packages/core/tools) |
 | [`experimental-denial-budget`](../packages/experimental/denial-budget) | `experimental` | [`agent`](../packages/core/agent), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`tools`](../packages/core/tools), [`user-approval`](../packages/interaction/user-approval) |
 | [`experimental-knowledge-rules`](../packages/experimental/knowledge-rules) | `experimental` | [`agent`](../packages/core/agent), [`experimental-knowledge`](../packages/experimental/knowledge), [`fs`](../packages/fs/fs), [`tools`](../packages/core/tools) |
+| [`experimental-memory-zeromem`](../packages/experimental/memory-zeromem) | `experimental` | [`agent`](../packages/core/agent), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`subprocess`](../packages/subprocess/subprocess), [`tools`](../packages/core/tools) |
 | [`experimental-stationarity-guard`](../packages/experimental/stationarity-guard) | `experimental` | [`agent`](../packages/core/agent), [`goal`](../packages/goal/goal), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`session`](../packages/core/session), [`tools`](../packages/core/tools) |
 | [`experimental-tool-knowledge`](../packages/experimental/tool-knowledge) | `experimental` | [`agent`](../packages/core/agent), [`experimental-knowledge`](../packages/experimental/knowledge), [`fs`](../packages/fs/fs), [`session`](../packages/core/session), [`session-projection`](../packages/session/session-projection), [`tools`](../packages/core/tools) |
 | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | `extensions` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`llm`](../packages/llm/llm), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`tools`](../packages/core/tools), [`typert-protocol`](../packages/typert/protocol) |

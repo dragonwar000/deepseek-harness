@@ -257,11 +257,13 @@ Windows 安装器在启动时和选定目标目录后检查应用是否正在运
 
 ### 自带的 zeromem 可执行文件
 
-`prepare:runtime` 以 [`scripts/zeromem-lock.json`](scripts/zeromem-lock.json) 中的修订版本，通过 `cargo install --locked --no-default-features` 为打包目标编译 zeromem 的 `zm`，检查其 Mach-O 或 PE 架构，并将其与 zeromem 的 MIT 许可证一起放入 `resources/runtime/zeromem/`；macOS 可执行文件约 4.5 MB。它位于 `primary-runtime` 之外，因此 electron-builder 像签名 `runtime/cli/link-entry` 一样以 hardened runtime 为其签名，公证覆盖它，已签名的 Windows 打包也将其与其他未签名 PE 文件一起签名。打包后的冒烟检查把它作为 MCP 服务器运行，并要求服务器名称为 `zeromem`；除非已签名的 Windows 打包推迟该检查，准备阶段也运行同样的检查。
+`prepare:runtime` 以 [`scripts/zeromem-lock.json`](scripts/zeromem-lock.json) 中的修订版本，通过 `cargo install --locked` 并启用 zeromem 默认的 fastembed 特性，为打包目标构建 zeromem 的 `zm`。该锁文件还按 URL 与 SHA-256 固定每个目标的静态 onnxruntime 1.20.0 归档以及 bge-small-en-v1.5 的五个模型文件。准备阶段下载并校验该归档、将其解压，并以 `ORT_LIB_LOCATION` 和 `LIBONNXRUNTIME_NO_PKG_CONFIG=1` 把其目录传给 cargo，因此 ort-sys 链接这个归档，而不是向用户缓存目录下载一个，或链接构建主机上安装的 onnxruntime；Windows 构建还会传入该归档引用的 DirectML 系统库。准备阶段检查可执行文件的 Mach-O 或 PE 架构，把它放入 `resources/runtime/zeromem/`，同时放入 zeromem、onnxruntime 与模型的许可证文本、onnxruntime 的第三方声明，以及按 `zm` 读取的 Hugging Face 缓存布局放在 `models/` 下的已校验模型文件。onnxruntime 为静态链接，因此 `zm` 是只链接系统库的单个可执行文件：macOS arm64 上为 28.6 MB，macOS x64 上为 32.0 MB，另有 134 MB 的模型文件，每个目标合计约 163 MB。
 
-构建主机需要 cargo 和目标的 Rust 标准库：在 arm64 Mac 上构建 macOS x64 需要 `rustup target add x86_64-apple-darwin`，构建 Windows 需要带 MSVC 工具链的 Windows x64 主机。没有 cargo 的主机上准备阶段以 `ZeromemBuildError` 失败；设置 `DSH_DESKTOP_OMIT_ZEROMEM=1` 则构建不含 `zm` 的 Desktop。`pnpm run prepare:desktop:zeromem` 只为所选目标准备 `zm`。`dev:desktop` 与 `start:desktop` 运行同一步骤，失败时发出警告并继续。
+`zm` 位于 `primary-runtime` 之外，因此 electron-builder 像签名 `runtime/cli/link-entry` 一样以 hardened runtime 为其签名，公证覆盖它，已签名的 Windows 打包也将其与其他未签名 PE 文件一起签名；模型文件是由应用签名封存的数据。打包后的冒烟检查以自带的模型把 `zm` 作为 MCP 服务器运行，存入两个轮次，并要求 `zm` 报告 bge-small-en-v1.5，且召回一个与其没有共同词语的改写查询所指向的轮次。除非目标与主机不同或已签名的 Windows 打包推迟该检查，准备阶段也运行同样的检查。
 
-该文件存在时，除非继承的环境已设置该变量，Desktop 启动 Host 时以 `DSH_ZEROMEM_ZM` 指明它。[knowledge bundle](../../packages/experimental/knowledge-profile/README.zh.md) 的 `memory-zeromem` 行保持 `zmPath` 为空并使用 `embedder: hash`，因此启用该行无需安装；[插件 README](../../packages/experimental/memory-zeromem/README.zh.md#use-this-package) 负责解析顺序与词法召回限制。没有该文件时，该行需要 `PATH` 上的 `zm`，否则其加载以 `ZeromemExecutableError` 失败。
+构建主机需要 cargo、首次构建时能访问固定的 URL（下载缓存会保留已校验的文件），以及目标的 Rust 标准库：在 arm64 Mac 上构建 macOS x64 需要 `rustup target add x86_64-apple-darwin`，它针对 x64 归档交叉构建；构建 Windows 需要带 MSVC 工具链和提供 DirectML 的 Windows SDK 的 Windows x64 主机。没有 cargo 的主机上准备阶段以 `ZeromemBuildError` 失败；设置 `DSH_DESKTOP_OMIT_ZEROMEM=1` 则构建不含 `zm` 及其模型的 Desktop。`pnpm run prepare:desktop:zeromem` 只为所选目标准备 `zm` 及其模型。`dev:desktop` 与 `start:desktop` 运行同一步骤，失败时发出警告并继续。
+
+这些文件存在时，Desktop 启动 Host 时以 `DSH_ZEROMEM_ZM` 与 `DSH_ZEROMEM_MODELS` 指明自带的 `zm` 与模型目录，各自在继承的环境未设置该变量时生效。[knowledge bundle](../../packages/experimental/knowledge-profile/README.zh.md) 的 `memory-zeromem` 行保持 `zmPath` 与 `modelDir` 为空并使用 `embedder: default`，因此启用该行无需安装，也无需网络访问；[插件 README](../../packages/experimental/memory-zeromem/README.zh.md#use-this-package) 负责解析顺序与嵌入开销。没有这些文件时，该行需要 `PATH` 上的 `zm` 与模型目录，否则其加载以 `ZeromemExecutableError` 或 `ZeromemModelError` 失败。
 
 <a id="upload-updates"></a>
 

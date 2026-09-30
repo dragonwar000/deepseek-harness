@@ -40,6 +40,14 @@ export interface ZmOperationSpec {
   readonly graceMs: number
 }
 
+/** A tool result and the `zm` stderr text of the operation. */
+export interface ZmAnswer {
+  /** The tool result, parsed from zeromem's JSON text. */
+  readonly value: unknown
+  /** Trimmed stderr text, empty when `zm` wrote none; zeromem reports an embedder load failure there. */
+  readonly stderr: string
+}
+
 /** `zm` could not be run, did not answer, answered as another program, or exited with a failure. */
 export class ZeromemProcessError extends Error {
   /** @param message - what failed, with the `zm` stderr tail when there is one. */
@@ -124,7 +132,7 @@ function responseOf(line: string): z.infer<typeof responseSchema> | undefined {
  * @param tool - the zeromem tool.
  * @param args - the tool arguments.
  * @param signal - the caller's cancellation.
- * @returns the tool result, parsed from zeromem's JSON text.
+ * @returns the tool result with the `zm` stderr text.
  * @throws ZeromemProcessError when `zm` fails, times out, or answers as another program.
  * @throws ZeromemToolError when zeromem refuses the call.
  */
@@ -134,7 +142,7 @@ export async function callZeromem(
   tool: ZeromemTool,
   args: Record<string, unknown>,
   signal: AbortSignal,
-): Promise<unknown> {
+): Promise<ZmAnswer> {
   const argv = zmArgv(spec)
   using limit = deadline(signal, spec.timeoutMs, TIMEOUT_CODE)
   let handle: SubprocessHandle
@@ -164,8 +172,9 @@ export async function callZeromem(
     { jsonrpc: '2.0', id: CALL_ID, method: 'tools/call', params: { name: tool, arguments: args } },
   ].map(message => `${JSON.stringify(message)}\n`).join(''))
 
+  const stderr = (): string => stderrReader.readFrom(0).text.trim()
   const failure = (what: string): ZeromemProcessError => {
-    const tail = stderrReader.readFrom(0).text.trim()
+    const tail = stderr()
     return new ZeromemProcessError(tail === '' ? what : `${what}; zm stderr: ${tail}`)
   }
   let server: string | undefined
@@ -196,7 +205,7 @@ export async function callZeromem(
   const text = result.data.content.map(block => block.text).join('')
   if (result.data.isError) throw new ZeromemToolError(text)
   try {
-    return JSON.parse(text)
+    return { value: JSON.parse(text) as unknown, stderr: stderr() }
   } catch (error) {
     throw new ZeromemProcessError(`zm answered ${tool} with text that is not JSON: ${(error as Error).message}`)
   }

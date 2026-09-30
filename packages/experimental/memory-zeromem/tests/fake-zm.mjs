@@ -28,6 +28,9 @@ if (command !== 'mcp' || homeAt === -1) {
 const home = args[homeAt + 1]
 appendFileSync(join(home, 'fake-calls.jsonl'), `${JSON.stringify({ argv: args, cwd: process.cwd() })}\n`)
 
+// zm reports on stderr why fastembed could not load before it falls back.
+if (mode === 'fallback' && !noModel) process.stderr.write('zeromem: fastembed unavailable (Failed to retrieve onnx/model.onnx), falling back to hash embedder\n')
+
 if (mode === 'exit') {
   process.stderr.write('zm: database is locked\n')
   process.exit(3)

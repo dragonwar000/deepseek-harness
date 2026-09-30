@@ -90,6 +90,7 @@ describe('knowledge bundle', () => {
     const rows = inserted.filter(row => row.disabled === true).map(row => row.id)
     expect(rows).toEqual(['memory-zeromem'])
     expect(inserted.find(row => row.id === 'memory-zeromem')?.config).toMatchObject({ scope: 'workspace', excludeCurrentSession: true, ingestSubagentSessions: false, allowForget: false })
+    expect(inserted.find(row => row.id === 'memory-zeromem')?.config).toMatchObject({ zmPath: '', embedder: 'default', modelDir: '' })
   })
 
   it('stays independent of the loop guards bundle in both directions, apart from optional peers read with ctx.get', () => {

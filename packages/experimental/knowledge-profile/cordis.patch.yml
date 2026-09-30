@@ -16,9 +16,12 @@
 # memory-zeromem ships disabled: it stores the raw text of user messages and
 # final replies (never tool output) on disk under <harness home>/zeromem, one
 # store per session working directory. Empty zmPath runs the zm named by
-# DSH_ZEROMEM_ZM, which Desktop sets to the zm it carries, then zm on PATH;
-# embedder: hash matches that zm, built without fastembed. Enable it with a row
-# patch `- id: memory-zeromem` / `disabled: false`.
+# DSH_ZEROMEM_ZM, then zm on PATH; empty modelDir reads bge-small-en-v1.5 from
+# DSH_ZEROMEM_MODELS, then <harness home>/zeromem/models. Desktop sets both to
+# the fastembed zm and the model it carries. embedder: default loads
+# only when the model is there and fails on a zm built without fastembed;
+# embedder: hash needs neither. Enable it with a row patch
+# `- id: memory-zeromem` / `disabled: false`.
 
 - insert:
     - id: knowledge-wiki-filesystem
@@ -67,7 +70,8 @@
       disabled: true
       config:
         zmPath: ''
-        embedder: hash
+        embedder: default
+        modelDir: ''
         scope: workspace
         excludeCurrentSession: true
         ingestSubagentSessions: false

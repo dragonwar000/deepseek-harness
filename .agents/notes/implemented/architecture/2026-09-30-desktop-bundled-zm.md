@@ -1,21 +1,21 @@
-# Agent Note: Desktop compiles and carries a hash-embedder zeromem zm
+# Agent Note: Desktop compiles and carries a fastembed zeromem zm and its model
 
 Status: implemented
 
 ## Problem
 
-The knowledge bundle's `memory-zeromem` row needs zeromem's `zm`. Desktop users should not have to install it.
+The knowledge bundle's `memory-zeromem` row needs zeromem's `zm` and, for semantic recall, the bge-small-en-v1.5 model. Desktop users should not install either, and nothing should download unpinned bytes.
 
 ## Decision
 
-Desktop runtime preparation runs `cargo install --git … --rev <pinned sha> --locked --no-default-features --target <triple>` into the target's build directory, checks the executable's Mach-O or PE architecture, and copies `zm` with zeromem's hash-pinned `LICENSE` to `resources/runtime/zeromem/`. [`zeromem-lock.json`](../../../../apps/desktop/scripts/zeromem-lock.json) holds the revision and feeds the third-party notices. The file sits beside `runtime/cli/link-entry`, the Mach-O the same step already compiles, so electron-builder signs it with the hardened runtime and notarization covers it, and signed Windows packaging signs every unsigned PE. The packaged smoke runs the signed `zm`.
+`prepare:runtime` runs `cargo install --git … --rev <pinned sha> --locked --target <triple>` with default features. [`zeromem-lock.json`](../../../../apps/desktop/scripts/zeromem-lock.json) pins the static onnxruntime archive and model files by URL and SHA-256. ort-sys 2.0.0-rc.9 verifies its download against its `dist.txt` (`build.rs:464-465`), but first uses pkg-config and reuses an unverified extraction in the user cache (`build.rs:463`, `564`). Preparation therefore downloads and verifies the archive and sets `ORT_LIB_LOCATION` and `LIBONNXRUNTIME_NO_PKG_CONFIG=1`. `zm` stays one executable that links only system libraries, signed and notarized as before.
 
-Desktop passes `DSH_ZEROMEM_ZM` to the Host when that file exists and no inherited value is set. The plugin's `resolveZm` takes a non-empty `zmPath`, then `DSH_ZEROMEM_ZM`, then `zm` on `PATH`, and the bundle row keeps `zmPath` empty with `embedder: hash`. A build host without cargo fails packaging unless `DSH_DESKTOP_OMIT_ZEROMEM=1`; an enabled row in that build needs `zm` on `PATH`, or its load fails with `ZeromemExecutableError`; development launches warn and continue.
+The model ships in `resources/runtime/zeromem/models/` in the Hugging Face cache layout: 134 MB beside a 29-32 MB `zm`. Desktop names it in `DSH_ZEROMEM_MODELS`. The plugin checks the files at load and before each operation, because zeromem downloads a missing file at the latest revision, and fails with `ZeromemEmbedderError` instead of accepting zeromem's silent hash fallback. The row uses `embedder: default`. The packaged smoke recalls a paraphrase.
 
 ## Alternatives considered
 
-The default fastembed build is 27 MB instead of 4.4 MB, links an onnxruntime archive downloaded during the build outside the lock, and downloads a 130 MB model on first use, so recall would depend on network access after installation. Vendoring zeromem would put non-Cordis source in `vendor/`. A cargo workspace under `native/` would add Rust to that npm-release workspace for one executable. zeromem's releases carry only a Linux Python wheel, no `zm`.
+The hash embedder misses paraphrases. Downloading the model on first use needs network access and makes the first recall slow. Vendoring zeromem would put non-Cordis source in `vendor/`. A cargo workspace under `native/` would add Rust to that npm-release workspace for one executable.
 
 ## Consequences
 
-Recall is lexical: the hash embedder matches shared words, not paraphrases. Packaging hosts need Rust and each target's standard library; macOS x64 from an arm64 host needs `rustup target add x86_64-apple-darwin`.
+Desktop grows by about 163 MB per target. Each operation loads the model: about 1.3 s cold, 0.1 s warm on Apple silicon. macOS x64 cross-builds from arm64; Windows needs a Windows host with the DirectML SDK libraries and is unverified.

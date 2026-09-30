@@ -1,9 +1,8 @@
 /**
  * The zeromem store directory of a session and the files this package writes
  * into it. A store directory is a zeromem home: `zeromem.db` (owned by `zm`),
- * `spool/` (turn files `zm` ingests before every operation), `models/` (the
- * embedding model cache, linked to one directory shared by every store under
- * the same root), and `dsh-forgotten/` (sessions this package no longer
+ * `spool/` (turn files `zm` ingests before every operation), `models/` (a link
+ * to the model directory shared by every store), and `dsh-forgotten/` (sessions this package no longer
  * stores). Spool files follow zeromem's spool protocol: a complete JSONL file
  * appears under a name ending in `.jsonl`, one `{session_id, speaker, text,
  * ts, uuid}` object per line, and `zm` skips a line whose `uuid` it already
@@ -12,7 +11,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { access, mkdir, symlink, writeFile } from 'node:fs/promises'
+import { access, mkdir, readlink, rm, symlink, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
 import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -35,9 +34,11 @@ export interface StoreRequest {
   readonly storeRoot: string
   /** The session's working directory; required for the `workspace` scope. */
   readonly cwd: string | undefined
+  /** Absolute model directory the store links as `models`. */
+  readonly models: string
 }
 
-/** A resolved store: the zeromem home and the model cache shared by every store under the same root. */
+/** A resolved store: the zeromem home and the model directory it links. */
 export interface StoreSpec {
   readonly home: string
   readonly models: string
@@ -76,13 +77,13 @@ export function resolveStoreRoot(storeRoot: string): string {
 
 /**
  * Resolve the store of one session.
- * @param request - scope, configured root, and the session's working directory.
- * @returns the zeromem home and the shared model cache.
+ * @param request - scope, configured root, the session's working directory, and the model directory.
+ * @returns the zeromem home and the model directory.
  * @throws ZeromemStoreError for the `workspace` scope when the session has no working directory.
  */
 export function resolveStore(request: StoreRequest): StoreSpec {
   const root = resolveStoreRoot(request.storeRoot)
-  const models = join(root, 'models')
+  const { models } = request
   if (request.scope === 'global') return { home: join(root, 'global'), models }
   if (request.cwd === undefined) {
     throw new ZeromemStoreError('memory-zeromem: this conversation has no workspace directory, so it has no workspace memory store; set scope: global to use one store for every conversation')
@@ -92,16 +93,23 @@ export function resolveStore(request: StoreRequest): StoreSpec {
 }
 
 /**
- * Create a store's directories, owner-only, and link its model cache to the shared one.
+ * Create a store directory, owner-only, and link its `models` entry to the model directory, replacing a link to another one.
  * @param spec - the resolved store.
  */
 export async function prepareStore(spec: StoreSpec): Promise<void> {
   await mkdir(spec.home, { recursive: true, mode: 0o700 })
-  await mkdir(spec.models, { recursive: true, mode: 0o700 })
+  // `zm mcp` loads the embedding model from <home>/models.
+  const link = join(spec.home, 'models')
+  const current = await readlink(link).catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+    throw error
+  })
+  if (current !== undefined && resolve(spec.home, current) === resolve(spec.models)) return
+  if (current !== undefined) await rm(link, { force: true })
   try {
-    // `zm mcp` caches the embedding model under <home>/models; one shared copy per root.
-    await symlink(spec.models, join(spec.home, 'models'), 'junction')
+    await symlink(spec.models, link, 'junction')
   } catch (error) {
+    // A concurrent preparation created the link first.
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
   }
 }

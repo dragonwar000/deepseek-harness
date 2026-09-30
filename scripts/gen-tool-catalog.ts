@@ -682,12 +682,13 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@deepseek-ai/dsh-experimental-memory-zeromem',
     dir: 'memory-zeromem',
     source: 'packages/experimental/memory-zeromem/src/index.ts',
-    requires: ['ctx.tools', 'ctx.subprocess', 'ctx.sessionProjections', 'a zeromem zm executable', 'owning Agent session for the working directory and the excluded session'],
+    requires: ['ctx.tools', 'ctx.subprocess', 'ctx.sessionProjections', 'a zeromem zm executable', 'the bge-small-en-v1.5 model directory for embedder default', 'owning Agent session for the working directory and the excluded session'],
     writes: ['tool/call', 'approval/asked', 'approval/decided', 'tool/result'],
     async mount(ctx) {
       await ctx.plugin(LocalSubprocessRuntime)
-      // Schema harvest never runs zm; any resolvable executable satisfies the load-time lookup.
-      await ctx.plugin(MemoryZeromem, { zmPath: process.execPath, allowForget: true })
+      // Schema harvest never runs zm; any resolvable executable satisfies the load-time lookup, and the hash
+      // embedder skips the model check without changing a tool definition.
+      await ctx.plugin(MemoryZeromem, { zmPath: process.execPath, embedder: 'hash', allowForget: true })
     },
     note: 'Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`).',
   },
