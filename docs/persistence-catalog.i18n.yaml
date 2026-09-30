@@ -153,11 +153,11 @@
   en: 6f4bbe366a17e7f5
   zh: 6f4bbe366a17e7f5
 /session-persistence-event-catalog/events/llm/llm-cli-tool-emulation-log-only:
-  en: c17023c0b906d4d5
-  zh: fce556a4944e2f4a
+  en: fcc4ed0a8c9f70e3
+  zh: 009fafc49f821423
 /session-persistence-event-catalog/events/llm/llm-cli-tool-emulation-reply-log-only:
-  en: 023a6a3f5a1de281
-  zh: b8cf52b8d6e7d2e7
+  en: 7945e72ac6693f6a
+  zh: 0e808a89cf3ad896
 /session-persistence-event-catalog/events/llm/llm-retry-log-only:
   en: a530fc0c1f664155
   zh: 227c8d6303e37c26

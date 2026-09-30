@@ -130,7 +130,8 @@ export interface CliToolEmulationReply {
   readonly calls: number
   /**
    * Of {@link calls}, those read from a near-miss form rather than a `dsh-tool-call` block: a block
-   * opened with `json` or no info string, or a bare object followed by a closing fence.
+   * opened with `json` or no info string, a bare object followed by a closing fence, or an XML
+   * `<invoke>` element.
    */
   readonly lenientCalls: number
   /** Reply characters dropped because they followed an accepted tool call. */

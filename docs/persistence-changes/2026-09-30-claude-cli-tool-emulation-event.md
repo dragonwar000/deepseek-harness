@@ -39,12 +39,12 @@ changes:
 <a id="compatibility"></a>
 ## Compatibility
 
-Two new event roots: existing records remain valid and nothing already persisted changes shape. Both events are written only by the `claude-cli` model route, whose Base Bundle row ships disabled, and only for a request that declares tools while `toolCalls` is `prompt`. Both are log-only and never enter derived history, so a reader that ignores them reconstructs the same conversation. `llm/cli-tool-emulation` is recorded before each CLI run so the emulation preamble and any correction notice are in the log before the model reads them. `llm/cli-tool-emulation-reply` is recorded after the run and carries nothing the model reads: the calls accepted, how many of them were accepted from a near-miss form, the characters dropped after an accepted call, and the rejection code if the reply was rejected.
+Two new event roots: existing records remain valid and nothing already persisted changes shape. Both events are written only by the `claude-cli` model route, whose Base Bundle row ships disabled, and only for a request that declares tools while `toolCalls` is `prompt`. Both are log-only and never enter derived history, so a reader that ignores them reconstructs the same conversation. `llm/cli-tool-emulation` is recorded before each CLI run so the emulation preamble and any correction notice are in the log before the model reads them. `llm/cli-tool-emulation-reply` is recorded after the run and carries nothing the model reads: the calls accepted, how many of them were accepted from a near-miss JSON form or an XML `<invoke>` element, the characters dropped after an accepted call, and the rejection code if the reply was rejected.
 
 <a id="verification"></a>
 ## Verification
 
-pnpm exec vitest run packages/llm/llm-claude-cli: 229 tests passed, including the Loader-booted composition and the plugin test asserting both events land in a real SessionStore in run-then-reply order.
+pnpm exec vitest run packages/llm/llm-claude-cli: 308 tests passed, including the Loader-booted composition and the plugin test asserting both events land in a real SessionStore in run-then-reply order.
 
 <a id="dev-note"></a>
 ## Dev Note

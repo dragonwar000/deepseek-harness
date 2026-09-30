@@ -101,9 +101,9 @@ export interface ClaudeCliAdapterDeps {
   readonly toolCallMaxCalls: number
   /** Bytes accepted inside one tool-call block. */
   readonly toolCallMaxBytes: number
-  /** Correction runs allowed after a rejected reply that produced no output yet. */
+  /** Correction runs allowed after a rejected reply that handed over no answer text yet. */
   readonly toolCallRetries: number
-  /** Whether a call in one of the two unambiguous near-miss forms is accepted rather than rejected. */
+  /** Whether a call in one of the three unambiguous near-miss forms is accepted rather than rejected. */
   readonly toolCallLenient: boolean
   readonly recordEmulation: EmulationRecorder
 }
@@ -235,9 +235,10 @@ export class ClaudeCliAdapter extends LlmAdapter {
   /**
    * Serve one request, retrying a rejected emulated reply while nothing has reached the consumer.
    *
-   * A correction run is only possible before the first text or tool-call chunk is handed over:
-   * afterwards the consumer has seen output that a second run would contradict, so a rejection can
-   * only be a named terminal failure.
+   * A correction run is only possible before the first text chunk is handed over: afterwards the
+   * consumer has seen answer text that a second run would contradict, so a rejection can only be a
+   * named terminal failure. A reply that has produced only tool calls is held back until it ends,
+   * so a rejection later in the same reply replaces it whole and none of its calls run.
    */
   private async *run(options: GenerateOptions, plan: ToolPlan): AsyncGenerator<StreamChunk> {
     const prompt = plan.kind === 'prompt' ? plan : undefined
@@ -310,7 +311,8 @@ export class ClaudeCliAdapter extends LlmAdapter {
         const tail = run.stderrTail().trim()
         take(decoder.finish().map(chunk => withStderrTail(chunk, tail)))
       }
-      // A reply that handed over nothing — reasoning only, say — still has to reach the consumer.
+      // A reply that handed over no answer text — tool calls only, or reasoning only — reaches the
+      // consumer here, once it has ended without a rejection.
       yield* pending.splice(0)
       return { kind: 'done', reading: emulator === undefined ? undefined : reading(emulator) }
     }

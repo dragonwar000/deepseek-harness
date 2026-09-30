@@ -57,18 +57,21 @@ function plan(tools: readonly ToolSchema[] = [READ_FILE], limits: EmulationLimit
 }
 
 /** A scanner reading a reply strictly against the given bounds, with both test tools declared. */
-function scan(limits: EmulationLimits = LIMITS): ReplyScanner {
-  return new ReplyScanner({ limits, tools: [READ_FILE, BASH], lenient: false })
+function scan(limits: EmulationLimits = LIMITS, tools: readonly ToolSchema[] = [READ_FILE, BASH]): ReplyScanner {
+  return new ReplyScanner({ limits, tools, lenient: false })
 }
 
 /** The same scanner with lenient reading on, which is the route's default. */
-function scanLeniently(limits: EmulationLimits = LIMITS): ReplyScanner {
-  return new ReplyScanner({ limits, tools: [READ_FILE, BASH], lenient: true })
+function scanLeniently(limits: EmulationLimits = LIMITS, tools: readonly ToolSchema[] = [READ_FILE, BASH]): ReplyScanner {
+  return new ReplyScanner({ limits, tools, lenient: true })
 }
 
-/** Feed a reply through a scanner one character at a time, as the slowest stream would deliver it. */
+/** What every rejection of a call written in another syntax tells the model to write instead. */
+const REQUIRED_BLOCK = 'The harness reads a call only from a block that opens with the line ```dsh-tool-call, holds one JSON object with the members `name` and `arguments`, and closes with the line ```.'
+
+/** Feed a reply through a scanner one code unit at a time, as the slowest stream would deliver it. */
 function scanByCharacter(text: string, scanner: ReplyScanner): readonly ReplySegment[] {
-  return [...[...text].flatMap(char => scanner.push(char)), ...scanner.finish()]
+  return [...text.split('').flatMap(char => scanner.push(char)), ...scanner.finish()]
 }
 
 /** The text a run of segments hands over, joined. */
@@ -76,12 +79,63 @@ function textOf(segments: readonly ReplySegment[]): string {
   return segments.map(segment => segment.kind === 'text' ? segment.text : '').join('')
 }
 
-/** The tools the recorded session declared that its rejected reply called. */
+/** The tools the recorded sessions declared that their rejected replies called. */
 const READ: ToolSchema = {
   name: 'read',
   description: 'Read a file.',
-  parameters: { type: 'object', properties: { file_path: { type: 'string' }, limit: { type: 'number' } }, required: ['file_path'] },
+  parameters: {
+    type: 'object',
+    properties: { file_path: { type: 'string' }, offset: { type: 'number' }, limit: { type: 'number' } },
+    required: ['file_path'],
+  },
 }
+
+const SHELL: ToolSchema = {
+  name: 'bash',
+  description: 'Run a shell command.',
+  parameters: {
+    type: 'object',
+    properties: { command: { type: 'string' }, description: { type: 'string' }, workdir: { type: 'string' } },
+    required: ['command', 'description'],
+  },
+}
+
+const EDIT: ToolSchema = {
+  name: 'edit',
+  description: 'Replace text in a file.',
+  parameters: {
+    type: 'object',
+    properties: {
+      file_path: { type: 'string' },
+      old_string: { type: 'string' },
+      new_string: { type: 'string' },
+      replace_all: { type: 'boolean' },
+      ranges: { type: 'array', items: { type: 'integer' } },
+      options: { type: 'object' },
+      mode: { enum: ['fast', 'safe'] },
+    },
+    required: ['file_path', 'old_string', 'new_string'],
+  },
+}
+
+/** The tools the XML replies are read against. */
+const XML_TOOLS: readonly ToolSchema[] = [READ, SHELL, EDIT]
+
+/**
+ * The two complete calls of a reply a real `opus` run returned through the CLI in its native XML
+ * function-call syntax. Spacing is as recorded; only the checkout prefix of the paths is shortened.
+ */
+const RECORDED_INVOKES = '<invoke name="read"> <parameter name="file_path">/repo/packages/credentials/coteccons-sso-msal/README.zh.md</parameter> <parameter name="offset">30</parameter> <parameter name="limit">45</parameter> </invoke>'
+  + ' <invoke name="bash"> <parameter name="command">sed -n 60,72p packages/credentials/coteccons-sso-msal/README.zh.md</parameter> <parameter name="description">Show zh limitations section</parameter> <parameter name="workdir">/repo</parameter> </invoke>'
+
+/** The third call of that reply, which the reply ended inside, mid-parameter. */
+const RECORDED_CUT_INVOKE = ' <invoke name="edit"> <parameter name="file_path">/repo/packages/credentials/coteccons-sso-msal/README.zh.md</parameter> <parameter name="old_string">| `signInTimeoutMs` | `300000` |\n</parameter> <parameter name="new_string">| `signInTimeoutMs` | `300000` |\n| `scopes` | a list'
+
+/** The JSON calls the two complete recorded elements state, with numbers where the tool declares them. */
+const RECORDED_INVOKE_CALLS = [
+  '{"name":"read","arguments":{"file_path":"/repo/packages/credentials/coteccons-sso-msal/README.zh.md","offset":30,"limit":45}}',
+  '{"name":"bash","arguments":{"command":"sed -n 60,72p packages/credentials/coteccons-sso-msal/README.zh.md","description":"Show zh limitations section","workdir":"/repo"}}',
+]
 
 /**
  * The reply a real `opus` run returned through the CLI: three calls, each a bare object followed by
@@ -299,7 +353,7 @@ describe('ReplyScanner', () => {
     expect(scanner.failure).toEqual({
       code: TOOL_CALL_UNFENCED,
       message: 'A call to `read_file` was written outside a tool-call block: {"name": "read_file", "arguments": {"path": "/a"}}. '
-        + 'The harness reads a call only from a block that opens with the line ```dsh-tool-call and closes with the line ```.',
+        + REQUIRED_BLOCK,
     })
   })
 
@@ -337,8 +391,11 @@ describe('ReplyScanner', () => {
   it('rejects an unfenced call that the reply ended inside', () => {
     const scanner = scan()
     expect(scanByCharacter('{"name":"bash","arguments":{"command":"ls', scanner)).toEqual([])
-    expect(scanner.failure?.code).toBe(TOOL_CALL_UNFENCED)
-    expect(scanner.failure?.message).toMatch(/^A call to `bash` was written outside/)
+    expect(scanner.failure).toEqual({
+      code: TOOL_CALL_TRUNCATED,
+      message: 'The reply ended inside a call to `bash` written outside a tool-call block: {"name":"bash","arguments":{"command":"ls. '
+        + REQUIRED_BLOCK,
+    })
   })
 
   it('rejects an unfenced call that outgrew the byte cap, and holds no more than the cap', () => {
@@ -346,7 +403,10 @@ describe('ReplyScanner', () => {
     expect(scanner.push(`{"name":"bash","arguments":{"command":"${'x'.repeat(20)}`)).toEqual([])
     expect(scanner.failure).toBeUndefined()
     expect(scanner.push('y'.repeat(8))).toEqual([])
-    expect(scanner.failure?.code).toBe(TOOL_CALL_UNFENCED)
+    expect(scanner.failure).toEqual({
+      code: TOOL_CALL_TOO_LARGE,
+      message: `A call to \`bash\` written outside a tool-call block exceeded 64 bytes without closing. ${REQUIRED_BLOCK}`,
+    })
   })
 
   it('does not take three backticks that start another opener line as the closing fence', () => {
@@ -355,7 +415,7 @@ describe('ReplyScanner', () => {
     expect(scanner.failure?.message).toContain('{"name":"bash","arguments":{}}. The harness')
   })
 
-  it('discards an unfenced call written after an accepted one, as it does any text there', () => {
+  it('rejects an unfenced call written after an accepted one, rather than dropping it as trailing text', () => {
     const scanner = scan()
     const segments = [
       ...scanner.push('```dsh-tool-call\n{"name":"bash","arguments":{}}\n```\n{"name":"bash","arguments":{}}\n```'),
@@ -364,9 +424,8 @@ describe('ReplyScanner', () => {
     expect(segments).toEqual([
       { kind: 'call', raw: '{"name":"bash","arguments":{}}', lenient: false },
       { kind: 'text', text: '\n' },
-      { kind: 'text', text: '{"name":"bash","arguments":{}}\n```' },
     ])
-    expect(scanner.failure).toBeUndefined()
+    expect(scanner.failure?.code).toBe(TOOL_CALL_UNFENCED)
   })
 
   it('reads a fenced call that follows an object which is not a call', () => {
@@ -436,6 +495,101 @@ describe('ReplyScanner', () => {
     )
     expect(segments.filter(segment => segment.kind === 'call').map(segment => segment.lenient)).toEqual([true, false])
     expect(scanner.failure?.code).toBe(TOOL_CALL_LIMIT)
+  })
+
+  it('reads the recorded XML calls leniently, with numbers where the tool declares them', () => {
+    const expected = RECORDED_INVOKE_CALLS.map(raw => ({ kind: 'call', raw, lenient: true }))
+    const whole = scanLeniently(LIMITS, XML_TOOLS)
+    expect([...whole.push(RECORDED_INVOKES), ...whole.finish()].filter(segment => segment.kind === 'call'))
+      .toEqual(expected)
+    expect(whole.failure).toBeUndefined()
+    const streamed = scanLeniently(LIMITS, XML_TOOLS)
+    const segments = scanByCharacter(RECORDED_INVOKES, streamed)
+    expect(segments.filter(segment => segment.kind === 'call')).toEqual(expected)
+    // Only the space between the two elements is ever released as text.
+    expect(textOf(segments)).toBe(' ')
+  })
+
+  it('names the recorded reply that ended mid-parameter, and releases none of it', () => {
+    const scanner = scanLeniently(LIMITS, XML_TOOLS)
+    const segments = scanByCharacter(RECORDED_INVOKES + RECORDED_CUT_INVOKE, scanner)
+    expect(textOf(segments).trim()).toBe('')
+    expect(scanner.failure).toEqual({
+      code: TOOL_CALL_TRUNCATED,
+      message: 'The reply ended inside a call to `edit` written as XML <invoke> tags: '
+        + '<invoke name="edit"> <parameter name="file_path">/repo/packages/credentials/coteccons-sso-msal/README.zh.md</parameter> '
+        + '<parameter name="old_string">| `signInTimeoutMs` | `300000` | </parameter> <para…. '
+        + `XML function-call syntax is not accepted on this route. ${REQUIRED_BLOCK}`,
+    })
+  })
+
+  it('rejects a complete XML call when lenient reading is off, and says XML is not accepted', () => {
+    const scanner = scan(LIMITS, XML_TOOLS)
+    expect(scanByCharacter('<invoke name="read"> <parameter name="file_path">/a</parameter> </invoke>', scanner)).toEqual([])
+    expect(scanner.failure).toEqual({
+      code: TOOL_CALL_UNFENCED,
+      message: 'A call to `read` was written as XML <invoke> tags: <invoke name="read"> <parameter name="file_path">/a</parameter> </invoke>. '
+        + `XML function-call syntax is not accepted on this route. ${REQUIRED_BLOCK}`,
+    })
+  })
+
+  it('rejects an XML call that outgrew the byte cap, and holds no more than the cap', () => {
+    const scanner = scanLeniently({ maxCalls: 4, maxBytes: 64 }, XML_TOOLS)
+    expect(scanner.push(`<invoke name="bash"> <parameter name="command">${'x'.repeat(10)}`)).toEqual([])
+    expect(scanner.failure).toBeUndefined()
+    expect(scanner.push('y'.repeat(16))).toEqual([])
+    expect(scanner.failure).toEqual({
+      code: TOOL_CALL_TOO_LARGE,
+      message: 'A call to `bash` written as XML <invoke> tags exceeded 64 bytes without closing. '
+        + `XML function-call syntax is not accepted on this route. ${REQUIRED_BLOCK}`,
+    })
+  })
+
+  it('rejects an XML call whose parameter cannot be converted without a guess, even leniently', () => {
+    const scanner = scanLeniently(LIMITS, XML_TOOLS)
+    scanner.push('<invoke name="read"> <parameter name="file_path">/a</parameter> <parameter name="limit">many</parameter> </invoke>')
+    expect(scanner.failure?.code).toBe(TOOL_CALL_UNFENCED)
+    expect(scanner.failure?.message).toContain('XML function-call syntax is not accepted on this route.')
+  })
+
+  it('takes a function_calls tag with the XML call under it, and leaves its closing tag as trailing text', () => {
+    const scanner = scanLeniently(LIMITS, XML_TOOLS)
+    const reply = '<function_calls>\n<invoke name="read">\n<parameter name="file_path">/a</parameter>\n</invoke>\n</function_calls>'
+    const segments = scanByCharacter(reply, scanner)
+    expect(segments[0]).toEqual({ kind: 'call', raw: '{"name":"read","arguments":{"file_path":"/a"}}', lenient: true })
+    expect(textOf(segments)).toBe('\n</function_calls>')
+    expect(scanner.failure).toBeUndefined()
+  })
+
+  it('counts XML calls against the same cap as fenced ones', () => {
+    const scanner = scanLeniently({ maxCalls: 1, maxBytes: 32_768 }, XML_TOOLS)
+    const segments = scanner.push(RECORDED_INVOKES)
+    expect(segments.filter(segment => segment.kind === 'call')).toHaveLength(1)
+    expect(scanner.failure?.code).toBe(TOOL_CALL_LIMIT)
+  })
+
+  it.each([
+    ['an XML call to a tool the request never declared', 'Older syntax:\n\n<invoke name="widget"> <parameter name="size">2</parameter> </invoke>\n'],
+    ['a declared tool called in XML inside a fenced code block', 'The native syntax is:\n\n```xml\n<function_calls>\n<invoke name="read">\n<parameter name="file_path">/a</parameter>\n</invoke>\n</function_calls>\n```\n\nThis route does not accept it.'],
+    ['tags that only resemble the syntax', 'Use `<invoke>` tags, an <invoker name="read"> element, or <function_callsX>.'],
+    ['a function_calls tag with no call under it', '<function_calls> is the wrapper element.'],
+    ['ordinary markup and comparisons', 'Render <div class="a">x</div> when a < b and b <= c.'],
+    ['an opening tag the reply ended inside', 'Cut off: <invoke name="read"'],
+    ['a lone angle bracket at the end', 'Then a <'],
+  ])('passes through %s unchanged', (_label, reply) => {
+    const whole = scanLeniently(LIMITS, XML_TOOLS)
+    expect(textOf([...whole.push(reply), ...whole.finish()])).toBe(reply)
+    expect(whole.failure).toBeUndefined()
+    const streamed = scan(LIMITS, XML_TOOLS)
+    expect(textOf(scanByCharacter(reply, streamed))).toBe(reply)
+    expect(streamed.failure).toBeUndefined()
+  })
+
+  it('reads an XML call again once the fenced code block before it has closed', () => {
+    const scanner = scanLeniently(LIMITS, XML_TOOLS)
+    const segments = scanByCharacter('```xml\n<invoke name="read"> </invoke>\n```\n<invoke name="read"> <parameter name="file_path">/a</parameter> </invoke>', scanner)
+    expect(textOf(segments)).toBe('```xml\n<invoke name="read"> </invoke>\n```\n')
+    expect(segments.at(-1)).toEqual({ kind: 'call', raw: '{"name":"read","arguments":{"file_path":"/a"}}', lenient: true })
   })
 
   it('releases an object as text once its name is complete and is not a declared tool', () => {
@@ -782,6 +936,58 @@ describe('ToolCallEmulator', () => {
     const chunks = reply(answer, emulator)
     expect(chunks.filter(chunk => chunk.type === 'text-delta').map(chunk => chunk.text).join('')).toBe(answer)
     expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'stop' } })
+  })
+
+  it('turns the recorded XML calls into real tool calls with typed arguments', () => {
+    const emulator = new ToolCallEmulator(plan(XML_TOOLS))
+    const chunks = reply(RECORDED_INVOKES, emulator)
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(chunks.filter(chunk => chunk.type === 'block-end').map(chunk => chunk.block)).toEqual([
+      {
+        type: 'tool-call',
+        id: 'claude-cli-0',
+        name: 'read',
+        arguments: '{"file_path":"/repo/packages/credentials/coteccons-sso-msal/README.zh.md","offset":30,"limit":45}',
+      },
+      {
+        type: 'tool-call',
+        id: 'claude-cli-1',
+        name: 'bash',
+        arguments: '{"command":"sed -n 60,72p packages/credentials/coteccons-sso-msal/README.zh.md","description":"Show zh limitations section","workdir":"/repo"}',
+      },
+    ])
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    expect(emulator.lenientCalls).toBe(2)
+  })
+
+  it('rejects the whole recorded XML reply that ended mid-parameter, so no partial call runs', () => {
+    const emulator = new ToolCallEmulator(plan(XML_TOOLS))
+    const chunks = reply(RECORDED_INVOKES + RECORDED_CUT_INVOKE, emulator)
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(emulator.failure?.code).toBe(TOOL_CALL_TRUNCATED)
+    // The two complete calls were read, but nothing was handed over as answer text, so the adapter
+    // replaces the whole reply with a correction run and none of its calls reach the consumer.
+    expect(emulator.committed).toBe(false)
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'error', failure: emulator.failure } })
+  })
+
+  it('keeps the prose before XML calls and reads the calls', () => {
+    const emulator = new ToolCallEmulator(plan(XML_TOOLS))
+    const chunks = reply(`I will read the file first.\n\n${RECORDED_INVOKES}`, emulator)
+    expect(chunks.filter(chunk => chunk.type === 'text-delta').map(chunk => chunk.text))
+      .toEqual(['I will read the file first.\n\n'])
+    expect(emulator.calls).toBe(2)
+  })
+
+  it('does not count a tool call as handed-over output, so a later rejection still replaces the reply', () => {
+    const emulator = new ToolCallEmulator(plan())
+    emulator.push({ type: 'block-start', index: 0, blockType: 'text' })
+    emulator.push({ type: 'text-delta', index: 0, text: '```dsh-tool-call\n{"name":"read_file","arguments":{}}\n```\n' })
+    expect(emulator.calls).toBe(1)
+    expect(emulator.committed).toBe(false)
+    emulator.push({ type: 'text-delta', index: 0, text: '```dsh-tool-call\n{"name":"nope"}\n```' })
+    expect(emulator.failure?.code).toBe(TOOL_CALL_UNKNOWN_TOOL)
+    expect(emulator.committed).toBe(false)
   })
 
   it('leaves a non-stop finish alone even when a call was reported', () => {

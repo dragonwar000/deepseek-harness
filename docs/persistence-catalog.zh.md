@@ -736,7 +736,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'llm/cli-tool-emulation': CliToolEmulation
 ```
 
-来源：[`packages/llm/llm-claude-cli/src/types.ts:148`](../packages/llm/llm-claude-cli/src/types.ts)
+来源：[`packages/llm/llm-claude-cli/src/types.ts:149`](../packages/llm/llm-claude-cli/src/types.ts)
 
 <a id="llmcli-tool-emulation-reply--log-only"></a>
 
@@ -750,7 +750,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'llm/cli-tool-emulation-reply': CliToolEmulationReply
 ```
 
-来源：[`packages/llm/llm-claude-cli/src/types.ts:153`](../packages/llm/llm-claude-cli/src/types.ts)
+来源：[`packages/llm/llm-claude-cli/src/types.ts:154`](../packages/llm/llm-claude-cli/src/types.ts)
 
 <a id="llmretry--log-only"></a>
 

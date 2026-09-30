@@ -39,12 +39,12 @@ changes:
 <a id="compatibility"></a>
 ## 兼容性
 
-这是两个新的事件根：已有记录依然有效，已持久化的任何类型都不改变结构。两个事件都只由 `claude-cli` 模型路由写入，其 Base Bundle 行默认禁用，且仅在 `toolCalls` 为 `prompt` 且请求声明了工具时写入。它们都只进日志、从不进入派生历史，忽略它们的读取方重建出的对话完全相同。`llm/cli-tool-emulation` 在每次 CLI 运行之前写入，因此模型读到模拟前言和纠正提示之前，它们已经在日志中。`llm/cli-tool-emulation-reply` 在运行之后写入，不携带任何模型会读到的内容：被接受的调用数、其中以近似形式被接受的调用数、被接受的调用之后丢弃的字符数，以及回复被拒时的错误码。
+这是两个新的事件根：已有记录依然有效，已持久化的任何类型都不改变结构。两个事件都只由 `claude-cli` 模型路由写入，其 Base Bundle 行默认禁用，且仅在 `toolCalls` 为 `prompt` 且请求声明了工具时写入。它们都只进日志、从不进入派生历史，忽略它们的读取方重建出的对话完全相同。`llm/cli-tool-emulation` 在每次 CLI 运行之前写入，因此模型读到模拟前言和纠正提示之前，它们已经在日志中。`llm/cli-tool-emulation-reply` 在运行之后写入，不携带任何模型会读到的内容：被接受的调用数、其中以近似 JSON 形式或 XML `<invoke>` 元素被接受的调用数、被接受的调用之后丢弃的字符数，以及回复被拒时的错误码。
 
 <a id="verification"></a>
 ## 验证
 
-pnpm exec vitest run packages/llm/llm-claude-cli：229 个测试通过，其中包含以真实 Loader 启动的组合测试，以及断言两个事件按先运行后回复的顺序落入真实 SessionStore 的插件测试。
+pnpm exec vitest run packages/llm/llm-claude-cli：308 个测试通过，其中包含以真实 Loader 启动的组合测试，以及断言两个事件按先运行后回复的顺序落入真实 SessionStore 的插件测试。
 
 <a id="dev-note"></a>
 ## 开发备注

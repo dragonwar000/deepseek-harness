@@ -9,16 +9,13 @@
  * Schema verbatim instead. Nothing is approximated.
  */
 
+import { isRecord } from './json.ts'
+
 /** Scalar JSON Schema types, written in the notation by their own name. */
 const SCALAR_TYPES: ReadonlySet<unknown> = new Set(['string', 'number', 'integer', 'boolean', 'null'])
 
 /** A property name the notation writes bare; any other is written as a JSON string. */
 const BARE_NAME = /^[A-Za-z_$][\w$]*$/u
-
-/** Whether a decoded JSON value is an object with readable members. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 /** Whether a schema node carries no keyword besides `description` and the ones named. */
 function hasOnly(node: Record<string, unknown>, keywords: readonly string[]): boolean {

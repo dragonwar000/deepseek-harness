@@ -89,6 +89,19 @@ const TOOLS = [
   },
 ]
 
+/** A tool whose parameters are not all strings, for calls whose values must be converted. */
+const TYPED_TOOLS = [
+  {
+    name: 'read_file',
+    description: 'Read a file from the workspace.',
+    parameters: {
+      type: 'object',
+      properties: { path: { type: 'string' }, limit: { type: 'number' } },
+      required: ['path'],
+    },
+  },
+]
+
 /** One CLI reply carrying only the given assistant text. */
 function replyLines(text: string): readonly string[] {
   return streamLines(text)
@@ -508,7 +521,7 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
     expect(retried.message.content[0]?.text).toContain(
       'Harness: Your previous reply was rejected and no tool ran. A call to `read_file` was written outside a tool-call block: '
       + '{"name": "read_file", "arguments": {"path": "/a"}} ```. '
-      + 'The harness reads a call only from a block that opens with the line ```dsh-tool-call and closes with the line ```. '
+      + 'The harness reads a call only from a block that opens with the line ```dsh-tool-call, holds one JSON object with the members `name` and `arguments`, and closes with the line ```. '
       + 'Answer the last message again, following the tool-call format exactly.',
     )
     // Both runs are logged after the fact: the rejected one names its code, the accepted one its call.
@@ -528,6 +541,65 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
     const finish = chunks.at(-1)
     expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
       .toBe(TOOL_CALL_UNFENCED)
+  })
+
+  it('reads calls written in XML function-call syntax, converting each parameter to its declared type', async () => {
+    const { adapter, replies } = build({
+      inference: () => replyLines(
+        '<invoke name="read_file"> <parameter name="path">/a</parameter> <parameter name="limit">45</parameter> </invoke>',
+      ),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TYPED_TOOLS, sessionId: SESSION })))
+    const call = chunks.find(chunk => chunk.type === 'tool-call-delta')
+    expect(call?.type === 'tool-call-delta' && call.argumentsDelta).toBe('{"path":"/a","limit":45}')
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(replies.map(reply => reply.lenientCalls)).toEqual([1])
+  })
+
+  it('replaces an XML reply that ended mid-parameter, and tells the model XML is not accepted', async () => {
+    let call = 0
+    const { cli, adapter, replies } = build({
+      inference: () => {
+        call += 1
+        return replyLines(call === 1
+          ? '<invoke name="read_file"> <parameter name="path">/a</parameter> </invoke> <invoke name="read_file"> <parameter name="path">/b'
+          : '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```')
+      },
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TYPED_TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(2)
+    // The first reply's complete call was read but never handed over: a rejected reply runs nothing.
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(chunks.filter(chunk => chunk.type === 'tool-call-delta')).toHaveLength(1)
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    const retried = JSON.parse((cli.callsOf('inference')[1]?.stdin ?? '').trim()) as {
+      message: { content: { text: string }[] }
+    }
+    expect(retried.message.content[0]?.text).toContain(
+      'Harness: Your previous reply was rejected and no tool ran. The reply ended inside a call to `read_file` written as XML <invoke> tags: '
+      + '<invoke name="read_file"> <parameter name="path">/b. '
+      + 'XML function-call syntax is not accepted on this route. '
+      + 'The harness reads a call only from a block that opens with the line ```dsh-tool-call, holds one JSON object with the members `name` and `arguments`, and closes with the line ```.',
+    )
+    expect(replies.map(reply => [reply.attempt, reply.calls, reply.rejection])).toEqual([
+      [1, 1, TOOL_CALL_TRUNCATED],
+      [2, 1, undefined],
+    ])
+  })
+
+  it('replaces a reply whose later block is rejected, so its earlier calls never run', async () => {
+    let call = 0
+    const { cli, adapter } = build({
+      inference: () => {
+        call += 1
+        const good = '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```\n'
+        return replyLines(call === 1 ? `${good}\`\`\`dsh-tool-call\n{"name":"web_search","arguments":{}}\n\`\`\`` : good)
+      },
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(2)
+    expect(chunks.filter(chunk => chunk.type === 'tool-call-delta')).toHaveLength(1)
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
   })
 
   it('names a reply that ends inside an unterminated block rather than dropping the call', async () => {

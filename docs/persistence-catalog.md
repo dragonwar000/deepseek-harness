@@ -734,7 +734,7 @@ Source: [`packages/experimental/knowledge/src/types.ts:225`](../packages/experim
 'llm/cli-tool-emulation': CliToolEmulation
 ```
 
-Source: [`packages/llm/llm-claude-cli/src/types.ts:148`](../packages/llm/llm-claude-cli/src/types.ts)
+Source: [`packages/llm/llm-claude-cli/src/types.ts:149`](../packages/llm/llm-claude-cli/src/types.ts)
 
 <a id="llmcli-tool-emulation-reply--log-only"></a>
 
@@ -748,7 +748,7 @@ Source: [`packages/llm/llm-claude-cli/src/types.ts:148`](../packages/llm/llm-cla
 'llm/cli-tool-emulation-reply': CliToolEmulationReply
 ```
 
-Source: [`packages/llm/llm-claude-cli/src/types.ts:153`](../packages/llm/llm-claude-cli/src/types.ts)
+Source: [`packages/llm/llm-claude-cli/src/types.ts:154`](../packages/llm/llm-claude-cli/src/types.ts)
 
 <a id="llmretry--log-only"></a>
 
