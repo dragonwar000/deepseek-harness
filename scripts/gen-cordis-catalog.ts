@@ -743,6 +743,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   AiAccountId: 'credentials.md',
   AiAccountSignInId: 'credentials.md',
   AiAccountsView: 'credentials.md',
+  AiAccountStatusChange: 'credentials.md',
   CotecconsSsoSignInId: 'credentials.md',
   CotecconsSsoView: 'credentials.md',
   M365ConnectAttemptId: 'credentials.md',
