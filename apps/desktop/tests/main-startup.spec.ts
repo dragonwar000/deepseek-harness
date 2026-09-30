@@ -161,6 +161,7 @@ const harness = await vi.hoisted(async () => {
     setAppLogsPath: vi.fn(),
     getPath: vi.fn<(name: string) => string>(),
     setAboutPanelOptions: vi.fn<(options: Electron.AboutPanelOptionsOptions) => void>(),
+    dock: { setIcon: vi.fn<(image: { path: string }) => void>(), bounce: vi.fn(), cancelBounce: vi.fn() },
     requestSingleInstanceLock: () => true,
     setAsDefaultProtocolClient: vi.fn(),
     exit: vi.fn(),
@@ -513,7 +514,9 @@ describe('desktop main startup', () => {
     expect({ menu: [{ label: about!.label, role: about!.role }, separator], options: { ...options, iconPath: '<app icon>' } })
       .toEqual(expected[`${platform}:${locale}`])
     expect(options.iconPath).toBe(packaged ? join('desktop-test-resources', 'icon.png')
-      : join('desktop-test-app', 'resources', 'icon-windows.png'))
+      : join('desktop-test-app', 'resources', platform === 'darwin' ? 'icon-macos.png' : 'icon-windows.png'))
+    // An unpackaged macOS launch would otherwise show Electron's Dock icon.
+    expect(harness.app.dock.setIcon.mock.calls).toEqual(platform === 'darwin' && !packaged ? [[{ path: options.iconPath }]] : [])
     if (platform !== 'win32') { expect(about!.click).toBeUndefined(); return }
     // Windows reuses the dimmed update dialog because Electron's fallback is a bare message box.
     harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 })

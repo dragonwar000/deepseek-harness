@@ -203,8 +203,19 @@ function platformLoginUrl(authorizeUrl: string): string {
   return url.href
 }
 
+/**
+ * Platform icon artwork inside the unpackaged application directory. A
+ * packaged build carries its icon in the executable or bundle instead.
+ * @returns the absolute path of the platform icon PNG under `resources/`.
+ */
+function developmentIconPath(): string {
+  return join(app.getAppPath(), 'resources', process.platform === 'darwin' ? 'icon-macos.png' : 'icon-windows.png')
+}
+
 function createWindow(preload: string, show = false, primary = false): BrowserWindow {
   const window = new BrowserWindow({
+    // An unpackaged Windows launch runs electron.exe, whose icon the taskbar would show.
+    ...(!app.isPackaged && process.platform === 'win32' ? { icon: developmentIconPath() } : {}),
     width: 1280,
     height: 820,
     minWidth: 520,
@@ -922,8 +933,10 @@ async function main(): Promise<void> {
     updates.dispose()
   })
 
-  const applicationIconPath = development ? join(app.getAppPath(), 'resources', 'icon-windows.png')
-    : join(process.resourcesPath, 'icon.png')
+  const applicationIconPath = development ? developmentIconPath() : join(process.resourcesPath, 'icon.png')
+  // An unpackaged launch runs inside Electron's own bundle, whose icon macOS
+  // shows in the Dock; set the platform artwork explicitly.
+  if (development && process.platform === 'darwin') app.dock?.setIcon(nativeImage.createFromPath(applicationIconPath))
   app.setAboutPanelOptions({
     applicationName: 'DeepSeek Harness',
     applicationVersion: app.getVersion(),
