@@ -19,10 +19,10 @@
   - listitem:
     - button "tool-subagent, tool-subagent-codex, 已启用":
       - strong: tool-subagent
-      - text: 已启用 Model-facing subagent delegation tool over the ctx.subagents seam
+      - text: Model-facing subagent delegation tool over the ctx.subagents seam
       - code: tool-subagent-codex
   - listitem:
     - button "tool-subagent, tool-subagent-claude-code, 已启用":
       - strong: tool-subagent
-      - text: 已启用 Model-facing subagent delegation tool over the ctx.subagents seam
+      - text: Model-facing subagent delegation tool over the ctx.subagents seam
       - code: tool-subagent-claude-code
