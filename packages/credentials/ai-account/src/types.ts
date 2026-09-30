@@ -23,36 +23,36 @@ export interface AiAccountView {
   readonly createdAt: number
   /** Whether delegated product runs of this kind use this account. Each kind has at most one default. */
   readonly isDefault: boolean
-  /** Whether the official CLI still reports this account signed in, from the latest conclusive status check. */
-  readonly login: AiAccountLoginView
+  /** Sign-in status the official CLI reported at the latest conclusive status check. */
+  readonly status: AiAccountStatusView
 }
 
 /**
- * Login state the official CLI's status command reports for one account directory.
+ * Sign-in status the official CLI's status command reports for one account directory.
  * `unknown` means no status check has answered conclusively since the provider started.
  */
-export type AiAccountLoginState = 'signed-in' | 'signed-out' | 'unknown'
+export type AiAccountStatus = 'signedIn' | 'signedOut' | 'unknown'
 
 /**
  * Latest conclusive answer of the official CLI's status command for one account. A check that
  * times out, cannot start the CLI, or cannot parse its output leaves this value unchanged.
  */
-export interface AiAccountLoginView {
-  readonly state: AiAccountLoginState
-  /** Completion time of the check that produced `state`, in milliseconds since the Unix epoch; `null` while `unknown`. */
+export interface AiAccountStatusView {
+  readonly status: AiAccountStatus
+  /** Completion time of the check that produced `status`, in milliseconds since the Unix epoch; `null` while `unknown`. */
   readonly checkedAt: number | null
-  /** First output line the CLI printed when it reported the account signed out; `null` otherwise. */
+  /** First output line the CLI printed with a `signedOut` answer; `null` for other statuses. */
   readonly message: string | null
 }
 
-/** One account's login-state transition between two conclusive status checks. */
-export interface AiAccountLoginChange {
+/** One account's sign-in status transition between two conclusive status checks. */
+export interface AiAccountStatusChange {
   readonly id: AiAccountId
   readonly kind: AiAccountKind
   /** Whether the account was its kind's default when the transition was recorded. */
   readonly isDefault: boolean
-  readonly previous: AiAccountLoginState
-  readonly current: AiAccountLoginView
+  readonly previous: AiAccountStatus
+  readonly current: AiAccountStatusView
 }
 
 /**
@@ -81,8 +81,6 @@ export type AiAccountSignInError = 'executable-missing' | 'login-failed' | 'time
 export interface AiAccountSignInView {
   readonly id: AiAccountSignInId
   readonly kind: AiAccountKind
-  /** Registered account this attempt signs back in; `null` when the attempt adds a new account. */
-  readonly accountId: AiAccountId | null
   readonly phase: AiAccountSignInPhase
   /** Browser authorization URL (Claude) or device verification URL (ChatGPT) the CLI printed; `null` until printed. */
   readonly url: string | null
@@ -114,11 +112,11 @@ declare module '@deepseek-ai/cordis' {
      */
     'ai-account/default-changed'(kind: AiAccountKind): void
     /**
-     * A status check or sign-in changed one registered account's login state. Emitted once per
-     * transition, never for a check that confirms the previous state.
+     * A status check changed one registered account's sign-in status. Emitted once per
+     * transition, never for a check that confirms the previous status or answers inconclusively.
      * @mode emit
-     * @param change - account, previous state, and the new login view.
+     * @param change - account, previous status, and the new status view.
      */
-    'ai-account/login-changed'(change: AiAccountLoginChange): void
+    'ai-account/status-changed'(change: AiAccountStatusChange): void
   }
 }

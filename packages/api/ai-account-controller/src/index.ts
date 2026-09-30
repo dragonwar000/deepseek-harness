@@ -2,7 +2,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-ai-account'
-import type { AiAccountId, AiAccountKind, AiAccountSignInId, AiAccountsView } from './types.ts'
+import type { AiAccountId, AiAccountKind, AiAccountSignInId, AiAccountStatusChange, AiAccountsView } from './types.ts'
 
 /** AI Account commands and a reconnect-safe state stream; configuration directories never cross the wire. */
 export class AiAccountController extends TypertRemoteService {
@@ -17,20 +17,17 @@ export class AiAccountController extends TypertRemoteService {
   getState(): Promise<AiAccountsView> { return this.ctx.aiAccount.getState() }
   /**
    * Start or join an official-CLI sign-in.
-   * @param kind - account kind to add or sign back in.
-   * @param accountId - registered account to sign back in; omitted to add a new account.
+   * @param kind - account kind to add.
    * @returns the snapshot after the attempt starts.
    */
   @Remote
-  startSignIn(kind: AiAccountKind, accountId?: AiAccountId): Promise<AiAccountsView> {
-    return this.ctx.aiAccount.startSignIn(kind, accountId)
-  }
+  startSignIn(kind: AiAccountKind): Promise<AiAccountsView> { return this.ctx.aiAccount.startSignIn(kind) }
   /**
-   * Ask every account's official CLI whether it is still signed in, subject to the provider's cooldown.
+   * Ask every account's official CLI whether it is still signed in; a call during a running check joins it.
    * @returns the snapshot after the check settles.
    */
   @Remote
-  checkLogins(): Promise<AiAccountsView> { return this.ctx.aiAccount.checkLogins() }
+  checkStatus(): Promise<AiAccountsView> { return this.ctx.aiAccount.checkStatus() }
   /**
    * Cancel the named sign-in attempt.
    * @param attemptId - attempt to cancel; a stale id leaves a newer attempt running.
@@ -70,5 +67,28 @@ export class AiAccountController extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   watch(signal: AbortSignal): AsyncIterable<AiAccountsView> { return this.ctx.aiAccount.watch(signal) }
+  /**
+   * Stream sign-in status transitions without replaying earlier ones; `watch` carries the current status.
+   * @param signal - stream lifetime.
+   * @returns each `ai-account/status-changed` payload emitted while subscribed, in emission order.
+   */
+  @Remote({ mode: 'stream' })
+  async *watchStatusChanges(signal: AbortSignal): AsyncIterable<AiAccountStatusChange> {
+    const changes: AiAccountStatusChange[] = []
+    let wake: (() => void) | undefined
+    const stop = this.ctx.on('ai-account/status-changed', (change) => { changes.push(change); wake?.() })
+    const abort = (): void => { wake?.() }
+    signal.addEventListener('abort', abort, { once: true })
+    try {
+      while (!signal.aborted) {
+        const change = changes.shift()
+        if (change !== undefined) yield change
+        else await new Promise<void>((resolve) => { wake = resolve })
+      }
+    } finally {
+      stop()
+      signal.removeEventListener('abort', abort)
+    }
+  }
 }
 export default AiAccountController

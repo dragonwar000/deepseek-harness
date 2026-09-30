@@ -2,7 +2,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import type { AiAccount } from '@deepseek-ai/dsh-ai-account'
 import { afterEach, expect, it, vi } from 'vitest'
-import type { AiAccountId, AiAccountSignInId, AiAccountsView } from '../src/types.ts'
+import type { AiAccountId, AiAccountSignInId, AiAccountStatus, AiAccountStatusChange, AiAccountsView } from '../src/types.ts'
 import AiAccountController from '../src/index.ts'
 
 const roots: Context[] = []
@@ -19,7 +19,7 @@ function fixture() {
     submitSignInCode: vi.fn<AiAccount['submitSignInCode']>().mockResolvedValue(state),
     setDefault: vi.fn<AiAccount['setDefault']>().mockResolvedValue(state),
     remove: vi.fn<AiAccount['remove']>().mockResolvedValue(state),
-    checkLogins: vi.fn<AiAccount['checkLogins']>().mockResolvedValue(state),
+    checkStatus: vi.fn<AiAccount['checkStatus']>().mockResolvedValue(state),
     watch: vi.fn<AiAccount['watch']>(),
   }
   ctx.provide('aiAccount', provider as never)
@@ -32,11 +32,9 @@ it('delegates every command to the provider and returns its snapshot', async () 
   const attempt = 'attempt' as AiAccountSignInId
   expect(await controller.getState()).toBe(state)
   expect(await controller.startSignIn('chatgpt')).toBe(state)
-  expect(provider.startSignIn).toHaveBeenCalledExactlyOnceWith('chatgpt', undefined)
-  expect(await controller.startSignIn('claude', account)).toBe(state)
-  expect(provider.startSignIn).toHaveBeenLastCalledWith('claude', account)
-  expect(await controller.checkLogins()).toBe(state)
-  expect(provider.checkLogins).toHaveBeenCalledOnce()
+  expect(provider.startSignIn).toHaveBeenCalledExactlyOnceWith('chatgpt')
+  expect(await controller.checkStatus()).toBe(state)
+  expect(provider.checkStatus).toHaveBeenCalledOnce()
   expect(await controller.cancelSignIn(attempt)).toBe(state)
   expect(provider.cancelSignIn).toHaveBeenCalledExactlyOnceWith(attempt)
   expect(await controller.submitSignInCode(attempt, 'browser-code')).toBe(state)
@@ -57,4 +55,27 @@ it('passes the subscriber lifetime to the provider and returns its stream', asyn
   provider.watch.mockReturnValue(stream)
   expect(controller.watch(lifetime.signal)).toBe(stream)
   expect(provider.watch).toHaveBeenCalledExactlyOnceWith(lifetime.signal)
+})
+
+it('streams status transitions emitted while subscribed, in order, until the lifetime ends', async () => {
+  const { controller } = fixture()
+  const ctx = roots[0]!
+  const change = (status: AiAccountStatus): AiAccountStatusChange => ({
+    id: 'account' as AiAccountId, kind: 'claude', isDefault: true, previous: 'unknown',
+    current: { status, checkedAt: 1, message: null },
+  })
+  ctx.emit('ai-account/status-changed', change('signedIn'))
+  const lifetime = new AbortController()
+  const stream = controller.watchStatusChanges(lifetime.signal)[Symbol.asyncIterator]()
+  const first = stream.next()
+  // The generator subscribes on its first pull, so the pre-subscription emission is never replayed.
+  await Promise.resolve()
+  ctx.emit('ai-account/status-changed', change('signedOut'))
+  ctx.emit('ai-account/status-changed', change('signedIn'))
+  expect((await first).value).toEqual(change('signedOut'))
+  expect((await stream.next()).value).toEqual(change('signedIn'))
+  const pending = stream.next()
+  lifetime.abort()
+  expect(await pending).toEqual({ done: true, value: undefined })
+  ctx.emit('ai-account/status-changed', change('signedOut'))
 })
