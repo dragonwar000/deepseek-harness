@@ -6,7 +6,7 @@ import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
 import type { CotecconsSsoSignInId, CotecconsSsoView } from '@deepseek-ai/dsh-coteccons-sso/types'
 import type { CotecconsSsoGroupInjected } from '../src/client/CotecconsSsoGroup.tsx'
-import { apply as hostApply, inject as hostInject } from '../src/index.ts'
+import * as host from '../src/index.ts'
 
 const it = createClientTest({ roster: webApp })
 const SELF = '@deepseek-ai/dsh-client-ui-settings-coteccons-sso'
@@ -81,8 +81,10 @@ it('logs a refused or failed default-model selection without failing the sign-in
 }, 60_000)
 
 it('keeps the last snapshot and reports the loss when the Host ends the stream; the Host half registers nothing', async ({ start }) => {
-  expect(hostInject).toEqual(['slots', 'locale'])
-  expect(hostApply).not.toThrow()
+  // The Host half declares no services: `slots` and `locale` live in the browser,
+  // so a Node-half injection would hold the Loader row PENDING for the whole run.
+  expect(Object.keys(host)).toEqual(['apply'])
+  expect(host.apply).not.toThrow()
   const c = await start()
   const { operations } = group(c)
   c.mock.streams.push('cotecconsSso/watch', signedIn)

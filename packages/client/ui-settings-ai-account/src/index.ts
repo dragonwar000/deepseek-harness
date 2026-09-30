@@ -1,6 +1,10 @@
-/** Node half: the AI Account settings plugin renders only in the browser. */
+/**
+ * Node half: the AI Account settings page renders only in the browser. The row
+ * exists so `client-modules` serves the browser half from the package's
+ * `dsh.client` declaration; `slots` and `locale` are browser services and are
+ * declared by `./client`, never here — a Host row injecting them never
+ * activates.
+ */
 
-/** Services the browser half requires; the Node half uses none of them. */
-export const inject = ['slots', 'locale']
-/** Register nothing on the Host; the Loader row exists so the client module system serves the browser half. */
+/** Register nothing on the Host; this surface plugin owns no host-side behavior. */
 export function apply(): void {}

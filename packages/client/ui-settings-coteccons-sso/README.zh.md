@@ -30,7 +30,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节 — 点击展开</summary>
 
-Host 半边是一个空的 `apply`，为包提供 Loader 行。浏览器半边通过可重连的 Remote 流订阅 `ctx.remote.cotecconsSso.watch`，经由分组的 `sso` hook 发布每个快照，并以 id `coteccons`、顺序 `0` 将 `CotecconsSsoGroup` 注册到 `settings.ai-account.group` 插槽。从 `signing-in` 转为 `signed-in` 时，它调用 `ctx.remote.session.initializeDefaultModel('coteccons')`；被拒绝或连接断开时记录日志，默认模型保持不变。命令会发布其返回的快照；被拒绝的命令显示通用失败信息，流结束时保留最后的快照并提示刷新页面。标题带有 Coteccons 标志（`CtdMark`）。所有文案位于 `settings.cotecconsSso` 词典（英文与中文）。显示的每项事实都来自 Host 登录流，因此不发布不变量配套模块。
+Host 半边是一个空的 `apply`，为包提供 Loader 行，并且不声明任何服务：`slots` 与 `locale` 是浏览器服务，在此声明只会让该 Host 行整个运行期都处于等待状态，而不会激活。浏览器半边通过可重连的 Remote 流订阅 `ctx.remote.cotecconsSso.watch`，经由分组的 `sso` hook 发布每个快照，并以 id `coteccons`、顺序 `0` 将 `CotecconsSsoGroup` 注册到 `settings.ai-account.group` 插槽。从 `signing-in` 转为 `signed-in` 时，它调用 `ctx.remote.session.initializeDefaultModel('coteccons')`；被拒绝或连接断开时记录日志，默认模型保持不变。命令会发布其返回的快照；被拒绝的命令显示通用失败信息，流结束时保留最后的快照并提示刷新页面。标题带有 Coteccons 标志（`CtdMark`）。所有文案位于 `settings.cotecconsSso` 词典（英文与中文）。显示的每项事实都来自 Host 登录流，因此不发布不变量配套模块。
 
 </details>
 

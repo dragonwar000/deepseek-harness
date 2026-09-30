@@ -104,6 +104,7 @@ The URL line and browser handoff are readiness signals: supervisors RPC as soon 
 | [`tests/startup.spec.ts`](tests/startup.spec.ts) | Command-line parsing over a real Loader tree |
 | [`tests/trusted-hosts.spec.ts`](tests/trusted-hosts.spec.ts) | LAN-trust sampling |
 | [`tests/browser-open.spec.ts`](tests/browser-open.spec.ts) | Default-browser handoff after the page is reachable |
+| [`tests/browser-surface-activation.spec.ts`](tests/browser-surface-activation.spec.ts) | Every browser row's Node half booted through the Loader: it activates on a service-less Host, or waits only for the Host services the spec's table declares |
 
 ### Invariant ownership
 

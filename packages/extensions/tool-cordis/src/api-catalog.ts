@@ -1873,8 +1873,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'productAnalytics',
-    summary: 'Authenticated event intake; disabled instances do not inspect identity or accept new events.',
-    description: 'Authenticated event intake; disabled instances do not inspect identity or accept new events.',
+    summary: 'Event intake; disabled instances do not inspect identity or accept new events, and a composition without DeepSeek Platform sign-in reports without identity attributes.',
+    description: 'Event intake; disabled instances do not inspect identity or accept new events, and a composition without DeepSeek Platform sign-in reports without identity attributes.',
     methods: [
       {
         signature: '@Remote enabled(): boolean',

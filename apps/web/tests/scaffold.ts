@@ -802,7 +802,10 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     await ctx.plugin(Loader)
     await mountRootInclude(ctx, rootConfig, readProfilePatches('dsh', profileContext))
     await ctx.loader.await()
-    await auditStartupEntries(ctx, 'web e2e scaffold')
+    // A required entry already rejects; the default sink only writes the optional
+    // warning to stderr, where no lane reads it. This scaffold boots the shipped
+    // composition, so an inactive optional row here is an unwired row, not noise.
+    await auditStartupEntries(ctx, 'web e2e scaffold', (line) => { throw new Error(line) })
     if (options.developerTools !== undefined) {
       await ctx.settings.update('ui-settings', { enabled: options.developerTools })
     }

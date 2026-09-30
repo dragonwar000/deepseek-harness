@@ -7,7 +7,7 @@ import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-clie
 import type { AiAccountId, AiAccountSignInId, AiAccountsView } from '@deepseek-ai/dsh-ai-account/types'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import type { AiAccountSectionInjected } from '../src/client/AiAccountSection.tsx'
-import { apply as hostApply, inject as hostInject } from '../src/index.ts'
+import * as host from '../src/index.ts'
 
 const it = createClientTest({ roster: webApp })
 const SELF = '@deepseek-ai/dsh-client-ui-settings-ai-account'
@@ -65,8 +65,10 @@ it('forwards commands to the Host, publishes their snapshots, and rejects refuse
 }, 60_000)
 
 it('keeps the last snapshot and reports the loss when the Host ends the account stream; the Host half registers nothing', async ({ start }) => {
-  expect(hostInject).toEqual(['slots', 'locale'])
-  expect(hostApply).not.toThrow()
+  // The Host half declares no services: `slots` and `locale` live in the browser,
+  // so a Node-half injection would hold the Loader row PENDING for the whole run.
+  expect(Object.keys(host)).toEqual(['apply'])
+  expect(host.apply).not.toThrow()
   const c = await start()
   const { operations } = section(c)
   c.mock.streams.push('aiAccount/watch', added)

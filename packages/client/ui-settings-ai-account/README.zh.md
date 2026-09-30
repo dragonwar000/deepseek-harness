@@ -34,7 +34,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节 — 点击展开</summary>
 
-Host 半边是一个空的 `apply`，为包提供 Loader 行。浏览器半边通过可重连的 Remote 流订阅 `ctx.remote.aiAccount.watch`，经由区块的 `accounts` hook 发布每个快照，并以 id `ai-account` 将 `AiAccountSection` 注册到 `settings.section` 插槽。该区块声明 `settings.ai-account.group` 列表插槽，并在任何账号列表状态下都把其条目渲染在简介之后、Claude 与 ChatGPT 分组之前，因此拥有独立 Host 流的分组（Coteccons SSO）在官方 CLI 列表加载中或丢失后仍可使用。命令会发布其返回的快照；被拒绝的命令显示通用失败信息，账号流结束时保留最后的快照并提示刷新页面。所有文案位于 `settings.aiAccount` 词典。显示的每项事实都来自 Host 账号流，因此不发布不变量配套模块。
+Host 半边是一个空的 `apply`，为包提供 Loader 行，并且不声明任何服务：`slots` 与 `locale` 是浏览器服务，在此声明只会让该 Host 行整个运行期都处于等待状态，而不会激活。浏览器半边通过可重连的 Remote 流订阅 `ctx.remote.aiAccount.watch`，经由区块的 `accounts` hook 发布每个快照，并以 id `ai-account` 将 `AiAccountSection` 注册到 `settings.section` 插槽。该区块声明 `settings.ai-account.group` 列表插槽，并在任何账号列表状态下都把其条目渲染在简介之后、Claude 与 ChatGPT 分组之前，因此拥有独立 Host 流的分组（Coteccons SSO）在官方 CLI 列表加载中或丢失后仍可使用。命令会发布其返回的快照；被拒绝的命令显示通用失败信息，账号流结束时保留最后的快照并提示刷新页面。所有文案位于 `settings.aiAccount` 词典。显示的每项事实都来自 Host 账号流，因此不发布不变量配套模块。
 
 </details>
 
