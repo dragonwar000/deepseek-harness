@@ -59,19 +59,23 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 
 import type { Context } from '@deepseek-ai/cordis'
+import { FiberState } from '@deepseek-ai/cordis'
+import { credentialKeyId, credentialKeyScope } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { assertUsableApiKey, LlmError, resolveImageAttachmentAccess } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle, DirectoryRegistrationHandle, LlmConfigurableProvider } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-fs'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from './adapter.ts'
-import { authContextFrom, credentialStoreFrom } from './auth.ts'
+import { authContextFrom, credentialStoreFrom, RECORD_SCOPE } from './auth.ts'
 import { catalogProviderIds } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
+import { resolveSignInRoutes } from './sign-in.ts'
+import type { SignInClassification, StoredSignIn } from './sign-in.ts'
 
 export { PiAiAdapter } from './adapter.ts'
 export type { PiAiAdapterOptions, PiAiAuthInjection } from './adapter.ts'
@@ -89,6 +93,14 @@ export type {
 } from './config.ts'
 export { recordKeyFor } from './auth.ts'
 export { supportedProtocols } from './provider.ts'
+export { classifySignIn, resolveSignInRoutes, signInClassifications } from './sign-in.ts'
+export type {
+  SignInClass,
+  SignInClassification,
+  SignInRouteRequest,
+  SignInRouteSpec,
+  StoredSignIn,
+} from './sign-in.ts'
 
 export const name = 'llm-pi-ai'
 export const inject = ['llm']
@@ -160,7 +172,7 @@ export function apply(ctx: Context, config: Config): void {
    * stored configuration remains visible after an installed catalog changes.
    * Scalar configuration errors still reject resolution.
    */
-  const profiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
+  const declaredProfiles = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
     const raw = config.providers.get()
     if (raw === lastRaw && memoized !== undefined) return memoized
     const next = resolveProfiles(structuredClone(raw) as import('./config.ts').Options['providers'], 'deferred')
@@ -168,7 +180,44 @@ export function apply(ctx: Context, config: Config): void {
     memoized = next
     return next
   }
-  profiles()
+  declaredProfiles()
+
+  /**
+   * Providers whose stored credential currently activates a route of its own,
+   * in installed-catalog order. It is read from the credential seam and never
+   * from configuration, which is what lets signing in and out move the route
+   * set without writing a settings document.
+   */
+  let activated: readonly string[] = []
+  let routeDeclared: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
+  let routeActivated: readonly string[] | undefined
+  let memoizedRoutes: ReadonlyMap<string, ResolvedPiAiProviderProfile> | undefined
+  /**
+   * Every route this instance serves: the settings profiles, plus one
+   * catalog-default profile per activated sign-in. A declared profile always
+   * wins — it is the deployment's own statement about the route, and the
+   * sign-in beneath it already authenticates it — so activation only ever adds
+   * a provider the document is silent about.
+   *
+   * Memoized on both inputs' identities for the same reason the profiles are:
+   * the adapter captures this map per operation, so a request must not observe
+   * a new one while neither input moved.
+   */
+  const routes = (): ReadonlyMap<string, ResolvedPiAiProviderProfile> => {
+    const declared = declaredProfiles()
+    if (declared === routeDeclared && activated === routeActivated && memoizedRoutes !== undefined) {
+      return memoizedRoutes
+    }
+    // An activated route is exactly the empty profile for its provider: the
+    // installed catalog supplies endpoint, protocol, and models, and naming no
+    // `apiKeyEnv` is what sends pi-ai to the stored record for its auth.
+    const adopted = Object.fromEntries(activated.filter(provider => !declared.has(provider)).map(provider => [provider, {}]))
+    const merged = new Map([...declared, ...resolveProfiles(adopted, 'deferred')])
+    routeDeclared = declared
+    routeActivated = activated
+    memoizedRoutes = merged
+    return merged
+  }
   ctx.on('internal/config', function (this: import('@deepseek-ai/cordis').Fiber, _raw, next) {
     const raw: unknown = next()
     if (this !== ctx.fiber) return raw
@@ -210,7 +259,7 @@ export function apply(ctx: Context, config: Config): void {
   // a configuration change causes, and a sign-in survives one.
   const auth = { credentials: credentialStoreFrom(ctx), authContext: authContextFrom(ctx) }
   const adapter = new PiAiAdapter({
-    profiles,
+    profiles: routes,
     resolveApiKey,
     auth,
     resolveAttachments: () => ctx.get('attachments'),
@@ -239,7 +288,7 @@ export function apply(ctx: Context, config: Config): void {
   let directory: DirectoryRegistrationHandle | undefined
   let directoryFacts: unknown
   const ensureDirectory = (): void => {
-    const entries = directoryEntries(profiles(), settingsNs)
+    const entries = directoryEntries(routes(), settingsNs)
     if (deepEqualJson(entries, directoryFacts)) return
     // Atomic replace, never dispose-then-register: a route another adapter
     // family already declares (a profile keyed `deepseek-official`) would
@@ -259,7 +308,7 @@ export function apply(ctx: Context, config: Config): void {
     provider: string | undefined,
   ): StoredModelDiscoveryProfile | undefined => {
     if (provider === undefined) return undefined
-    const profile = profiles().get(provider)
+    const profile = routes().get(provider)
     if (profile === undefined) return undefined
     return {
       headers: profile.headers,
@@ -283,7 +332,7 @@ export function apply(ctx: Context, config: Config): void {
   let registration: AdapterRegistrationHandle | undefined
   let registeredFacts: unknown
   const ensureRegistrationFacts = (): void => {
-    const facts = registrationFacts(profiles())
+    const facts = registrationFacts(routes())
     if (deepEqualJson(facts, registeredFacts)) return
     // The registry captures the route set and each route's retry policy at
     // registration, so a change to either must re-register. The swap is
@@ -291,21 +340,116 @@ export function apply(ctx: Context, config: Config): void {
     // conflicting route leaves the previous routes serving requests, and
     // `registeredFacts` only advances once the registry actually holds the
     // new set — so returning to a working configuration always re-applies.
-    const routes = [...profiles().keys()]
+    const routeKeys = [...routes().keys()]
     if (registration === undefined) {
       // Dormant bare mount: nothing is registered until a section supplies
       // profiles, and an empty section keeps it that way.
-      if (routes.length === 0) {
+      if (routeKeys.length === 0) {
         registeredFacts = facts
         return
       }
-      registration = ctx.llm.registerAdapter(routes, adapter)
+      registration = ctx.llm.registerAdapter(routeKeys, adapter)
     } else {
-      registration.replace(routes)
+      registration.replace(routeKeys)
     }
     registeredFacts = facts
   }
   ensureRegistrationFacts()
+
+  /** The records this plugin owns, reduced to what the route decision reads. */
+  const storedSignIns = async (): Promise<readonly StoredSignIn[]> => {
+    const credentials = ctx.get('credentials')
+    if (credentials === undefined) return []
+    const stored = await credentials.listRecords()
+    return stored
+      .filter(entry => credentialKeyScope(entry.key) === RECORD_SCOPE)
+      .map(entry => ({ provider: credentialKeyId(entry.key), credential: entry.kind }))
+  }
+
+  // One diagnostic per withheld sign-in, not one per refresh: an OAuth refresh
+  // rewrites the record on a timer, and a line repeated on every write would
+  // bury the one that says why a signed-in account drives no model.
+  const reportedWithheld = new Set<string>()
+  const reportWithheld = (withheld: readonly SignInClassification[]): void => {
+    for (const entry of withheld) {
+      const seen = `${entry.provider}/${entry.credential}/${entry.signInClass}`
+      if (reportedWithheld.has(seen)) continue
+      reportedWithheld.add(seen)
+      ctx.logger.info(
+        'llm-pi-ai: the stored sign-in for "%s" drives no model route because it is %s%s',
+        entry.provider,
+        entry.reason,
+        entry.keyAlternative === undefined
+          ? ''
+          : `; sign in to "${entry.keyAlternative}" with an API key to reach the main model`,
+      )
+    }
+  }
+
+  /**
+   * Re-read the stored sign-ins and move the route set if they changed.
+   *
+   * Coalesced rather than queued per event: sign-in, sign-out, and an OAuth
+   * refresh all commit through the same record and each one emits, so a burst
+   * must end in exactly one re-registration whose input is the last read.
+   */
+  let refreshing: Promise<void> | undefined
+  let refreshQueued = false
+  const applySignInRoutes = async (): Promise<void> => {
+    const spec = resolveSignInRoutes({
+      stored: await storedSignIns(),
+      activateRoutes: config.signInRoutes.get(),
+    })
+    // The fiber can be disposed across that read. Registering afterwards would
+    // put routes in the registry whose disposer has already run, leaving them
+    // serving requests for a plugin that is gone.
+    if (ctx.fiber.state !== FiberState.ACTIVE) return
+    reportWithheld(spec.withheld)
+    if (deepEqualJson(spec.activate, activated)) return
+    activated = spec.activate
+    ensureRegistrationFacts()
+    ensureDirectory()
+  }
+  const refreshSignInRoutes = (): void => {
+    if (refreshing !== undefined) {
+      refreshQueued = true
+      return
+    }
+    refreshing = (async () => {
+      do {
+        refreshQueued = false
+        try { await applySignInRoutes() }
+        catch (error) {
+          // The route set stays as it is: a store that cannot be read says
+          // nothing about which sign-ins exist, and dropping live routes on a
+          // transient read failure would end sessions mid-turn.
+          ctx.logger.warn('llm-pi-ai: could not resolve the routes stored sign-ins activate')
+          ctx.logger.warn(error)
+        }
+      } while (refreshQueued && ctx.fiber.state === FiberState.ACTIVE)
+    })().finally(() => { refreshing = undefined })
+  }
+
+  // Scoped to the credential seam rather than injected outright: a composition
+  // with no credential plane stores no sign-in, so it has none to activate,
+  // while everything else this plugin does still works. The scope is also what
+  // makes a seam mounted after this plugin reach the route set, and what drops
+  // the activated routes again when it leaves — a route whose credential store
+  // is gone could not authenticate the next request.
+  ctx.inject(['credentials'], (stored) => {
+    stored.on('credentials/record-updated', (key) => {
+      // Records another plugin owns say nothing about this one's routes.
+      if (credentialKeyScope(key) !== RECORD_SCOPE) return
+      refreshSignInRoutes()
+    })
+    stored.effect(() => () => {
+      if (ctx.fiber.state !== FiberState.ACTIVE || activated.length === 0) return
+      activated = []
+      ensureRegistrationFacts()
+      ensureDirectory()
+    })
+    refreshSignInRoutes()
+  })
 
   ctx.on('loader/volatile-update', () => {
     try { ensureRegistrationFacts(); ensureDirectory() }
@@ -313,5 +457,9 @@ export function apply(ctx: Context, config: Config): void {
       ctx.logger.error('llm-pi-ai: configuration conflicts with an existing provider route')
       ctx.logger.error(error)
     }
+    // `signInRoutes` and the profiles both moved in that update: a route the
+    // document has just stopped declaring may now be activated by its stored
+    // sign-in, and one it has just claimed must stop being.
+    refreshSignInRoutes()
   })
 }

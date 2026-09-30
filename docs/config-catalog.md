@@ -2203,6 +2203,19 @@ export interface Config {
    * and registers them the moment a settings section supplies profiles.
    */
   providers: Volatile<Record<string, PiAiProviderProfile>>
+  /**
+   * Whether a sanctioned sign-in activates a route for its provider on its
+   * own, serving that provider's installed catalog under the stored
+   * credential. Disabling it leaves {@link providers} the only source of
+   * routes, which is what a deployment that pins its endpoints — an egress
+   * allowlist, a billing boundary, a curated model list — needs, because
+   * signing in is a per-user action and a route is a deployment fact.
+   *
+   * It never affects a route {@link providers} declares, and it never widens
+   * what may be sent: a consumer subscription grant stays delegated-only
+   * either way.
+   */
+  signInRoutes: Volatile<boolean>
 }
 
 /** Configuration for one pi-ai provider route; the `providers` dict key IS the route. */
