@@ -2322,6 +2322,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [
       'client-ui-settings-account AccountSection id \'deepseek\'',
       'client-ui-settings-coteccons-sso CotecconsSsoGroup id \'coteccons\'',
+      'client-ui-settings-coteccons-sso M365Group id \'coteccons-m365\'',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'settings.ai-account.group\', () => ctx.slots.register(\n      { name: \'settings.ai-account.group\', id: \'my-entry\', order: 100, label: \'My entry\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',

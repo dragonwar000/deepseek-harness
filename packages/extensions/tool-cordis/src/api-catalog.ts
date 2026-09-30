@@ -862,6 +862,43 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the bearer token value.',
         throws: ['CotecconsSsoTokenUnavailableError when the deployment is not configured, nobody is signed in, or Entra ID requires the user to sign in again.'],
       },
+      {
+        signature: 'abstract getM365State(): Promise<readonly M365ConnectorView[]>',
+        description: 'Read every Microsoft 365 connector\'s state, in `mail`, `chat`, `files` order.',
+        parameters: [],
+        returns: 'one token-free view per connector.',
+      },
+      {
+        signature: 'abstract connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>',
+        description: 'Join the connector\'s active attempt or start an interactive browser sign-in against its enterprise app. Entra ID refuses the sign-in when IT has not assigned the user, which leaves the connector `blocked`.',
+        parameters: [{ name: 'id', description: 'connector to connect.' }],
+        returns: 'every connector\'s state after the attempt starts.',
+      },
+      {
+        signature: 'abstract cancelM365Connect(id: M365ConnectorId, attemptId: M365ConnectAttemptId): Promise<readonly M365ConnectorView[]>',
+        description: 'Cancel the named connector attempt.',
+        parameters: [{ name: 'id', description: 'connector whose attempt to cancel.' }, { name: 'attemptId', description: 'attempt identity; any other id leaves state unchanged.' }],
+        returns: 'every connector\'s state after the attempt settles.',
+      },
+      {
+        signature: 'abstract disconnectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>',
+        description: 'Forget the connector\'s stored sign-in on this Host. IT-side assignment is unchanged.',
+        parameters: [{ name: 'id', description: 'connector to disconnect.' }],
+        returns: 'every connector\'s state afterwards.',
+      },
+      {
+        signature: 'abstract watchM365(signal: AbortSignal): AsyncIterable<readonly M365ConnectorView[]>',
+        description: 'Subscribe to complete connector snapshots, starting with the current one.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels an attempt.' }],
+        returns: 'snapshots as any connector changes.',
+      },
+      {
+        signature: 'abstract getM365AccessToken(id: M365ConnectorId, signal?: AbortSignal): Promise<string>',
+        description: 'Return a current Microsoft Graph token for one connector, refreshing it silently. Host-only; the token must never reach a Client, a log, or the session log.',
+        parameters: [{ name: 'id', description: 'connector whose enterprise app issues the token.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the bearer token value.',
+        throws: ['M365AccessUnavailableError when the connector is not configured, not connected, or blocked by Entra ID.'],
+      },
     ],
   },
   {
@@ -5979,6 +6016,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LspRange',
     declaration: 'export interface LspRange {\n    readonly start: LspPosition;\n    readonly end: LspPosition;\n}',
+  },
+  {
+    name: 'M365ConnectAttemptId',
+    declaration: 'export type M365ConnectAttemptId = Branded<\'M365ConnectAttemptId\'>;',
+  },
+  {
+    name: 'M365ConnectorError',
+    declaration: 'export type M365ConnectorError = \'not-assigned\' | \'disabled-by-admin\' | \'consent-required\' | \'revoked\' | \'failed\';',
+  },
+  {
+    name: 'M365ConnectorId',
+    declaration: 'export type M365ConnectorId = \'mail\' | \'chat\' | \'files\';',
+  },
+  {
+    name: 'M365ConnectorView',
+    declaration: 'export type M365ConnectorView = {\n    readonly id: M365ConnectorId;\n    readonly status: \'not-configured\';\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'disconnected\';\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'connecting\';\n    readonly attemptId: M365ConnectAttemptId;\n    readonly url: string | null;\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'connected\';\n    readonly username: string;\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'blocked\';\n    readonly errorCode: M365ConnectorError;\n};',
   },
   {
     name: 'ManagementError',

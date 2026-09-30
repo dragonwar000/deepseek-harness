@@ -50,6 +50,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
+| `@deepseek-ai/dsh-tool-m365` | `m365_read_chat`, `m365_read_file`, `m365_read_mail`, `m365_search` | `ctx.tools`, `ctx.systemPrompt`, `ctx.cotecconsSso (execution time)` | `tool/call`, `tool/result` | - | Every m365_* tool reads with the signed-in user's delegated Microsoft Graph token; a connector IT has not granted returns a refusal naming the source instead of data. |
 
 <a id="deepseek-aidsh-plugin-manager"></a>
 
@@ -3102,3 +3103,114 @@ Search the web for current information. Returns an optional summary answer and a
 Source: [`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.
+
+<a id="deepseek-aidsh-tool-m365"></a>
+
+## `@deepseek-ai/dsh-tool-m365`
+
+### `m365_read_chat`
+
+Read the most recent messages of one Teams chat by the chatId m365_search returned, oldest first.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "chatId": {
+      "type": "string",
+      "description": "Teams chat id."
+    },
+    "top": {
+      "type": "integer",
+      "description": "Messages to read, 1–50; defaults to 30."
+    }
+  },
+  "required": [
+    "chatId"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+### `m365_read_file`
+
+Read the text of one OneDrive or SharePoint file by the driveId and id m365_search returned. Supports text formats and Word, PowerPoint, and Excel files.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "driveId": {
+      "type": "string",
+      "description": "Drive id of the file."
+    },
+    "id": {
+      "type": "string",
+      "description": "Drive item id of the file."
+    }
+  },
+  "required": [
+    "driveId",
+    "id"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+### `m365_read_mail`
+
+Read one Outlook message by the id m365_search returned: sender, recipients, date, body text, and attachment names.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Message id."
+    }
+  },
+  "required": [
+    "id"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+### `m365_search`
+
+Search the user's Microsoft 365 data they are allowed to read: Outlook mail, Teams chats, and OneDrive/SharePoint files. Returns hits with ids to pass to m365_read_mail, m365_read_chat, or m365_read_file.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Keyword query (KQL is accepted)."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Sources to search; defaults to all three.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "mail",
+          "chat",
+          "files"
+        ]
+      }
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+Every m365_* tool reads with the signed-in user's delegated Microsoft Graph token; a connector IT has not granted returns a refusal naming the source instead of data.

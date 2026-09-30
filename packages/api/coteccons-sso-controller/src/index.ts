@@ -2,7 +2,9 @@
 import { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-coteccons-sso'
-import type { CotecconsSsoSignInId, CotecconsSsoView } from './types.ts'
+import type {
+  CotecconsSsoSignInId, CotecconsSsoView, M365ConnectAttemptId, M365ConnectorId, M365ConnectorView,
+} from './types.ts'
 
 /** Coteccons SSO commands and a reconnect-safe state stream; access tokens never cross the wire. */
 export class CotecconsSsoController extends TypertRemoteService {
@@ -41,5 +43,42 @@ export class CotecconsSsoController extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView> { return this.ctx.cotecconsSso.watch(signal) }
+  /**
+   * Read every Microsoft 365 connector's state.
+   * @returns one token-free view per connector.
+   */
+  @Remote
+  getM365State(): Promise<readonly M365ConnectorView[]> { return this.ctx.cotecconsSso.getM365State() }
+  /**
+   * Start or join a connector's browser sign-in; Entra ID refuses users IT has not assigned.
+   * @param id - connector to connect.
+   * @returns every connector's state after the attempt starts.
+   */
+  @Remote
+  connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]> { return this.ctx.cotecconsSso.connectM365(id) }
+  /**
+   * Cancel the named connector attempt.
+   * @param id - connector whose attempt to cancel.
+   * @param attemptId - attempt to cancel; a stale id changes nothing.
+   * @returns every connector's state after the attempt settles.
+   */
+  @Remote
+  cancelM365Connect(id: M365ConnectorId, attemptId: M365ConnectAttemptId): Promise<readonly M365ConnectorView[]> {
+    return this.ctx.cotecconsSso.cancelM365Connect(id, attemptId)
+  }
+  /**
+   * Forget a connector's stored sign-in on this Host.
+   * @param id - connector to disconnect.
+   * @returns every connector's state afterwards.
+   */
+  @Remote
+  disconnectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]> { return this.ctx.cotecconsSso.disconnectM365(id) }
+  /**
+   * Stream complete connector snapshots, starting with the current one.
+   * @param signal - stream lifetime; disconnecting never cancels an attempt.
+   * @returns the snapshot stream.
+   */
+  @Remote({ mode: 'stream' })
+  watchM365(signal: AbortSignal): AsyncIterable<readonly M365ConnectorView[]> { return this.ctx.cotecconsSso.watchM365(signal) }
 }
 export default CotecconsSsoController

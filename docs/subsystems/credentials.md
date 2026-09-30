@@ -252,6 +252,52 @@ abstract watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView>
  * or Entra ID requires the user to sign in again.
  */
 abstract getAccessToken(scope: string, signal?: AbortSignal): Promise<string>
+
+/**
+ * Read every Microsoft 365 connector's state, in `mail`, `chat`, `files` order.
+ * @returns one token-free view per connector.
+ */
+abstract getM365State(): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Join the connector's active attempt or start an interactive browser sign-in against its enterprise app.
+ * Entra ID refuses the sign-in when IT has not assigned the user, which leaves the connector `blocked`.
+ * @param id - connector to connect.
+ * @returns every connector's state after the attempt starts.
+ */
+abstract connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Cancel the named connector attempt.
+ * @param id - connector whose attempt to cancel.
+ * @param attemptId - attempt identity; any other id leaves state unchanged.
+ * @returns every connector's state after the attempt settles.
+ */
+abstract cancelM365Connect(id: M365ConnectorId, attemptId: M365ConnectAttemptId): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Forget the connector's stored sign-in on this Host. IT-side assignment is unchanged.
+ * @param id - connector to disconnect.
+ * @returns every connector's state afterwards.
+ */
+abstract disconnectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Subscribe to complete connector snapshots, starting with the current one.
+ * @param signal - subscription lifetime; ending it never cancels an attempt.
+ * @returns snapshots as any connector changes.
+ */
+abstract watchM365(signal: AbortSignal): AsyncIterable<readonly M365ConnectorView[]>
+
+/**
+ * Return a current Microsoft Graph token for one connector, refreshing it silently. Host-only; the token must
+ * never reach a Client, a log, or the session log.
+ * @param id - connector whose enterprise app issues the token.
+ * @param signal - caller cancellation.
+ * @returns the bearer token value.
+ * @throws M365AccessUnavailableError when the connector is not configured, not connected, or blocked by Entra ID.
+ */
+abstract getM365AccessToken(id: M365ConnectorId, signal?: AbortSignal): Promise<string>
 ```
 
 Source: [`packages/credentials/coteccons-sso/src/index.ts`](../../packages/credentials/coteccons-sso/src/index.ts)
