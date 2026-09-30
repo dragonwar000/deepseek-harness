@@ -17,11 +17,20 @@ export class AiAccountController extends TypertRemoteService {
   getState(): Promise<AiAccountsView> { return this.ctx.aiAccount.getState() }
   /**
    * Start or join an official-CLI sign-in.
-   * @param kind - account kind to add.
+   * @param kind - account kind to add or sign back in.
+   * @param accountId - registered account to sign back in; omitted to add a new account.
    * @returns the snapshot after the attempt starts.
    */
   @Remote
-  startSignIn(kind: AiAccountKind): Promise<AiAccountsView> { return this.ctx.aiAccount.startSignIn(kind) }
+  startSignIn(kind: AiAccountKind, accountId?: AiAccountId): Promise<AiAccountsView> {
+    return this.ctx.aiAccount.startSignIn(kind, accountId)
+  }
+  /**
+   * Ask every account's official CLI whether it is still signed in, subject to the provider's cooldown.
+   * @returns the snapshot after the check settles.
+   */
+  @Remote
+  checkLogins(): Promise<AiAccountsView> { return this.ctx.aiAccount.checkLogins() }
   /**
    * Cancel the named sign-in attempt.
    * @param attemptId - attempt to cancel; a stale id leaves a newer attempt running.

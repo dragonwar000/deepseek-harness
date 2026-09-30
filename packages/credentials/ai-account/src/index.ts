@@ -2,7 +2,7 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { AiAccountId, AiAccountKind, AiAccountSignInId, AiAccountsView } from './types.ts'
 export type {
-  AiAccountId, AiAccountKind, AiAccountSignInError, AiAccountSignInId, AiAccountSignInPhase, AiAccountSignInView, AiAccountView,
+  AiAccountId, AiAccountKind, AiAccountLoginChange, AiAccountLoginState, AiAccountLoginView, AiAccountSignInError, AiAccountSignInId, AiAccountSignInPhase, AiAccountSignInView, AiAccountView,
   AiAccountsView,
 } from './types.ts'
 
@@ -28,11 +28,16 @@ export abstract class AiAccount extends Service {
   abstract getState(): Promise<AiAccountsView>
 
   /**
-   * Join the active sign-in attempt or start the official CLI login for a new account.
-   * @param kind - account kind to add.
+   * Join the active sign-in attempt or start the official CLI login, either for a new account or
+   * back into a registered account whose CLI reports it signed out.
+   * @param kind - account kind to add or sign back in.
+   * @param accountId - registered account of `kind` to sign back in; omitted to add a new account.
+   * A successful attempt keeps the account's id, default status, and configuration directory, and a
+   * failed one leaves them in place.
    * @returns the snapshot after the attempt starts, without waiting for authorization.
+   * @throws when `accountId` names no registered account of `kind`.
    */
-  abstract startSignIn(kind: AiAccountKind): Promise<AiAccountsView>
+  abstract startSignIn(kind: AiAccountKind, accountId?: AiAccountId): Promise<AiAccountsView>
 
   /**
    * Cancel the named attempt and discard its unfinished configuration directory.
@@ -68,6 +73,14 @@ export abstract class AiAccount extends Service {
    * @throws when no account has this id.
    */
   abstract remove(id: AiAccountId): Promise<AiAccountsView>
+
+  /**
+   * Run every registered account's official CLI status command now and record the answers. Joins a
+   * check that is already running, and answers from recorded state when a check finished within the
+   * implementation's cooldown, so focus-driven callers cannot start one check per event.
+   * @returns the snapshot after the check settles.
+   */
+  abstract checkLogins(): Promise<AiAccountsView>
 
   /**
    * Subscribe to complete snapshots, starting with the current one.

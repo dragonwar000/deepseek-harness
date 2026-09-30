@@ -19,6 +19,7 @@ function fixture() {
     submitSignInCode: vi.fn<AiAccount['submitSignInCode']>().mockResolvedValue(state),
     setDefault: vi.fn<AiAccount['setDefault']>().mockResolvedValue(state),
     remove: vi.fn<AiAccount['remove']>().mockResolvedValue(state),
+    checkLogins: vi.fn<AiAccount['checkLogins']>().mockResolvedValue(state),
     watch: vi.fn<AiAccount['watch']>(),
   }
   ctx.provide('aiAccount', provider as never)
@@ -31,7 +32,11 @@ it('delegates every command to the provider and returns its snapshot', async () 
   const attempt = 'attempt' as AiAccountSignInId
   expect(await controller.getState()).toBe(state)
   expect(await controller.startSignIn('chatgpt')).toBe(state)
-  expect(provider.startSignIn).toHaveBeenCalledExactlyOnceWith('chatgpt')
+  expect(provider.startSignIn).toHaveBeenCalledExactlyOnceWith('chatgpt', undefined)
+  expect(await controller.startSignIn('claude', account)).toBe(state)
+  expect(provider.startSignIn).toHaveBeenLastCalledWith('claude', account)
+  expect(await controller.checkLogins()).toBe(state)
+  expect(provider.checkLogins).toHaveBeenCalledOnce()
   expect(await controller.cancelSignIn(attempt)).toBe(state)
   expect(provider.cancelSignIn).toHaveBeenCalledExactlyOnceWith(attempt)
   expect(await controller.submitSignInCode(attempt, 'browser-code')).toBe(state)

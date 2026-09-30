@@ -1,23 +1,31 @@
-/** Official CLI output parsing: signed-in identity and login prompts. */
+/** Official CLI output parsing: login state, signed-in identity, and login prompts. */
 import { expect, it } from 'vitest'
 import { CLI, LoginOutput, type KindCli } from '../src/cli.ts'
 
-it('reads the Claude identity only from a signed-in JSON status', () => {
-  const parse: KindCli['parseIdentity'] = (...args) => CLI.claude.parseIdentity(...args)
-  expect(parse(0, JSON.stringify({ loggedIn: true, email: 'a@example.com', subscriptionType: 'pro' }), '')).toEqual({ email: 'a@example.com', plan: 'pro' })
-  expect(parse(0, JSON.stringify({ loggedIn: true }), '')).toEqual({ email: null, plan: null })
-  expect(parse(0, JSON.stringify({ loggedIn: false }), '')).toBeUndefined()
-  expect(parse(0, JSON.stringify({ email: 'a@example.com' }), '')).toBeUndefined()
-  expect(parse(0, 'Logged in', '')).toBeUndefined()
-  expect(parse(1, JSON.stringify({ loggedIn: true }), '')).toBeUndefined()
+const inconclusive = { state: 'inconclusive' }
+
+it('reads the Claude login state only from its JSON status', () => {
+  const parse: KindCli['parseStatus'] = (...args) => CLI.claude.parseStatus(...args)
+  expect(parse(0, JSON.stringify({ loggedIn: true, email: 'a@example.com', subscriptionType: 'pro' }), ''))
+    .toEqual({ state: 'signed-in', identity: { email: 'a@example.com', plan: 'pro' } })
+  expect(parse(0, JSON.stringify({ loggedIn: true }), '')).toEqual({ state: 'signed-in', identity: { email: null, plan: null } })
+  // The shape the CLI printed when the user's account lapsed.
+  const lapsed = JSON.stringify({ loggedIn: false, authMethod: 'none' })
+  expect(parse(1, lapsed, '')).toEqual({ state: 'signed-out', message: lapsed })
+  expect(parse(1, lapsed, '\n  Not logged in · Please run /login  \n')).toEqual({ state: 'signed-out', message: 'Not logged in · Please run /login' })
+  expect(parse(1, lapsed, 'x'.repeat(500))).toEqual({ state: 'signed-out', message: 'x'.repeat(240) })
+  expect(parse(0, JSON.stringify({ email: 'a@example.com' }), '')).toEqual(inconclusive)
+  expect(parse(0, 'Logged in', '')).toEqual(inconclusive)
+  expect(parse(1, JSON.stringify({ loggedIn: true }), '')).toEqual(inconclusive)
 })
 
-it('reads the Codex identity from its status text on either stream', () => {
-  const parse: KindCli['parseIdentity'] = (...args) => CLI.chatgpt.parseIdentity(...args)
-  expect(parse(0, '', 'Logged in using ChatGPT')).toEqual({ email: null, plan: null })
-  expect(parse(0, 'Logged in using ChatGPT (me@example.org)', '')).toEqual({ email: 'me@example.org', plan: null })
-  expect(parse(1, '', 'Not logged in')).toBeUndefined()
-  expect(parse(0, '', 'Not signed in')).toBeUndefined()
+it('reads the Codex login state from its status text on either stream', () => {
+  const parse: KindCli['parseStatus'] = (...args) => CLI.chatgpt.parseStatus(...args)
+  expect(parse(0, '', 'Logged in using ChatGPT')).toEqual({ state: 'signed-in', identity: { email: null, plan: null } })
+  expect(parse(0, 'Logged in using ChatGPT (me@example.org)', '')).toEqual({ state: 'signed-in', identity: { email: 'me@example.org', plan: null } })
+  expect(parse(1, '', 'Not logged in')).toEqual({ state: 'signed-out', message: 'Not logged in' })
+  expect(parse(1, '', '')).toEqual(inconclusive)
+  expect(parse(0, '', 'Not signed in')).toEqual(inconclusive)
 })
 
 it('reports each new login prompt once across chunk boundaries and terminal escapes', () => {

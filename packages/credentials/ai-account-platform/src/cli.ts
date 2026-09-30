@@ -8,6 +8,31 @@ export interface CliIdentity {
   readonly plan: string | null
 }
 
+/**
+ * One finished status command, read as a login state. `inconclusive` covers output that is neither a
+ * signed-in nor a signed-out answer (an unexpected exit code, unreadable output), which must not be
+ * reported to the user as a sign-out.
+ */
+export type CliStatus =
+  | { readonly state: 'signed-in'; readonly identity: CliIdentity }
+  | { readonly state: 'signed-out'; readonly message: string }
+  | { readonly state: 'inconclusive' }
+
+/** Characters kept from the CLI line quoted with a signed-out answer. */
+const MESSAGE_LIMIT_CHARS = 240
+
+/**
+ * Quote the CLI's own explanation of a signed-out answer.
+ * @param stdout - collected standard output.
+ * @param stderr - collected standard error, preferred because the CLIs explain failures there.
+ * @returns the first non-empty line, shortened to the message limit; empty when the CLI printed nothing.
+ */
+function firstLine(stdout: string, stderr: string): string {
+  return `${stderr}\n${stdout}`.trim().replace(/\s*\n[\s\S]*$/, '').slice(0, MESSAGE_LIMIT_CHARS)
+}
+
+const INCONCLUSIVE: CliStatus = { state: 'inconclusive' }
+
 /** How one account kind's official CLI signs in, identifies, and signs out against one configuration directory. */
 export interface KindCli {
   /** Directory segment under the account root that holds this kind's per-account directories. */
@@ -29,13 +54,13 @@ export interface KindCli {
    */
   readonly awaitsCode: boolean
   /**
-   * Read the signed-in identity from a finished status command.
+   * Read the login state from a finished status command.
    * @param exitCode - status command exit code.
    * @param stdout - collected standard output.
    * @param stderr - collected standard error.
-   * @returns the identity, or `undefined` when the CLI does not report a signed-in account.
+   * @returns the signed-in identity, a signed-out answer with the CLI's explanation, or `inconclusive`.
    */
-  parseIdentity(exitCode: number | null, stdout: string, stderr: string): CliIdentity | undefined
+  parseStatus(exitCode: number | null, stdout: string, stderr: string): CliStatus
 }
 
 /** Fields of `claude auth status --json` this package reads; the CLI prints more. */
@@ -58,17 +83,19 @@ export const CLI: Readonly<Record<AiAccountKind, KindCli>> = {
     waitingPhase: 'waiting-browser',
     deviceCode: false,
     awaitsCode: true,
-    parseIdentity(exitCode, stdout) {
-      if (exitCode !== 0) return undefined
+    parseStatus(exitCode, stdout, stderr) {
       let raw: unknown
       try {
         raw = JSON.parse(stdout)
       } catch (_notJson) {
-        return undefined
+        return INCONCLUSIVE
       }
       const parsed = claudeStatus.safeParse(raw)
-      if (!parsed.success || !parsed.data.loggedIn) return undefined
-      return { email: parsed.data.email ?? null, plan: parsed.data.subscriptionType ?? null }
+      if (!parsed.success) return INCONCLUSIVE
+      // `claude auth status --json` exits 1 with `loggedIn: false`; a signed-in answer must also exit 0.
+      if (!parsed.data.loggedIn) return { state: 'signed-out', message: firstLine(stdout, stderr) }
+      if (exitCode !== 0) return INCONCLUSIVE
+      return { state: 'signed-in', identity: { email: parsed.data.email ?? null, plan: parsed.data.subscriptionType ?? null } }
     },
   },
   chatgpt: {
@@ -80,10 +107,11 @@ export const CLI: Readonly<Record<AiAccountKind, KindCli>> = {
     waitingPhase: 'waiting-device-code',
     deviceCode: true,
     awaitsCode: false,
-    parseIdentity(exitCode, stdout, stderr) {
+    parseStatus(exitCode, stdout, stderr) {
       const text = `${stdout}\n${stderr}`
-      if (exitCode !== 0 || !/logged in/i.test(text)) return undefined
-      return { email: EMAIL.exec(text)?.[0] ?? null, plan: null }
+      if (/not logged in/i.test(text)) return { state: 'signed-out', message: firstLine(stdout, stderr) }
+      if (exitCode !== 0 || !/logged in/i.test(text)) return INCONCLUSIVE
+      return { state: 'signed-in', identity: { email: EMAIL.exec(text)?.[0] ?? null, plan: null } }
     },
   },
 }
