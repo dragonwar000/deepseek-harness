@@ -166,4 +166,6 @@ None gained and none lost beyond the text case: the preamble is part of the subs
 
 `tests/loader-composition.spec.ts` boots the package through the real Loader under the package name the Base Bundle row names, so a row that would not load in a shipped profile fails there rather than in a profile.
 
+`tests/real-loop.e2e.ts` drives the production agent loop over the installed CLI with one real tool registered, so it is where a change to the preamble or the parser shows up as a turn that no longer completes. It self-skips the same way.
+
 The unit tests script the CLI through `tests/harness.ts`, which answers by the question the argv asks rather than by spawn order, so adding a probe does not renumber a queue.

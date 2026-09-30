@@ -166,4 +166,6 @@ Harness 自己的系统提示词（通过 `--system-prompt` 顶替 Claude Code �
 
 `tests/loader-composition.spec.ts` 用 Base Bundle 行所写的包名、通过真实 Loader 启动本包，因此一个在实际 profile 里装不起来的行会在那里失败，而不是在 profile 里失败。
 
+`tests/real-loop.e2e.ts` 在注册了一个真实工具的前提下，用已安装的 CLI 驱动生产 agent 循环，因此前言或解析器的改动如果让一个回合走不通，会在这里暴露。它同样会自动跳过。
+
 单元测试通过 `tests/harness.ts` 脚本化 CLI，它按 argv 所问的问题作答，而不是按 spawn 顺序作答，因此新增一个探测不需要给队列重新编号。
