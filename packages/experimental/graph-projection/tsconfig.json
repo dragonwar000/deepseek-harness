@@ -16,6 +16,7 @@
     { "path": "../../llm/llm" },
     { "path": "../../session/session-projection" },
     { "path": "../../session-query/session-query" },
-    { "path": "../graph-contract" }
+    { "path": "../graph-contract" },
+    { "path": "../knowledge" }
   ]
 }

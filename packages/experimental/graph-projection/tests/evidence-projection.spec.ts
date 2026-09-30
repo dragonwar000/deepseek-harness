@@ -23,8 +23,8 @@ function fold(events: SessionEvent[]): EvidenceState {
 }
 
 describe('graphEvidence projection', () => {
-  it('declares a host-only unit at state version 1', () => {
-    expect(graphEvidenceProjection).toMatchObject({ key: 'graphEvidence', stateVersion: 1 })
+  it('declares a host-only unit at state version 2', () => {
+    expect(graphEvidenceProjection).toMatchObject({ key: 'graphEvidence', stateVersion: 2 })
     expect(evidenceStateSchema.safeParse(emptyEvidence()).success).toBe(true)
   })
 

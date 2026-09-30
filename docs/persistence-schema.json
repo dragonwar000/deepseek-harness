@@ -14343,7 +14343,7 @@
       "kind": "event",
       "event": "loop/verdict",
       "surface": false,
-      "digest": "7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a",
+      "digest": "5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f",
       "schema": {
         "root": 0,
         "nodes": [
@@ -14357,7 +14357,7 @@
               },
               {
                 "name": "ignorable",
-                "type": 51,
+                "type": 57,
                 "optional": true
               },
               {
@@ -14372,7 +14372,7 @@
               },
               {
                 "name": "type",
-                "type": 68,
+                "type": 74,
                 "optional": false
               }
             ],
@@ -14408,12 +14408,12 @@
               },
               {
                 "name": "mode",
-                "type": 43,
+                "type": 49,
                 "optional": false
               },
               {
                 "name": "reason",
-                "type": 52,
+                "type": 58,
                 "optional": false
               },
               {
@@ -14423,7 +14423,7 @@
               },
               {
                 "name": "verdict",
-                "type": 65,
+                "type": 71,
                 "optional": false
               }
             ],
@@ -14692,17 +14692,17 @@
               },
               {
                 "name": "mode",
-                "type": 43,
+                "type": 49,
                 "optional": false
               },
               {
                 "name": "status",
-                "type": 46,
+                "type": 52,
                 "optional": false
               },
               {
                 "name": "truncated",
-                "type": 51,
+                "type": 57,
                 "optional": true
               },
               {
@@ -14727,7 +14727,7 @@
               },
               {
                 "name": "leaves",
-                "type": 37,
+                "type": 38,
                 "optional": false
               },
               {
@@ -14742,7 +14742,8 @@
             "kind": "union",
             "types": [
               35,
-              36
+              36,
+              37
             ]
           },
           {
@@ -14754,15 +14755,62 @@
             "value": "command"
           },
           {
+            "kind": "literal",
+            "value": "edge"
+          },
+          {
             "kind": "array",
-            "element": 38
+            "element": 39
+          },
+          {
+            "kind": "union",
+            "types": [
+              40,
+              44
+            ]
           },
           {
             "kind": "object",
             "properties": [
               {
                 "name": "kind",
-                "type": 39,
+                "type": 41,
+                "optional": false
+              },
+              {
+                "name": "ref",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "target",
+                "type": 42,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "graph-edge"
+          },
+          {
+            "kind": "union",
+            "types": [
+              37,
+              43
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "page"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 45,
                 "optional": false
               },
               {
@@ -14781,9 +14829,9 @@
           {
             "kind": "union",
             "types": [
-              40,
-              41,
-              42
+              46,
+              47,
+              48
             ]
           },
           {
@@ -14801,8 +14849,8 @@
           {
             "kind": "union",
             "types": [
-              44,
-              45
+              50,
+              51
             ]
           },
           {
@@ -14816,10 +14864,10 @@
           {
             "kind": "union",
             "types": [
-              47,
-              48,
-              49,
-              50
+              53,
+              54,
+              55,
+              56
             ]
           },
           {
@@ -14845,19 +14893,23 @@
           {
             "kind": "union",
             "types": [
-              53,
-              54,
-              55,
-              56,
-              57,
-              58,
               59,
               60,
               61,
               62,
               63,
-              64
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70
             ]
+          },
+          {
+            "kind": "literal",
+            "value": "evaluator-impossible"
           },
           {
             "kind": "literal",
@@ -14904,18 +14956,14 @@
             "value": "evaluator-failed"
           },
           {
-            "kind": "literal",
-            "value": "evaluator-impossible"
-          },
-          {
             "kind": "union",
             "types": [
               27,
               28,
               29,
               30,
-              66,
-              67
+              72,
+              73
             ]
           },
           {
@@ -27615,21 +27663,17 @@
       "sources": []
     },
     {
-      "digest": "15ca6f4cdbec6b5315f26739a5d0b3da463a1f6eebc4c9853a9f4ee99fce165f",
-      "names": [
-        "packages/experimental/verifier-gate/src/types.ts#LoopVerdict"
-      ],
-      "sources": [
-        "packages/experimental/verifier-gate/src/types.ts:162"
-      ]
-    },
-    {
       "digest": "15d5dfdd822aa35e115afd74a8982825a493880457774e6850bc1520b50875e4",
       "names": [],
       "sources": []
     },
     {
       "digest": "15fedb35e4960c873e69d6ddc84d29d44c05c27675fc84a467829c909ac5fdc9",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "1658fa3ac66c2ce2d242b5de79263c58527762b9de2a51aebd4d233bef210cb3",
       "names": [],
       "sources": []
     },
@@ -27746,6 +27790,15 @@
       "digest": "1b912703e2d64f91c99c675b8f805b01076c8325b905c1218ad81ef0b24909d5",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "1b9ec2399cb81c02bd1c273563aecf134b3a493f08c4e19f572df195fe8753f8",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopEvidence"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:158"
+      ]
     },
     {
       "digest": "1bea6785484772055a46b5a92197b1cf0a17b22f3c2f597741f4325424c275e8",
@@ -28058,6 +28111,11 @@
       "sources": []
     },
     {
+      "digest": "2a9e3d98fa13037d132381bbf9b082aa7fe5cf6618417043be47748e609c97af",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "2aad1179f957631477b582e57cd8f538cb82618fc3fb816bde1171154235b065",
       "names": [],
       "sources": []
@@ -28341,15 +28399,6 @@
       "digest": "39a306a9c512214a647ba7ae5287f42fd8d0b7a333cd5f97517090a4e989ef15",
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "39ccb0c5aa8518f0caaff59dc009bb1a159735c5da5e3289da559b17951c6158",
-      "names": [
-        "packages/experimental/verifier-gate/src/types.ts#LoopEvidenceClaim"
-      ],
-      "sources": [
-        "packages/experimental/verifier-gate/src/types.ts:135"
-      ]
     },
     {
       "digest": "3a6414410ec59d7876feae07136c64e062d7e0b88ee1b92dc5075252067d9bca",
@@ -28922,7 +28971,7 @@
     {
       "digest": "53961361d112956702762b98699980720f11c97dadc751dea6c317387fdbbee9",
       "names": [
-        "packages/experimental/verifier-gate/src/types.ts#LoopEvidenceLeaf"
+        "packages/experimental/verifier-gate/src/types.ts#LoopRecordLeaf"
       ],
       "sources": [
         "packages/experimental/verifier-gate/src/types.ts:125"
@@ -29061,6 +29110,11 @@
     },
     {
       "digest": "5b232a9b9bfcc0fc6794dab7865bcf203a65785c5de5aa647a51228bff628413",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f",
       "names": [],
       "sources": []
     },
@@ -29216,6 +29270,15 @@
       "sources": []
     },
     {
+      "digest": "627d71d77ffb23650038127e690d45a42a8d6288f2da244c1764745ab943443f",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopEvidenceClaim"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:148"
+      ]
+    },
+    {
       "digest": "6292bcbedaa97feaec5b48a03bb8144b581b93309d9d6c905f26da7a6a7a0a4f",
       "names": [],
       "sources": []
@@ -29329,11 +29392,6 @@
       "sources": [
         "packages/llm/llm/src/call-config.ts:23"
       ]
-    },
-    {
-      "digest": "680dc8ba6cc41e716883dee8cf8baded4de4660d633aa13960514c4b72feb22b",
-      "names": [],
-      "sources": []
     },
     {
       "digest": "68141cbe3994a5ffcd064c07c75996538437fd9dbf77ce8a2927e89ec577fabe",
@@ -29768,6 +29826,11 @@
       "sources": []
     },
     {
+      "digest": "7cfc0abec485df1f66de664d9d918e6b5cb3ceae4c02c0f11dc528bfdfc9d832",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "7d226b9fd95b4ba213d4237c22e930a91c3c769c95ca7f92977b9d625ba13438",
       "names": [
         "packages/goal/goal/src/domain.ts#GoalChangeMeta"
@@ -29796,11 +29859,6 @@
     },
     {
       "digest": "7df62978a2b7de8540e714152297743e0a622209a46a5ac9513fc0fad73ca23b",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a",
       "names": [],
       "sources": []
     },
@@ -29883,6 +29941,15 @@
       ],
       "sources": [
         "packages/llm/llm/src/types.ts:68"
+      ]
+    },
+    {
+      "digest": "81a8ef5e72eb1e545bf5f6a3c2bde82778db1e2c71506443d2ffa05ddf74db43",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopEvidenceLeaf"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:145"
       ]
     },
     {
@@ -30210,15 +30277,6 @@
       "sources": []
     },
     {
-      "digest": "92dfef0e33ed716a0140a8c2ba83019b7311b8848bb2e52bb91e3301fce1dca6",
-      "names": [
-        "packages/experimental/verifier-gate/src/types.ts#LoopEvidence"
-      ],
-      "sources": [
-        "packages/experimental/verifier-gate/src/types.ts:145"
-      ]
-    },
-    {
       "digest": "930a6567a10bb62ddd157bd8abdf4b182810c8c3b49d91309b3b009a5fed9731",
       "names": [],
       "sources": [
@@ -30313,11 +30371,6 @@
     },
     {
       "digest": "95c0e88fcf0bafb2087f912ad9e2369de6ae6530cc0c4c2772c96205b57f7f60",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "9639a5fdd4c6834652c12c43599c40bfbbd48cf5031c13d7f3ff54521789ee4e",
       "names": [],
       "sources": []
     },
@@ -31071,6 +31124,11 @@
       "sources": []
     },
     {
+      "digest": "b74f39064b932b3b7d09b8ae52b4cecf4fc9ac0cf153f05ebbbf2c0fdc99d138",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "b765ee31033cea463863faf3fc6a0a1b85c47c6a2f13fe1ce833abe56105114b",
       "names": [],
       "sources": []
@@ -31429,6 +31487,11 @@
       "sources": []
     },
     {
+      "digest": "ca9a896501fa7bf5e6e21d4d8ed91c135c11f9302dd300d51b66436f317e2023",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "caf552c5a831de0e7a781287798ae3444ca88abfabc7f92ddbc9ee092d9717c3",
       "names": [],
       "sources": []
@@ -31447,6 +31510,15 @@
       "digest": "cbca49bde16b656d5b8fbe4a8a507769f7b594c6287782b809c03814941bc5e3",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "cc2c63a050df29d8f2717c40f684093881c0dcda8fe4458ce46bd1c98728b8f9",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopKnowledgeLeaf"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:135"
+      ]
     },
     {
       "digest": "cc6686b2bcaffeee039baf30ed02400b27c04e6de10a607eddd19f21383d7b33",
@@ -31472,6 +31544,15 @@
       "digest": "cdd4de929edd2983a8fbfb99b48f4772958b8f39c88128707de990ddd5ecab9c",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "cddc4c2735f37055024e6b86f07da6a3ade857a9ebc536a1221d03fad7cfa333",
+      "names": [
+        "packages/experimental/verifier-gate/src/types.ts#LoopVerdict"
+      ],
+      "sources": [
+        "packages/experimental/verifier-gate/src/types.ts:175"
+      ]
     },
     {
       "digest": "cdee10e87dbed8440d8b6935888624884878efc7af95402e94171b29f173dced",
@@ -31746,11 +31827,6 @@
     },
     {
       "digest": "e0a787e6ec76c7c94fecbc501b489164ab0293db05bc947914077ad01e674f05",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "e122356aea703be42ae10a7d76f40fa0d362c8d0c4d157f970c34e2b3599cafa",
       "names": [],
       "sources": []
     },
@@ -32216,6 +32292,11 @@
       "sources": []
     },
     {
+      "digest": "f6d019d8a1d39fc45c899d2a688a1b800f5565977d982cfee3b8bd6a32f0082a",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "f6f72314d5dab263e502291d87cc2fe94e340cc2e71cb02ae8a6a4b8c4774c1f",
       "names": [],
       "sources": []
@@ -32329,6 +32410,11 @@
       "sources": [
         "packages/skill/tool-skill/src/index.ts:34"
       ]
+    },
+    {
+      "digest": "fc36e5ef4d474b02c9caef25b9f1a932cfb14360ab014f626ae25a8954f4a907",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "fcf427290c6213c2a7feb57492d832ce324f5b9737a759f424dab69e6bd101a0",

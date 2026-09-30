@@ -101,7 +101,7 @@
       "kind": "event",
       "event": "loop/verdict",
       "surface": false,
-      "digest": "7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a",
+      "digest": "5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f",
       "schema": {
         "root": 0,
         "nodes": [
@@ -115,7 +115,7 @@
               },
               {
                 "name": "ignorable",
-                "type": 51,
+                "type": 57,
                 "optional": true
               },
               {
@@ -130,7 +130,7 @@
               },
               {
                 "name": "type",
-                "type": 68,
+                "type": 74,
                 "optional": false
               }
             ],
@@ -166,12 +166,12 @@
               },
               {
                 "name": "mode",
-                "type": 43,
+                "type": 49,
                 "optional": false
               },
               {
                 "name": "reason",
-                "type": 52,
+                "type": 58,
                 "optional": false
               },
               {
@@ -181,7 +181,7 @@
               },
               {
                 "name": "verdict",
-                "type": 65,
+                "type": 71,
                 "optional": false
               }
             ],
@@ -450,17 +450,17 @@
               },
               {
                 "name": "mode",
-                "type": 43,
+                "type": 49,
                 "optional": false
               },
               {
                 "name": "status",
-                "type": 46,
+                "type": 52,
                 "optional": false
               },
               {
                 "name": "truncated",
-                "type": 51,
+                "type": 57,
                 "optional": true
               },
               {
@@ -485,7 +485,7 @@
               },
               {
                 "name": "leaves",
-                "type": 37,
+                "type": 38,
                 "optional": false
               },
               {
@@ -500,7 +500,8 @@
             "kind": "union",
             "types": [
               35,
-              36
+              36,
+              37
             ]
           },
           {
@@ -512,15 +513,62 @@
             "value": "command"
           },
           {
+            "kind": "literal",
+            "value": "edge"
+          },
+          {
             "kind": "array",
-            "element": 38
+            "element": 39
+          },
+          {
+            "kind": "union",
+            "types": [
+              40,
+              44
+            ]
           },
           {
             "kind": "object",
             "properties": [
               {
                 "name": "kind",
-                "type": 39,
+                "type": 41,
+                "optional": false
+              },
+              {
+                "name": "ref",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "target",
+                "type": 42,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "literal",
+            "value": "graph-edge"
+          },
+          {
+            "kind": "union",
+            "types": [
+              37,
+              43
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "page"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "kind",
+                "type": 45,
                 "optional": false
               },
               {
@@ -539,9 +587,9 @@
           {
             "kind": "union",
             "types": [
-              40,
-              41,
-              42
+              46,
+              47,
+              48
             ]
           },
           {
@@ -559,8 +607,8 @@
           {
             "kind": "union",
             "types": [
-              44,
-              45
+              50,
+              51
             ]
           },
           {
@@ -574,10 +622,10 @@
           {
             "kind": "union",
             "types": [
-              47,
-              48,
-              49,
-              50
+              53,
+              54,
+              55,
+              56
             ]
           },
           {
@@ -603,19 +651,23 @@
           {
             "kind": "union",
             "types": [
-              53,
-              54,
-              55,
-              56,
-              57,
-              58,
               59,
               60,
               61,
               62,
               63,
-              64
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70
             ]
+          },
+          {
+            "kind": "literal",
+            "value": "evaluator-impossible"
           },
           {
             "kind": "literal",
@@ -662,18 +714,14 @@
             "value": "evaluator-failed"
           },
           {
-            "kind": "literal",
-            "value": "evaluator-impossible"
-          },
-          {
             "kind": "union",
             "types": [
               27,
               28,
               29,
               30,
-              66,
-              67
+              72,
+              73
             ]
           },
           {

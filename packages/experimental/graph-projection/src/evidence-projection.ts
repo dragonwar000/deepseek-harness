@@ -29,7 +29,7 @@ export const evidenceStateSchema = z.object({
   answer: z.object({
     turn: count,
     seq: count,
-    claims: z.array(z.object({ kind: z.enum(['path', 'command']), text: z.string(), leaves: z.array(leafSchema) }).strict()),
+    claims: z.array(z.object({ kind: z.enum(['path', 'command', 'edge']), text: z.string(), leaves: z.array(leafSchema) }).strict()),
   }).strict().nullable(),
 }).strict() as z.ZodType<EvidenceState>
 
@@ -104,7 +104,7 @@ export function applyEvidenceEvent(state: EvidenceState, event: SessionEvent): E
 /** Host-only projection unit registered by the graph-projection plugin. */
 export const graphEvidenceProjection = {
   key: 'graphEvidence',
-  stateVersion: 1,
+  stateVersion: 2,
   stateSchema: evidenceStateSchema,
   init: emptyEvidence,
   apply: applyEvidenceEvent,

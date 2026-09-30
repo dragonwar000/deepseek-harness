@@ -11,17 +11,42 @@ import InvariantService, { InvariantError } from '@deepseek-ai/dsh-invariants'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
 import type { EvidenceState } from '@deepseek-ai/dsh-experimental-graph-projection'
+import { KnowledgeService, knowledgePageId } from '@deepseek-ai/dsh-experimental-knowledge'
+import type { KnowledgeEdge, KnowledgeEdgeId, KnowledgeIndex, KnowledgeScope } from '@deepseek-ai/dsh-experimental-knowledge'
 import * as VerifierGate from '../src/index.ts'
 import { evidenceViolation } from '../src/invariant.ts'
 import * as GateInvariant from '../src/invariant.ts'
 import type { Config } from '../src/index.ts'
-import type { LoopEvidence, LoopVerdict } from '../src/types.ts'
+import type { LoopEvidence, LoopEvidenceClaim, LoopEvidenceLeaf, LoopVerdict } from '../src/types.ts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
 const BASE = { mode: 'enforce', assumption: 'the model names files it never looked at' } satisfies Config
 
-async function run(config: Config, script: StreamChunk[][], options: { projection?: boolean } = {}): Promise<Agent> {
+/** A store with one page and one edge. */
+class OnePageKnowledge extends KnowledgeService {
+  get storeRoot(): string {
+    return 'knowledge'
+  }
+
+  index(): Promise<KnowledgeIndex> {
+    return Promise.resolve({ entries: [{ id: knowledgePageId('concepts/retry.md'), title: 'Retry', type: 'concept', stale: false }], quarantined: [] })
+  }
+
+  cite(_scope: KnowledgeScope, ref: string): Promise<KnowledgeEdge[]> {
+    const edge: KnowledgeEdge = { eid: ref as KnowledgeEdgeId, from: knowledgePageId('concepts/retry.md'), to: 'src/app.ts', toKind: 'code', relation: 'touches' }
+    return Promise.resolve(ref === 'e:11111111' ? [edge] : [])
+  }
+
+  query(): Promise<never[]> { return Promise.resolve([]) }
+  read(): Promise<undefined> { return Promise.resolve(undefined) }
+  neighbors(): Promise<undefined> { return Promise.resolve(undefined) }
+  write(): Promise<never> { return Promise.reject(new Error('read-only fake')) }
+  includes(): Promise<boolean> { return Promise.resolve(false) }
+}
+
+async function run(config: Config, script: StreamChunk[][], options: { projection?: boolean; knowledge?: boolean } = {}): Promise<Agent> {
   const ctx = new Context()
+  if (options.knowledge === true) await ctx.plugin(OnePageKnowledge)
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(InvariantService, { enabled: true })
   await ctx.plugin(GateInvariant)
@@ -119,6 +144,27 @@ describe('evidence step', () => {
     await expect(ctx.plugin(VerifierGate, { ...BASE, evidence: { mode: 'shadow' } })).rejects.toThrow(/evidence\.mode needs the sessionProjections service/)
   })
 
+  it('supports store pages and edges with a mounted knowledge store and ignores edge ids without one', async () => {
+    const answer = 'See `knowledge/concepts/retry.md`, `e:11111111`, `e:22222222`, and `src/app.ts`.'
+    const mounted = await run({ ...BASE, evidence: { mode: 'shadow' } }, [textResponse(answer)], { knowledge: true })
+    expect(verdicts(mounted)[0]?.evidence).toEqual({
+      mode: 'shadow',
+      status: 'unsupported',
+      claims: [
+        { kind: 'path', text: 'knowledge/concepts/retry.md', leaves: [{ kind: 'graph-edge', target: 'page', ref: 'concepts/retry.md' }] },
+        { kind: 'edge', text: 'e:11111111', leaves: [{ kind: 'graph-edge', target: 'edge', ref: 'e:11111111' }] },
+        { kind: 'edge', text: 'e:22222222', leaves: [] },
+        { kind: 'path', text: 'src/app.ts', leaves: [] },
+      ],
+      unsupported: ['e:22222222', 'src/app.ts'],
+    })
+    const absent = await run({ ...BASE, evidence: { mode: 'shadow' } }, [textResponse(answer)])
+    expect(verdicts(absent)[0]?.evidence).toMatchObject({
+      claims: [{ text: 'knowledge/concepts/retry.md', leaves: [] }, { text: 'src/app.ts', leaves: [] }],
+      unsupported: ['knowledge/concepts/retry.md', 'src/app.ts'],
+    })
+  })
+
   it('reports a fabricated evidence record through the invariant', async () => {
     const agent = await run({ ...BASE, evidence: { mode: 'enforce' } }, [textResponse('All done.')])
     expect(() => agent.session.append('loop/verdict', {
@@ -136,7 +182,7 @@ describe('evidenceViolation', () => {
   const verdict = (evidence: LoopEvidence, reason: LoopVerdict['reason'] = 'no-commands'): LoopVerdict => ({
     turn: 1, mode: 'enforce', verdict: 'skipped', reason, checks: [], continuation: 0, continued: false, evidence,
   })
-  const record = (claims: ReturnType<typeof claim>[], rest: Partial<LoopEvidence> = {}): LoopEvidence => ({
+  const record = (claims: LoopEvidenceClaim[], rest: Partial<LoopEvidence> = {}): LoopEvidence => ({
     mode: 'enforce', status: claims.length === 0 ? 'no-claims' : 'supported', claims, unsupported: claims.filter(entry => entry.leaves.length === 0).map(entry => entry.text), ...rest,
   })
   const bare = (): LoopVerdict => {
@@ -158,6 +204,20 @@ describe('evidenceViolation', () => {
     ['no-claims with claims', state([claim('src/a.ts', true)]), verdict(record([claim('src/a.ts', true)], { status: 'no-claims' })), 'status no-claims with 1 claims'],
     ['a steer without unsupported status', state([claim('src/a.ts', true)]), verdict(record([claim('src/a.ts', true)]), 'evidence-unsupported'), 'reason evidence-unsupported with status supported'],
   ])('%s', (_label, projected, recorded, expected) => {
-    expect(evidenceViolation(projected, recorded)).toBe(expected)
+    expect(evidenceViolation(projected, recorded, false)).toBe(expected)
+  })
+
+  const edge = (leaves: LoopEvidenceLeaf[] = []): LoopEvidenceClaim => ({ kind: 'edge', text: 'e:11111111', leaves })
+  const page: LoopEvidenceLeaf = { kind: 'graph-edge', target: 'page', ref: 'concepts/a.md' }
+  const withEdge = (): EvidenceState => ({ ...state([]), answer: { turn: 1, seq: 5, claims: [claim('concepts/a.md', false), { kind: 'edge', text: 'e:11111111', leaves: [] }] } })
+
+  it.each<[string, boolean, LoopEvidence, string | undefined]>([
+    ['knowledge leaves with a mounted store', true, record([{ ...claim('concepts/a.md', false), leaves: [page] }, edge([{ kind: 'graph-edge', target: 'edge', ref: 'e:11111111' }])]), undefined],
+    ['edge ids dropped without a store', false, record([claim('concepts/a.md', false)], { status: 'unsupported' }), undefined],
+    ['edge ids missing with a store', true, record([claim('concepts/a.md', false)], { status: 'unsupported' }), '1 recorded of 2 claims not marked truncated'],
+    ['a knowledge leaf without a store', false, record([{ ...claim('concepts/a.md', false), leaves: [page] }]), 'knowledge leaf on path concepts/a.md without a knowledge store'],
+    ['a knowledge leaf on a command', true, record([{ kind: 'command', text: 'pnpm test', leaves: [page] }]), 'knowledge leaf on command pnpm test'],
+  ])('%s', (_label, mounted, recorded, expected) => {
+    expect(evidenceViolation(withEdge(), verdict(recorded), mounted)).toBe(expected)
   })
 })

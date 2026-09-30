@@ -1,6 +1,7 @@
 /** Verifier-gate runtime invariant companion. */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { judgedClaims, knowledgeMounted } from '@deepseek-ai/dsh-experimental-graph-projection'
 import type { EvidenceState } from '@deepseek-ai/dsh-experimental-graph-projection/types'
 import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
@@ -16,18 +17,24 @@ export const name = 'verifier-gate-invariant'
 export const inject = ['invariants']
 
 /**
- * Whether a verdict's evidence contradicts the graphEvidence state it was judged from.
+ * Whether a verdict's evidence contradicts the graphEvidence state it was judged from. Knowledge leaves come from
+ * the store, not the session log, so only their placement is checked: they need a mounted store, and each sits on
+ * a path or edge claim.
  * @param state - graphEvidence state at the verdict, or undefined when the projection is not registered.
  * @param verdict - the `loop/verdict` payload.
+ * @param mounted - whether a knowledge store is mounted at the verdict.
  * @returns the violated relation, or undefined when the evidence matches or is absent.
  */
-export function evidenceViolation(state: EvidenceState | undefined, verdict: LoopVerdict): string | undefined {
+export function evidenceViolation(state: EvidenceState | undefined, verdict: LoopVerdict, mounted: boolean): string | undefined {
   const evidence = verdict.evidence
   if (evidence === undefined) return undefined
   if (evidence.status === 'unavailable') return state === undefined ? undefined : 'evidence recorded unavailable while graphEvidence is registered'
   if (state === undefined) return 'evidence recorded without a graphEvidence projection'
-  const answer = state.answer !== null && state.answer.turn === verdict.turn ? state.answer.claims : []
-  if (!deepEqualJson(evidence.claims, answer.slice(0, evidence.claims.length))) return 'recorded claims differ from the graphEvidence answer of the turn'
+  const answer = judgedClaims(state.answer !== null && state.answer.turn === verdict.turn ? state.answer.claims : [], mounted)
+  const misplaced = evidence.claims.find(claim => claim.leaves.some(leaf => leaf.kind === 'graph-edge') && (!mounted || claim.kind === 'command'))
+  if (misplaced !== undefined) return `knowledge leaf on ${misplaced.kind} ${misplaced.text}${mounted ? '' : ' without a knowledge store'}`
+  const recorded = evidence.claims.map(claim => ({ ...claim, leaves: claim.leaves.filter(leaf => leaf.kind !== 'graph-edge') }))
+  if (!deepEqualJson(recorded, answer.slice(0, evidence.claims.length))) return 'recorded claims differ from the graphEvidence answer of the turn'
   const truncated = evidence.truncated === true
   if (truncated !== answer.length > evidence.claims.length) {
     return `${evidence.claims.length} recorded of ${answer.length} claims ${truncated ? 'marked' : 'not marked'} truncated`
@@ -43,7 +50,8 @@ export function evidenceViolation(state: EvidenceState | undefined, verdict: Loo
  * A `loop/verdict` with `continued: true` is followed by a `verifier-gate`
  * steer before its turn ends `completed` or `max-tokens`; aborted, errored,
  * and blocked turns may discard pending steering. A verdict's evidence equals
- * the graphEvidence claims of its turn; without the `sessionProjections`
+ * the graphEvidence claims of its turn (edge ids only while a knowledge store
+ * is mounted) apart from knowledge leaves; without the `sessionProjections`
  * service only an `unavailable` evidence record is consistent.
  * @param ctx - child context owned by the invariant registration.
  * @param fail - reporter bound to this package name.
@@ -55,7 +63,7 @@ const install: InvariantInstaller = (ctx: Context, fail: InvariantFailure) => {
     const [session, event] = args as [Session, SessionEvent]
     if (event.type === 'loop/verdict') {
       // Without the sessionProjections service no graphEvidence state exists; the gate refuses to load an evidence check then.
-      const violation = evidenceViolation(ctx.get('sessionProjections')?.stateOf(session, 'graphEvidence'), event.data)
+      const violation = evidenceViolation(ctx.get('sessionProjections')?.stateOf(session, 'graphEvidence'), event.data, knowledgeMounted(ctx))
       if (violation !== undefined) fail(`loop/verdict turn ${event.data.turn}: ${violation}`)
       if (event.data.continued) pending.set(session, event.data.turn)
     } else if (event.type === 'user/message' && event.data.source.kind === 'verifier-gate') {

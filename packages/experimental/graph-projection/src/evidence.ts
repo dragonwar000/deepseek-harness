@@ -1,18 +1,19 @@
 /**
  * Heuristic evidence: the file paths and shell commands that tool calls and
  * tool results mention, and the claims an assistant message makes by naming
- * paths and commands. Pure, deterministic functions with no model call. A
- * claim is supported when a record of the same turn mentions it.
+ * paths, commands, and knowledge edge ids. Pure, deterministic functions with
+ * no model call. A path or command claim is supported when a record of the
+ * same turn mentions it.
  * @module @deepseek-ai/dsh-experimental-graph-projection/evidence
  */
 
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
-import type { EvidenceLeaf, EvidenceLeafKind, EvidenceMention } from './types.ts'
+import type { EvidenceClaimKind, EvidenceLeaf, EvidenceLeafKind, EvidenceMention } from './types.ts'
 
-/** A path or command an answer names or a caller cites. */
+/** A path, command, or knowledge edge id an answer names or a caller cites. */
 export interface ClaimText {
-  /** Path or command. */
-  readonly kind: 'path' | 'command'
+  /** Path, command, or edge id. */
+  readonly kind: EvidenceClaimKind
   /** Normalized text. */
   readonly text: string
 }
@@ -25,6 +26,7 @@ const WORD = /\w/u
 const ROOTED = /^(?:\/|~\/|\.\.\/)/u
 const INLINE_CODE = /`([^`\n]+)`/gu
 const FENCE = /```[\s\S]*?```/gu
+const EDGE_ID = /^e:[0-9a-f]{8}$/u
 const LEAF_ORDER: readonly EvidenceLeafKind[] = ['tool-record', 'observed', 'absence']
 
 /**
@@ -84,8 +86,19 @@ export function claimOf(text: string): ClaimText | undefined {
 }
 
 /**
- * The claims of an answer: inline code that reads as a path or command, then
- * prose paths; fenced code blocks are ignored.
+ * Read one cited text or token as a knowledge edge id.
+ * @param text - the claim text.
+ * @returns an edge claim for `e:` and eight lowercase hex digits after trailing punctuation is removed, otherwise undefined.
+ */
+export function edgeClaimOf(text: string): ClaimText | undefined {
+  const id = text.trim().replace(TRAILING, '')
+  return EDGE_ID.test(id) ? { kind: 'edge', text: id } : undefined
+}
+
+/**
+ * The claims of an answer: inline code that reads as a path, command, or
+ * knowledge edge id, then prose paths and prose edge ids; fenced code blocks
+ * are ignored.
  * @param answer - the assistant message text.
  * @returns distinct claims in answer order.
  */
@@ -93,11 +106,16 @@ export function claimsOf(answer: string): ClaimText[] {
   const prose = answer.replace(FENCE, ' ')
   const claims = new Map<string, ClaimText['kind']>()
   for (const match of prose.matchAll(INLINE_CODE)) {
-    const claim = claimOf(String(match[1]))
+    const claim = claimOf(String(match[1])) ?? edgeClaimOf(String(match[1]))
     if (claim !== undefined) claims.set(claim.text, claim.kind)
   }
-  for (const path of pathsIn(prose.replace(INLINE_CODE, ' '), false)) {
+  const outside = prose.replace(INLINE_CODE, ' ')
+  for (const path of pathsIn(outside, false)) {
     if (!claims.has(path)) claims.set(path, 'path')
+  }
+  for (const token of outside.split(TOKEN_SPLIT)) {
+    const edge = edgeClaimOf(token)
+    if (edge !== undefined && !claims.has(edge.text)) claims.set(edge.text, 'edge')
   }
   return [...claims].map(([text, kind]) => ({ kind, text }))
 }
@@ -163,9 +181,11 @@ export function pathMatches(claim: string, mention: string): boolean {
  * @param claim - the claim.
  * @param paths - mentioned paths of the turn.
  * @param commands - mentioned commands of the turn.
- * @returns the latest leaf per kind among matching mentions, in kind order; empty for a parametric claim.
+ * @returns the latest leaf per kind among matching mentions, in kind order; empty for a parametric claim and for
+ *   an edge id, which no record leaf supports.
  */
 export function leavesFor(claim: ClaimText, paths: readonly EvidenceMention[], commands: readonly EvidenceMention[]): EvidenceLeaf[] {
+  if (claim.kind === 'edge') return []
   const matching = claim.kind === 'path'
     ? paths.filter(mention => pathMatches(claim.text, mention.text))
     : commands.filter(mention => mention.text.includes(claim.text))

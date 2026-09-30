@@ -139,6 +139,36 @@ export interface EvidenceLeaf {
   tool: string
 }
 
+/**
+ * One knowledge store entry that a claim names: a page (`target: 'page'`) or an
+ * edge (`target: 'edge'`). Found by asking the mounted `knowledge` service when
+ * a claim is judged; it is never part of the `graphEvidence` fold.
+ */
+export interface KnowledgeLeaf {
+  /** Always `graph-edge`. */
+  kind: 'graph-edge'
+  /** Whether the claim names a store page or a store edge. */
+  target: 'page' | 'edge'
+  /** The page id or the `e:` edge id the store resolved. */
+  ref: string
+}
+
+/** A record leaf of the turn, or a knowledge store leaf. */
+export type CitedLeaf = EvidenceLeaf | KnowledgeLeaf
+
+/** What a claim names: a file path, a shell command, or a knowledge edge id (`e:` and eight hex digits). */
+export type EvidenceClaimKind = 'path' | 'command' | 'edge'
+
+/** One claim with its record leaves and, when the knowledge service is mounted, its knowledge leaf. */
+export interface CitedClaim {
+  /** Path, command, or edge id. */
+  kind: EvidenceClaimKind
+  /** Normalized text. */
+  text: string
+  /** Record leaves in kind order, then at most one `graph-edge` leaf. */
+  leaves: CitedLeaf[]
+}
+
 /** One path or command the current turn's records mention, with the latest leaf of each kind. */
 export interface EvidenceMention {
   /** Normalized path or command. */
@@ -147,10 +177,10 @@ export interface EvidenceMention {
   leaves: EvidenceLeaf[]
 }
 
-/** One path or command an assistant message names; no leaf means parametric. */
+/** One path, command, or knowledge edge id an assistant message names; no leaf means parametric. */
 export interface EvidenceClaim {
-  /** Path or command. */
-  kind: 'path' | 'command'
+  /** Path, command, or edge id; edge ids never have record leaves. */
+  kind: EvidenceClaimKind
   /** Normalized text. */
   text: string
   /** Records of the turn that mention it, latest per kind. */

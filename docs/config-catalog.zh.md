@@ -1100,7 +1100,7 @@ export interface GraphRouteConfig {
 ## `@deepseek-ai/dsh-experimental-graph-projection`
 
 - `inject`: `tools` · `sessionProjections`
-- `source`: [`packages/experimental/graph-projection/src/index.ts:51`](../packages/experimental/graph-projection/src/index.ts)
+- `source`: [`packages/experimental/graph-projection/src/index.ts:66`](../packages/experimental/graph-projection/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config. The package constrains nothing, so it has no mode or assumption. */
@@ -1616,7 +1616,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-verifier-gate`
 
-- `source`: [`packages/experimental/verifier-gate/src/index.ts:168`](../packages/experimental/verifier-gate/src/index.ts)
+- `source`: [`packages/experimental/verifier-gate/src/index.ts:171`](../packages/experimental/verifier-gate/src/index.ts)
 
 ```ts config-catalog
 /**

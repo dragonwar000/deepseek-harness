@@ -4,7 +4,9 @@
  * carried results, and cycle-edge decisions), the `graphEvidence` projection
  * (paths and commands the current turn's tool records mention, and the claims
  * of its latest assistant message), and the read-only `graph_query` and
- * `graph_cite` tools. It writes nothing to the session log.
+ * `graph_cite` tools. With a mounted `knowledge` store, `graph_cite` also
+ * reports the store page or edge a claim names. It writes nothing to the
+ * session log.
  * @module @deepseek-ai/dsh-experimental-graph-projection
  */
 
@@ -16,17 +18,30 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-session-query'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { InferValue } from '@deepseek-ai/dsh-tools'
-import { claimOf, leavesFor } from './evidence.ts'
+import { claimOf, edgeClaimOf, leavesFor } from './evidence.ts'
 import { CITE_TOOL, graphEvidenceProjection } from './evidence-projection.ts'
 import { graphHistoryProjection, readSpan } from './history.ts'
+import { citeKnowledge, knowledgeMounted } from './knowledge.ts'
 import { graphProjection, taskOf } from './projection.ts'
-import type { EvidenceState, GraphState, GraphTaskNode, HistorySpan, HistoryState } from './types.ts'
+import type { CitedLeaf, EvidenceState, GraphState, GraphTaskNode, HistorySpan, HistoryState } from './types.ts'
 
 export { applyGraphEvent, emptyGraph, graphProjection, graphStateSchema, taskOf } from './projection.ts'
-export { argumentStrings, claimOf, claimsOf, commandOf, leavesFor, pathMatches, pathOf, pathsIn, withMentions } from './evidence.ts'
+export { argumentStrings, claimOf, claimsOf, commandOf, edgeClaimOf, leavesFor, pathMatches, pathOf, pathsIn, withMentions } from './evidence.ts'
 export type { ClaimText } from './evidence.ts'
 export { applyEvidenceEvent, CITE_TOOL, emptyEvidence, evidenceStateSchema, graphEvidenceProjection } from './evidence-projection.ts'
-export type { EvidenceAnswer, EvidenceClaim, EvidenceLeaf, EvidenceLeafKind, EvidenceMention, EvidenceState } from './types.ts'
+export { citeKnowledge, judgedClaims, knowledgeMounted } from './knowledge.ts'
+export type {
+  CitedClaim,
+  CitedLeaf,
+  EvidenceAnswer,
+  EvidenceClaim,
+  EvidenceClaimKind,
+  EvidenceLeaf,
+  EvidenceLeafKind,
+  EvidenceMention,
+  EvidenceState,
+  KnowledgeLeaf,
+} from './types.ts'
 export { applyHistoryEvent, emptyHistory, graphHistoryProjection, historyStateSchema, readSpan, transcriptLine } from './history.ts'
 export type { HistoryReader } from './history.ts'
 export type { HistorySpan, HistoryState } from './types.ts'
@@ -139,7 +154,7 @@ const CITE_VALUE_SCHEMA = {
   additionalProperties: false,
   properties: {
     claim: { type: 'string', required: true },
-    kind: { type: 'string', required: true, enum: ['path', 'command', 'unrecognized'] },
+    kind: { type: 'string', required: true, enum: ['path', 'command', 'edge', 'unrecognized'] },
     turn: { type: 'integer', required: true },
     leaves: {
       type: 'array',
@@ -147,7 +162,13 @@ const CITE_VALUE_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        properties: { kind: { type: 'string', required: true }, seq: { type: 'integer', required: true }, tool: { type: 'string', required: true } },
+        properties: {
+          kind: { type: 'string', required: true },
+          seq: { type: 'integer' },
+          tool: { type: 'string' },
+          target: { type: 'string' },
+          ref: { type: 'string' },
+        },
       },
     },
   },
@@ -157,16 +178,30 @@ const CITE_VALUE_SCHEMA = {
 export type GraphCiteValue = InferValue<typeof CITE_VALUE_SCHEMA>
 
 /**
+ * One leaf as a `graph_cite` value item.
+ * @param leaf - record or knowledge leaf.
+ * @returns the value item.
+ */
+function citeLeaf(leaf: CitedLeaf): GraphCiteValue['leaves'][number] {
+  return leaf.kind === 'graph-edge' ? { kind: leaf.kind, target: leaf.target, ref: leaf.ref } : { kind: leaf.kind, seq: leaf.seq, tool: leaf.tool }
+}
+
+/**
  * Render one citation for the model.
  * @param value - citation value.
  * @returns the model-facing text.
  */
 export function renderCite(value: GraphCiteValue): string {
   if (value.kind === 'unrecognized') return `graph_cite: ${JSON.stringify(value.claim)} is neither a file path nor a shell command; cite one path or one command.`
-  if (value.leaves.length === 0) return `graph_cite: ${value.kind} ${value.claim} is parametric: no tool call or tool result in turn ${value.turn} mentions it.`
+  if (value.leaves.length === 0) {
+    if (value.kind === 'edge') return `graph_cite: edge ${value.claim} is parametric: the knowledge store has no edge with this id.`
+    return `graph_cite: ${value.kind} ${value.claim} is parametric: no tool call or tool result in turn ${value.turn} mentions it.`
+  }
   return [
     `graph_cite: ${value.kind} ${value.claim} is supported in turn ${value.turn} by:`,
-    ...value.leaves.map(leaf => `- ${leaf.kind}: ${leaf.tool} (#${leaf.seq})`),
+    ...value.leaves.map(leaf => (leaf.kind === 'graph-edge'
+      ? `- graph-edge: knowledge ${String(leaf.target)} ${String(leaf.ref)}`
+      : `- ${leaf.kind}: ${String(leaf.tool)} (#${String(leaf.seq)})`)),
   ].join('\n')
 }
 
@@ -359,14 +394,15 @@ export function apply(ctx: Context, config: Config): void {
     },
     isConcurrencySafe: () => true,
     presentCall: args => ({ card: 'generic', title: `Cite ${args.claim}`, kind: 'read' }),
-    execute(args, exec): Promise<GraphCiteValue> {
+    async execute(args, exec): Promise<GraphCiteValue> {
       const agent = exec.agent
       if (agent === undefined) throw new Error('graph_cite requires an owning agent session')
       const state = evidenceOf(agent.session)
-      const claim = claimOf(args.claim)
-      if (claim === undefined) return Promise.resolve({ claim: args.claim, kind: 'unrecognized', turn: state.turn, leaves: [] })
-      const leaves = leavesFor(claim, state.paths, state.commands)
-      return Promise.resolve({ claim: claim.text, kind: claim.kind, turn: state.turn, leaves })
+      const claim = claimOf(args.claim) ?? (knowledgeMounted(ctx) ? edgeClaimOf(args.claim) : undefined)
+      if (claim === undefined) return { claim: args.claim, kind: 'unrecognized', turn: state.turn, leaves: [] }
+      const scope = { cwd: agent.session.header.cwd, signal: exec.signal }
+      const cited = await citeKnowledge(ctx, scope, [{ ...claim, leaves: leavesFor(claim, state.paths, state.commands) }])
+      return { claim: claim.text, kind: claim.kind, turn: state.turn, leaves: cited.flatMap(entry => entry.leaves).map(citeLeaf) }
     },
   }))
   function historyOf(session: Session): HistoryState {

@@ -25,7 +25,7 @@ This package registers three session projections and three read-only tools. `gra
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount the plugin after `@deepseek-ai/dsh-experimental-graph-contract`, which writes the `graph/plan` events this package reads. The plugin constrains nothing and only reads the log, so it has no `mode` or `assumption`; its only configuration is the `history_read` limits. `history_read` reads through `ctx.sessionQuery`, which `@deepseek-ai/dsh-session-query-sqlite` provides. The `@deepseek-ai/dsh-experimental-loop-graph-profile` bundle mounts it.
+Mount the plugin after `@deepseek-ai/dsh-experimental-graph-contract`, which writes the `graph/plan` events this package reads. The plugin constrains nothing and only reads the log, so it has no `mode` or `assumption`; its only configuration is the `history_read` limits. `history_read` reads through `ctx.sessionQuery`, which `@deepseek-ai/dsh-session-query-sqlite` provides. The `@deepseek-ai/dsh-experimental-loop-graph-profile` bundle mounts it. `@deepseek-ai/dsh-experimental-knowledge` is an optional peer dependency: the package reads the store through `ctx.get('knowledge')` and never injects it, so mounting the knowledge bundle beside the loop bundle adds knowledge leaves and leaving it out changes nothing.
 
 ### When to choose it
 
@@ -49,7 +49,7 @@ Loading fails with a `graph-projection:` error when a `history` field is not an 
 
 The `graph` projection keeps, for every plan id with an admitted version, the task graph of the latest admitted version. A refused or unparsed version leaves the task graph unchanged. `graph_query` with scope `plans` lists each admitted plan with its version, node count, ready count, and executed count; scope `plan` with `plan_id` returns that plan's nodes, waves, runs, and loop edges with their fire counts; scope `node` with `plan_id` and `node_id` returns one node with its output, child session, and recorded reason.
 
-The `graphEvidence` projection resets at every `turn/start`. A claim is a file path or a shell command the latest assistant message names: inline code with whitespace is a command, inline code that reads as a path is a path, and a prose token is a path only when it is rooted (`/`, `~/`, `../`) or contains `/` and ends in a file name; fenced code is ignored. Each claim carries leaves from the same turn: `tool-record` (a tool call argument names it), `observed` (a successful tool result names it), or `absence` (a failed tool result names it); a claim without a leaf is parametric. Replacement tool results and the `graph_cite` tool's own calls are not leaves. `graph_cite` classifies one claim and returns its leaves.
+The `graphEvidence` projection resets at every `turn/start`. A claim is a file path or a shell command the latest assistant message names: inline code with whitespace is a command, inline code that reads as a path is a path, and a prose token is a path only when it is rooted (`/`, `~/`, `../`) or contains `/` and ends in a file name; fenced code is ignored. Each claim carries leaves from the same turn: `tool-record` (a tool call argument names it), `observed` (a successful tool result names it), or `absence` (a failed tool result names it); a claim without a leaf is parametric. Replacement tool results and the `graph_cite` tool's own calls are not leaves. An edge id (`e:` and eight lowercase hex digits) in inline code or prose is also a claim, but it has no record leaves and is judged only while a knowledge store is mounted. `graph_cite` classifies one claim and returns its leaves. While a knowledge store is mounted, `graph_cite` and the verifier gate's evidence check also give a claim a `graph-edge` leaf when the store resolves it: a `.md` path claim that equals a readable page id or the store root joined with one, or an edge id for which the store returns exactly one edge. Without a store, edge ids are not claims and no claim gets a `graph-edge` leaf.
 
 The `graphHistory` projection records every `compaction/summary` and `compaction/prune` span with its shadowed seqs. `history_read` without `seq` lists spans newest first; with `seq` it reads the span's original events through `ctx.sessionQuery.readEvent` in bounded windows and returns one transcript page as a new tool result.
 
@@ -70,7 +70,8 @@ The `graphHistory` projection records every `compaction/summary` and `compaction
 - **One task graph per plan id.** A later admitted version replaces the earlier task graph and moves it to the end of the list; its runs start empty.
 - **Shadow admissions are tolerated.** A plan admitted in `shadow` mode can carry a need on an undeclared node or a cycle; such nodes join no wave.
 - **Loop iterations are recorded.** A `graph/node` record with a higher `iteration` reopens the node; readiness is derived again from needs.
-- **Evidence is heuristic.** `graphEvidence` is a pure fold of `turn/start`, `tool/call`, `tool/result`, and `assistant/message`; it calls no model. `assistant/message` cannot cite source events, file-system observations are Cordis events rather than session events, and no service links claims to code, so leaves come only from the turn's tool records and no `graph/claim` event exists: claims and leaves are rebuilt from the log.
+- **Evidence is heuristic.** `graphEvidence` is a pure fold of `turn/start`, `tool/call`, `tool/result`, and `assistant/message`; it calls no model. `assistant/message` cannot cite source events, file-system observations are Cordis events rather than session events, and no service links claims to code, so record leaves come only from the turn's tool records and no `graph/claim` event exists: claims and record leaves are rebuilt from the log.
+- **Knowledge leaves are read at judgment time.** The store lives outside the session log, so `graph-edge` leaves are never part of `graphEvidence`; `citeKnowledge` adds them when `graph_cite` runs or the verifier gate judges, and each reaches the log only inside the `graph_cite` tool result or the `loop/verdict` evidence that used it.
 - **Folds read no config.** Projection caches are keyed by `stateVersion` only, so every configurable limit applies when a tool or gate reads the state.
 - **History is read, not restored.** `history_read` never rewrites the surface; it reads old events asynchronously through the session query service and returns them at the tail.
 - **Mismatched records fail terminally.** A node or run record for a version that is not the current task, a node the plan does not declare, or a stop without a start sets `failure`.
@@ -85,6 +86,7 @@ The `graphHistory` projection records every `compaction/summary` and `compaction
 | [`src/projection.ts`](src/projection.ts) | The `graph` projection fold |
 | [`src/evidence.ts`](src/evidence.ts) | Pure claim, path, command, and leaf functions |
 | [`src/evidence-projection.ts`](src/evidence-projection.ts) | The `graphEvidence` projection fold |
+| [`src/knowledge.ts`](src/knowledge.ts) | `graph-edge` leaves from the optional knowledge store |
 | [`src/history.ts`](src/history.ts) | The `graphHistory` projection and the paged transcript reader |
 
 </details>
@@ -129,7 +131,7 @@ The tool definition joins the stable tool prefix once, when the plugin loads; re
 
 #### What the model sees
 
-When the plugin is mounted, the model is offered a read-only tool named `graph_cite` with one required `claim` string and the description below. The result is one of three texts: `graph_cite: <path|command> <claim> is supported in turn <n> by:` followed by one `- <tool-record|observed|absence>: <tool> (#<seq>)` line per leaf; `graph_cite: <path|command> <claim> is parametric: no tool call or tool result in turn <n> mentions it.`; or `graph_cite: "<claim>" is neither a file path nor a shell command; cite one path or one command.`
+When the plugin is mounted, the model is offered a read-only tool named `graph_cite` with one required `claim` string and the description below. The result is one of four texts: `graph_cite: <path|command|edge> <claim> is supported in turn <n> by:` followed by one `- <tool-record|observed|absence>: <tool> (#<seq>)` line per record leaf and, with a mounted knowledge store, one `- graph-edge: knowledge <page|edge> <ref>` line; `graph_cite: <path|command> <claim> is parametric: no tool call or tool result in turn <n> mentions it.`; `graph_cite: edge <claim> is parametric: the knowledge store has no edge with this id.`; or `graph_cite: "<claim>" is neither a file path nor a shell command; cite one path or one command.` An edge id is `unrecognized` without a knowledge store.
 
 ##### Verbatim text for this field
 

@@ -122,7 +122,7 @@ export interface EvaluationRecord {
 }
 
 /** One record of the turn that mentions a claimed path or command. */
-export interface LoopEvidenceLeaf {
+export interface LoopRecordLeaf {
   /** `tool-record`: a tool call argument; `observed`: a successful tool result; `absence`: a failed tool result. */
   kind: 'tool-record' | 'observed' | 'absence'
   /** Seq of the record's event. */
@@ -131,13 +131,26 @@ export interface LoopEvidenceLeaf {
   tool: string
 }
 
-/** One path or command the final answer names; no leaf means parametric. */
+/** The page or edge of the mounted knowledge store that a claim names, as the store resolved it at the decision. */
+export interface LoopKnowledgeLeaf {
+  /** Always `graph-edge`. */
+  kind: 'graph-edge'
+  /** Whether the claim names a store page or a store edge. */
+  target: 'page' | 'edge'
+  /** Page id or `e:` edge id. */
+  ref: string
+}
+
+/** A record leaf of the turn, or a knowledge store leaf. */
+export type LoopEvidenceLeaf = LoopRecordLeaf | LoopKnowledgeLeaf
+
+/** One path, command, or knowledge edge id the final answer names; no leaf means parametric. */
 export interface LoopEvidenceClaim {
-  /** Path or command. */
-  kind: 'path' | 'command'
+  /** Path, command, or edge id; edge ids are claims only while a knowledge store is mounted. */
+  kind: 'path' | 'command' | 'edge'
   /** Normalized text. */
   text: string
-  /** Records of the turn that mention it. */
+  /** Records of the turn that mention it, then at most one knowledge leaf. */
   leaves: LoopEvidenceLeaf[]
 }
 

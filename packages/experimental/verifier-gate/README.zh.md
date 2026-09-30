@@ -80,7 +80,7 @@ kind: "package-reference"
 
 当 `evaluator.count` 大于 1 时，门控依次启动这么多个评估者，每个评估者以自己的种子顺序看到标准与 verify 结果，顺序记录为 `runs[].order`。只有所有评估者都报告 `ok` 时本轮才通过；`impossible` 或 `unverifiable` 也只有在所有评估者都如此报告时才成立；否则本轮为 `not-ok`，并带上任一评估者认为未满足的所有标准，或者在评估者意见不一却没有指出任何未满足标准时记为 `grader-error`。`evaluation.disagreement` 记录判定是否不同以及哪些标准出现分歧。第一次没有可用报告的运行会以 `grader-error` 结束本轮。
 
-当 `evidence.mode` 不是 `off` 时，verify 命令已通过（或未配置命令）的边界还会在任何评估者运行之前检查最终回答。声明是回答提到的文件路径或 shell 命令，其定义来自 `@deepseek-ai/dsh-experimental-graph-projection` 的 `graphEvidence` 投影；当同一 turn 的某个工具调用或工具结果提到它时，该声明有支持。该边界的每个判定都带有 `evidence`（`mode`、`status` 为 `supported`、`unsupported`、`no-claims` 或 `unavailable`、记录的 `claims` 及其叶子、`unsupported` 声明文本，以及回答的声明多于 `maxClaims` 时的 `truncated`）。在 `enforce` 模式下，`unsupported` 的回答会以原因 `evidence-unsupported` 被引导，与 `maxContinuations` 共用预算；预算用尽时门控记录 `budget-exhausted` 并阻塞 active goal。没有该投影时，判定为 `not-ok`、原因 `evidence-unavailable`，不引导，并以代码 `verifier-evidence-unavailable` 阻塞 active goal。`shadow` 只记录。
+当 `evidence.mode` 不是 `off` 时，verify 命令已通过（或未配置命令）的边界还会在任何评估者运行之前检查最终回答。声明是回答提到的文件路径或 shell 命令，其定义来自 `@deepseek-ai/dsh-experimental-graph-projection` 的 `graphEvidence` 投影；当同一 turn 的某个工具调用或工具结果提到它时，该声明有支持。挂载知识库（`ctx.knowledge`）时，回答提到的边 id 也是声明，指向知识库页面或边的声明还会得到记录所解析页面或边的 `graph-edge` 叶子；没有知识库时检查不变。该边界的每个判定都带有 `evidence`（`mode`、`status` 为 `supported`、`unsupported`、`no-claims` 或 `unavailable`、记录的 `claims` 及其叶子、`unsupported` 声明文本，以及回答的声明多于 `maxClaims` 时的 `truncated`）。在 `enforce` 模式下，`unsupported` 的回答会以原因 `evidence-unsupported` 被引导，与 `maxContinuations` 共用预算；预算用尽时门控记录 `budget-exhausted` 并阻塞 active goal。没有该投影时，判定为 `not-ok`、原因 `evidence-unavailable`，不引导，并以代码 `verifier-evidence-unavailable` 阻塞 active goal。`shadow` 只记录。
 
 -----
 

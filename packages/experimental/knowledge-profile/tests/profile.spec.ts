@@ -1,10 +1,12 @@
 /**
  * The knowledge bundle carries one parseable layer of five rows with valid
  * configs, starts the tools read-only and distillation in shadow mode, and
- * stays independent of the loop guards bundle in both directions.
+ * stays independent of the loop guards bundle in both directions: neither
+ * side depends on or injects the other, and graph-projection reads the
+ * knowledge store only as an optional peer through `ctx.get`.
  */
 
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -26,6 +28,7 @@ interface PatchRow {
 interface Manifest {
   dependencies?: Record<string, string>
   peerDependencies?: Record<string, string>
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>
   dsh?: { bundle?: { patch?: string } }
 }
 
@@ -39,7 +42,18 @@ const SCHEMAS: Record<string, (config: Record<string, unknown> | undefined) => u
 
 const experimental = fileURLToPath(new URL('../..', import.meta.url))
 const manifestOf = (dir: string): Manifest => JSON.parse(readFileSync(resolve(experimental, dir, 'package.json'), 'utf8')) as Manifest
-const runtimeNames = (manifest: Manifest): string[] => Object.keys({ ...manifest.dependencies, ...manifest.peerDependencies })
+/** Runtime dependencies and required peers; an optional peer may be absent at runtime. */
+const runtimeNames = (manifest: Manifest): string[] => [
+  ...Object.keys(manifest.dependencies ?? {}),
+  ...Object.keys(manifest.peerDependencies ?? {}).filter(name => manifest.peerDependenciesMeta?.[name]?.optional !== true),
+]
+/** Source lines of one package that inject a service or read it as a declared injection. */
+const injectionLines = (dir: string, service: string): string[] => {
+  const src = resolve(experimental, dir, 'src')
+  return readdirSync(src).filter(file => file.endsWith('.ts')).flatMap(file => readFileSync(resolve(src, file), 'utf8').split('\n')
+    .filter(line => (/\binject\b/.test(line) && line.includes(`'${service}'`)) || line.includes(`ctx.${service}.`))
+    .map(line => `${dir}/src/${file}: ${line.trim()}`))
+}
 
 describe('knowledge bundle', () => {
   const manifest = manifestOf('knowledge-profile')
@@ -68,7 +82,7 @@ describe('knowledge bundle', () => {
     expect(inserted.find(row => row.id === 'knowledge-wiki-filesystem')?.config?.['contentDirs']).toContain('episodes')
   })
 
-  it('stays independent of the loop guards bundle in both directions', () => {
+  it('stays independent of the loop guards bundle in both directions, apart from optional peers read with ctx.get', () => {
     const loop = /dsh-experimental-(verifier-gate|stationarity-guard|denial-budget|loop-budget|infra-snapshot|graph-|loop-graph-profile)/
     const knowledge = /dsh-experimental-(knowledge|tool-knowledge|context-knowledge|memory-distill)/
     for (const dir of ['knowledge', 'knowledge-wiki-filesystem', 'knowledge-rules', 'tool-knowledge', 'context-knowledge', 'memory-distill', 'knowledge-profile']) {
@@ -76,7 +90,14 @@ describe('knowledge bundle', () => {
     }
     for (const dir of ['loop-graph-profile', 'verifier-gate', 'stationarity-guard', 'denial-budget', 'loop-budget', 'infra-snapshot', 'graph-contract', 'graph-projection', 'graph-runner']) {
       expect(runtimeNames(manifestOf(dir)).filter(name => knowledge.test(name))).toEqual([])
+      expect(injectionLines(dir, 'knowledge')).toEqual([])
     }
+    const graph = manifestOf('graph-projection')
+    expect(graph.peerDependenciesMeta?.['@deepseek-ai/dsh-experimental-knowledge']).toEqual({ optional: true })
+  })
+
+  it('finds a declared knowledge injection in source', () => {
+    expect(injectionLines('tool-knowledge', 'knowledge').length).toBeGreaterThan(0)
   })
 
   it('names the bundle for the Plugins page in English and Chinese', () => {

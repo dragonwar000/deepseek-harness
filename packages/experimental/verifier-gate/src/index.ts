@@ -12,10 +12,11 @@
  * with the unmet and the already-met criteria;
  * `impossible`, `unverifiable`, a run without a usable report, and an
  * exhausted budget block the session's active goal. When `evidence.mode` is
- * not `off`, the claims of the final answer (paths and commands it names) are
- * checked against the turn's tool records from the `graphEvidence`
- * projection after the commands pass and recorded on the verdict; in
- * `enforce` an unsupported answer is steered. `shadow` mode only
+ * not `off`, the claims of the final answer (paths and commands it names, and
+ * knowledge edge ids while a knowledge store is mounted) are checked against
+ * the turn's tool records from the `graphEvidence` projection and against the
+ * mounted knowledge store after the commands pass, and recorded on the
+ * verdict; in `enforce` an unsupported answer is steered. `shadow` mode only
  * records what it would have done. A failed step never reaches this gate
  * (agent-loop runs `agent/turn-stopping` only after a completed step), so the
  * gate needs no failed-step guard.
@@ -31,7 +32,7 @@ import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { ShellExecRequest, ShellExecSpec, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import type {} from '@deepseek-ai/dsh-goal'
 import type {} from '@deepseek-ai/dsh-session-projection'
-import type {} from '@deepseek-ai/dsh-experimental-graph-projection/types'
+import { citeKnowledge, judgedClaims, knowledgeMounted } from '@deepseek-ai/dsh-experimental-graph-projection'
 import type { SubagentProvider } from '@deepseek-ai/dsh-subagent'
 import { STRUCTURED_OUTPUT_TOOL } from '@deepseek-ai/dsh-subagent-in-process-driver'
 import {
@@ -68,6 +69,8 @@ export type {
   LoopEvidence,
   LoopEvidenceClaim,
   LoopEvidenceLeaf,
+  LoopKnowledgeLeaf,
+  LoopRecordLeaf,
   LoopVerdict,
   LoopVerdictKind,
   LoopVerdictReason,
@@ -421,15 +424,15 @@ export function apply(ctx: Context, config: Config): void {
     goals.block(agent, { id: goal.id, revision: goal.revision }, { code, message })
   }
 
-  function judgeEvidence(session: Session, turn: number): LoopEvidence {
+  async function judgeEvidence(session: Session, turn: number, signal: AbortSignal): Promise<LoopEvidence> {
     const checkMode = evidence.mode as 'shadow' | 'enforce'
     const projections = ctx.get('sessionProjections')
     /* v8 ignore next -- the load check requires sessionProjections whenever the evidence check runs. */
     const state = projections === undefined ? undefined : projections.stateOf(session, 'graphEvidence')
     if (state === undefined) return { mode: checkMode, status: 'unavailable', claims: [], unsupported: [] }
     /* v8 ignore next -- agent-loop appends the turn's assistant/message after turn/start and before agent/turn-stopping. */
-    const all = state.answer !== null && state.answer.turn === turn ? state.answer.claims : []
-    const claims = all.slice(0, evidence.maxClaims)
+    const all = judgedClaims(state.answer !== null && state.answer.turn === turn ? state.answer.claims : [], knowledgeMounted(ctx))
+    const claims = await citeKnowledge(ctx, { cwd: session.header.cwd, signal }, all.slice(0, evidence.maxClaims))
     const unsupported = claims.filter(claim => claim.leaves.length === 0).map(claim => claim.text)
     const failing = evidence.require === 'every' ? unsupported.length > 0 : unsupported.length === claims.length
     let status: LoopEvidence['status'] = failing ? 'unsupported' : 'supported'
@@ -704,7 +707,7 @@ export function apply(ctx: Context, config: Config): void {
       return
     }
     if (evidence.mode !== 'off') {
-      found = judgeEvidence(agent.session, turn)
+      found = await judgeEvidence(agent.session, turn, signal)
       if (evidence.mode === 'enforce' && enforceEvidence(agent, budget, checks, found, record)) return
     }
     if (evaluator.enabled) {

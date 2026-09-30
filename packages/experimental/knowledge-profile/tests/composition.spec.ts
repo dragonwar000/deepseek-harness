@@ -1,7 +1,8 @@
 /**
  * The shipped knowledge bundle patch, booted through the Loader over a minimal
  * agent composition, offers the three read tools, adds the store index to the
- * first request, and refuses a file tool write into the store.
+ * first request, and refuses a file tool write into the store. Beside the
+ * graph projection it also supports a cited store page with a graph-edge leaf.
  */
 
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -19,6 +20,7 @@ import AgentRegistry from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import * as ContextKnowledge from '@deepseek-ai/dsh-experimental-context-knowledge'
 import * as ContextKnowledgeInvariant from '@deepseek-ai/dsh-experimental-context-knowledge/invariant'
+import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
 import * as KnowledgeInvariant from '@deepseek-ai/dsh-experimental-knowledge/invariant'
 import * as KnowledgeRules from '@deepseek-ai/dsh-experimental-knowledge-rules'
 import { STORE_WRITE_REASON } from '@deepseek-ai/dsh-experimental-knowledge-rules'
@@ -93,14 +95,15 @@ function fixtureModules(modules: ReadonlyMap<string, unknown>): ModuleLoaderV2 {
  * Boot the base rows through the Loader with the shipped bundle patch applied.
  * @returns the context and the session working directory.
  */
-async function boot(): Promise<{ ctx: Context; workspace: string }> {
+async function boot(extraRows: ReadonlyMap<string, unknown> = new Map()): Promise<{ ctx: Context; workspace: string }> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-knowledge-profile-'))
   roots.push(root)
   const workspace = join(root, 'workspace')
   mkdirSync(dirname(join(workspace, 'knowledge/concepts/retry.md')), { recursive: true })
   writeFileSync(join(workspace, 'knowledge/concepts/retry.md'), PAGE)
   const configPath = join(root, 'cordis.yml')
-  writeFileSync(configPath, JSON.stringify([...BASE_ROWS.keys()].map(name => ({
+  const baseRows = new Map([...BASE_ROWS, ...extraRows])
+  writeFileSync(configPath, JSON.stringify([...baseRows.keys()].map(name => ({
     name,
     config: name === '@deepseek-ai/dsh-invariants'
       ? { enabled: true }
@@ -114,7 +117,7 @@ async function boot(): Promise<{ ctx: Context; workspace: string }> {
   ctx.baseUrl = pathToFileURL(root).href + '/'
   await ctx.plugin(Loader)
   ctx.loader.builtins.include = Include
-  ctx.loader.internal = fixtureModules(new Map([...BASE_ROWS, ...BUNDLE_ROWS]))
+  ctx.loader.internal = fixtureModules(new Map([...baseRows, ...BUNDLE_ROWS]))
   await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(configPath).href, patches } })
   await ctx.loader.await()
   for (const entry of ctx.loader.entries()) await entry.fiber?.await()
@@ -154,5 +157,19 @@ describe('knowledge bundle Loader composition', () => {
     expect(results[1]?.isError).not.toBe(true)
     expect(JSON.stringify(results[1]?.content)).toContain('concepts/retry.md')
     expect(events.filter(event => event.type === 'knowledge/write')).toEqual([])
+  })
+
+  it('supports a cited store page with a graph-edge leaf when the graph projection is mounted', async () => {
+    const { ctx, workspace } = await boot(new Map([['@deepseek-ai/dsh-experimental-graph-projection', GraphProjection]]))
+    const adapter = new MockAdapter([
+      toolCallResponse('c1', 'graph_cite', { claim: 'knowledge/concepts/retry.md' }),
+      textResponse('done'),
+    ])
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const agent = await ctx.agentLoop.create(SessionId('knowledge-cite'), { provider: 'mock', model: 'mock' }, { cwd: workspace })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Cite the retry page.' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+    const results = agent.session.snapshotEvents().flatMap(event => (event.type === 'tool/result' ? [event.data.message.content] : []))
+    expect(results).toEqual([[{ type: 'text', text: 'graph_cite: path knowledge/concepts/retry.md is supported in turn 1 by:\n- graph-edge: knowledge page concepts/retry.md' }]])
   })
 })

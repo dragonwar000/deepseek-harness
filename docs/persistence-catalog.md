@@ -54,7 +54,7 @@ The [format references](persistence-changes/historical-formats/README.md) cover 
 | `event:loop/budget` | event | `151e7acda0708d10be7e8396b570ac0ee707c213cc54f6493f22c613e5ccf380` | [`{ type: "loop/budget" }`](#persistence-type-sha256-151e7acda0708d10be7e8396b570ac0ee707c213cc54f6493f22c613e5ccf380) |
 | `event:loop/denial` | event | `52ff900df9dcdaa61a565eefb84b5f635d65b2c2193577d35d473182a9246cab` | [`{ type: "loop/denial" }`](#persistence-type-sha256-52ff900df9dcdaa61a565eefb84b5f635d65b2c2193577d35d473182a9246cab) |
 | `event:loop/stationarity` | event | `705bbf86ac1cc0d348e09065d8bae5a5d001e24f26839c85698231a081304047` | [`{ type: "loop/stationarity" }`](#persistence-type-sha256-705bbf86ac1cc0d348e09065d8bae5a5d001e24f26839c85698231a081304047) |
-| `event:loop/verdict` | event | `7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a` | [`{ type: "loop/verdict" }`](#persistence-type-sha256-7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a) |
+| `event:loop/verdict` | event | `5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f` | [`{ type: "loop/verdict" }`](#persistence-type-sha256-5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f) |
 | `event:model/selection` | event | `35203ba7ad5ef6f97d556b85df20ae98f04f09c65748cecdf8eefdb8b6405ffc` | [`{ type: "model/selection" }`](#persistence-type-sha256-35203ba7ad5ef6f97d556b85df20ae98f04f09c65748cecdf8eefdb8b6405ffc) |
 | `event:permission/preset` | event | `5c45bf4c544a7211dcd8ba6ba7e5f1bc39b49e7a9df9d5cbdc8e87c22771b37b` | [`{ type: "permission/preset" }`](#persistence-type-sha256-5c45bf4c544a7211dcd8ba6ba7e5f1bc39b49e7a9df9d5cbdc8e87c22771b37b) |
 | `event:plan/mode` | event | `a7cf43ce7c2a4c038feed1885cd7a00d5c6ee2d90a7e0d56b46f78a3e1ca327f` | [`{ type: "plan/mode" }`](#persistence-type-sha256-a7cf43ce7c2a4c038feed1885cd7a00d5c6ee2d90a7e0d56b46f78a3e1ca327f) |
@@ -786,7 +786,7 @@ Source: [`packages/experimental/stationarity-guard/src/types.ts:43`](../packages
 'loop/verdict': LoopVerdict
 ```
 
-Source: [`packages/experimental/verifier-gate/src/types.ts:189`](../packages/experimental/verifier-gate/src/types.ts)
+Source: [`packages/experimental/verifier-gate/src/types.ts:202`](../packages/experimental/verifier-gate/src/types.ts)
 
 ### `model/*`
 
@@ -2265,6 +2265,14 @@ SHA-256: `23af3759678a30de1d11d946772da8c051c63caa67997c5da05d30d7a9fe8a97`
 
 `"dsh-session-title-llm"`
 
+<a id="persistence-type-sha256-2a9e3d98fa13037d132381bbf9b082aa7fe5cf6618417043be47748e609c97af"></a>
+
+### `"edge"`
+
+SHA-256: `2a9e3d98fa13037d132381bbf9b082aa7fe5cf6618417043be47748e609c97af`
+
+`"edge"`
+
 <a id="persistence-type-sha256-ad22a5ca5bbaab2e1440779cd3648e85ddfc6f73b5207394eda699555cf31430"></a>
 
 ### `"edit"`
@@ -2560,6 +2568,14 @@ SHA-256: `237c004c73b6b288246816e0d7fde16e09c63a47aa3b1227383d7afe58666163`
 SHA-256: `0ee6758d419bd82ae43e454f55f837660a77acf1e177a60caf7b98d34682ad10`
 
 `"grader-error"`
+
+<a id="persistence-type-sha256-ca9a896501fa7bf5e6e21d4d8ed91c135c11f9302dd300d51b66436f317e2023"></a>
+
+### `"graph-edge"`
+
+SHA-256: `ca9a896501fa7bf5e6e21d4d8ed91c135c11f9302dd300d51b66436f317e2023`
+
+`"graph-edge"`
 
 <a id="persistence-type-sha256-0d8e53b9880de4bdce4a55c03f7b1cef8d53514f594bc8e9743a483f10240645"></a>
 
@@ -3102,6 +3118,14 @@ SHA-256: `f87fc910e41b8a1b256d544037d8e7ff0ae2a5f51f474d58fee46eec4a7e8415`
 SHA-256: `9d80129e13edfb6feb03ed327e6085c6ef60b97ad074244b2f5fd4667424a6a4`
 
 `"other"`
+
+<a id="persistence-type-sha256-f6d019d8a1d39fc45c899d2a688a1b800f5565977d982cfee3b8bd6a32f0082a"></a>
+
+### `"page"`
+
+SHA-256: `f6d019d8a1d39fc45c899d2a688a1b800f5565977d982cfee3b8bd6a32f0082a`
+
+`"page"`
 
 <a id="persistence-type-sha256-e6411b09c1d982f789bf741ca74e2bea69df56029847f86a6148e722039ee732"></a>
 
@@ -6224,7 +6248,7 @@ Sources: [`packages/experimental/denial-budget/src/types.ts:18`](../packages/exp
 | `total` | required | `number` |
 | `turn` | required | `number` |
 
-<a id="persistence-type-sha256-92dfef0e33ed716a0140a8c2ba83019b7311b8848bb2e52bb91e3301fce1dca6"></a>
+<a id="persistence-type-sha256-1b9ec2399cb81c02bd1c273563aecf134b3a493f08c4e19f572df195fe8753f8"></a>
 
 <a id="persistence-type-loopevidence"></a>
 
@@ -6232,19 +6256,19 @@ Sources: [`packages/experimental/denial-budget/src/types.ts:18`](../packages/exp
 
 ### `LoopEvidence`
 
-SHA-256: `92dfef0e33ed716a0140a8c2ba83019b7311b8848bb2e52bb91e3301fce1dca6`
+SHA-256: `1b9ec2399cb81c02bd1c273563aecf134b3a493f08c4e19f572df195fe8753f8`
 
-Sources: [`packages/experimental/verifier-gate/src/types.ts:145`](../packages/experimental/verifier-gate/src/types.ts)
+Sources: [`packages/experimental/verifier-gate/src/types.ts:158`](../packages/experimental/verifier-gate/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
-| `claims` | required | [`LoopEvidenceClaim[]`](#persistence-type-sha256-9639a5fdd4c6834652c12c43599c40bfbbd48cf5031c13d7f3ff54521789ee4e) |
+| `claims` | required | [`LoopEvidenceClaim[]`](#persistence-type-sha256-1658fa3ac66c2ce2d242b5de79263c58527762b9de2a51aebd4d233bef210cb3) |
 | `mode` | required | [`union (2 variants)`](#persistence-type-sha256-0172709524b0a58e45d336b038dede9b10173d745b528e7105336d9ab6bd627c) |
 | `status` | required | [`union (4 variants)`](#persistence-type-sha256-393b018bb03a640a290a48c53bde8438e2c98a44695385a55f4348fc7020158c) |
 | `truncated` | optional | `true` |
 | `unsupported` | required | [`string[]`](#persistence-type-sha256-93c33d9687613293f8c95d46c4d922fe9ceae83b84c384beff5c3315abe005f2) |
 
-<a id="persistence-type-sha256-39ccb0c5aa8518f0caaff59dc009bb1a159735c5da5e3289da559b17951c6158"></a>
+<a id="persistence-type-sha256-627d71d77ffb23650038127e690d45a42a8d6288f2da244c1764745ab943443f"></a>
 
 <a id="persistence-type-loopevidenceclaim"></a>
 
@@ -6252,31 +6276,74 @@ Sources: [`packages/experimental/verifier-gate/src/types.ts:145`](../packages/ex
 
 ### `LoopEvidenceClaim`
 
-SHA-256: `39ccb0c5aa8518f0caaff59dc009bb1a159735c5da5e3289da559b17951c6158`
+SHA-256: `627d71d77ffb23650038127e690d45a42a8d6288f2da244c1764745ab943443f`
 
-Sources: [`packages/experimental/verifier-gate/src/types.ts:135`](../packages/experimental/verifier-gate/src/types.ts)
+Sources: [`packages/experimental/verifier-gate/src/types.ts:148`](../packages/experimental/verifier-gate/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
-| `kind` | required | [`union (2 variants)`](#persistence-type-sha256-e122356aea703be42ae10a7d76f40fa0d362c8d0c4d157f970c34e2b3599cafa) |
-| `leaves` | required | [`LoopEvidenceLeaf[]`](#persistence-type-sha256-680dc8ba6cc41e716883dee8cf8baded4de4660d633aa13960514c4b72feb22b) |
+| `kind` | required | [`union (3 variants)`](#persistence-type-sha256-7cfc0abec485df1f66de664d9d918e6b5cb3ceae4c02c0f11dc528bfdfc9d832) |
+| `leaves` | required | [`LoopEvidenceLeaf[]`](#persistence-type-sha256-b74f39064b932b3b7d09b8ae52b4cecf4fc9ac0cf153f05ebbbf2c0fdc99d138) |
 | `text` | required | `string` |
 
-<a id="persistence-type-sha256-9639a5fdd4c6834652c12c43599c40bfbbd48cf5031c13d7f3ff54521789ee4e"></a>
+<a id="persistence-type-sha256-1658fa3ac66c2ce2d242b5de79263c58527762b9de2a51aebd4d233bef210cb3"></a>
 
 ### `LoopEvidenceClaim[]`
 
-SHA-256: `9639a5fdd4c6834652c12c43599c40bfbbd48cf5031c13d7f3ff54521789ee4e`
+SHA-256: `1658fa3ac66c2ce2d242b5de79263c58527762b9de2a51aebd4d233bef210cb3`
 
-Array of [`LoopEvidenceClaim`](#persistence-type-sha256-39ccb0c5aa8518f0caaff59dc009bb1a159735c5da5e3289da559b17951c6158).
+Array of [`LoopEvidenceClaim`](#persistence-type-sha256-627d71d77ffb23650038127e690d45a42a8d6288f2da244c1764745ab943443f).
 
-<a id="persistence-type-sha256-53961361d112956702762b98699980720f11c97dadc751dea6c317387fdbbee9"></a>
+<a id="persistence-type-sha256-81a8ef5e72eb1e545bf5f6a3c2bde82778db1e2c71506443d2ffa05ddf74db43"></a>
 
 <a id="persistence-type-loopevidenceleaf"></a>
 
 <a id="persistence-type-packagesexperimentalverifier-gatesrctypestsloopevidenceleaf"></a>
 
 ### `LoopEvidenceLeaf`
+
+SHA-256: `81a8ef5e72eb1e545bf5f6a3c2bde82778db1e2c71506443d2ffa05ddf74db43`
+
+Sources: [`packages/experimental/verifier-gate/src/types.ts:145`](../packages/experimental/verifier-gate/src/types.ts)
+
+One of:
+
+- [`LoopRecordLeaf`](#persistence-type-sha256-53961361d112956702762b98699980720f11c97dadc751dea6c317387fdbbee9)
+- [`LoopKnowledgeLeaf`](#persistence-type-sha256-cc2c63a050df29d8f2717c40f684093881c0dcda8fe4458ce46bd1c98728b8f9)
+
+<a id="persistence-type-sha256-b74f39064b932b3b7d09b8ae52b4cecf4fc9ac0cf153f05ebbbf2c0fdc99d138"></a>
+
+### `LoopEvidenceLeaf[]`
+
+SHA-256: `b74f39064b932b3b7d09b8ae52b4cecf4fc9ac0cf153f05ebbbf2c0fdc99d138`
+
+Array of [`LoopEvidenceLeaf`](#persistence-type-sha256-81a8ef5e72eb1e545bf5f6a3c2bde82778db1e2c71506443d2ffa05ddf74db43).
+
+<a id="persistence-type-sha256-cc2c63a050df29d8f2717c40f684093881c0dcda8fe4458ce46bd1c98728b8f9"></a>
+
+<a id="persistence-type-loopknowledgeleaf"></a>
+
+<a id="persistence-type-packagesexperimentalverifier-gatesrctypestsloopknowledgeleaf"></a>
+
+### `LoopKnowledgeLeaf`
+
+SHA-256: `cc2c63a050df29d8f2717c40f684093881c0dcda8fe4458ce46bd1c98728b8f9`
+
+Sources: [`packages/experimental/verifier-gate/src/types.ts:135`](../packages/experimental/verifier-gate/src/types.ts)
+
+| Property | Presence | Type |
+|---|---|---|
+| `kind` | required | `"graph-edge"` |
+| `ref` | required | `string` |
+| `target` | required | [`union (2 variants)`](#persistence-type-sha256-fc36e5ef4d474b02c9caef25b9f1a932cfb14360ab014f626ae25a8954f4a907) |
+
+<a id="persistence-type-sha256-53961361d112956702762b98699980720f11c97dadc751dea6c317387fdbbee9"></a>
+
+<a id="persistence-type-looprecordleaf"></a>
+
+<a id="persistence-type-packagesexperimentalverifier-gatesrctypestslooprecordleaf"></a>
+
+### `LoopRecordLeaf`
 
 SHA-256: `53961361d112956702762b98699980720f11c97dadc751dea6c317387fdbbee9`
 
@@ -6287,14 +6354,6 @@ Sources: [`packages/experimental/verifier-gate/src/types.ts:125`](../packages/ex
 | `kind` | required | [`union (3 variants)`](#persistence-type-sha256-6a630b8a81e189628a4ae72dfab0e1840e54df3f7a7bb6b94a0fab5fffffd7a5) |
 | `seq` | required | `number` |
 | `tool` | required | `string` |
-
-<a id="persistence-type-sha256-680dc8ba6cc41e716883dee8cf8baded4de4660d633aa13960514c4b72feb22b"></a>
-
-### `LoopEvidenceLeaf[]`
-
-SHA-256: `680dc8ba6cc41e716883dee8cf8baded4de4660d633aa13960514c4b72feb22b`
-
-Array of [`LoopEvidenceLeaf`](#persistence-type-sha256-53961361d112956702762b98699980720f11c97dadc751dea6c317387fdbbee9).
 
 <a id="persistence-type-sha256-e53f66a2ab85dde8343e0686de1e5a14fd646db3645e6fe46fe405b46d41029d"></a>
 
@@ -6321,7 +6380,7 @@ Sources: [`packages/experimental/stationarity-guard/src/types.ts:17`](../package
 | `tier` | required | [`StationarityTier`](#persistence-type-sha256-9a9a7df1922f3d8fb55776bc45480c69433f3d91eb1ce637cb5c471d57551e70) |
 | `turn` | required | `number` |
 
-<a id="persistence-type-sha256-15ca6f4cdbec6b5315f26739a5d0b3da463a1f6eebc4c9853a9f4ee99fce165f"></a>
+<a id="persistence-type-sha256-cddc4c2735f37055024e6b86f07da6a3ade857a9ebc536a1221d03fad7cfa333"></a>
 
 <a id="persistence-type-loopverdict"></a>
 
@@ -6329,9 +6388,9 @@ Sources: [`packages/experimental/stationarity-guard/src/types.ts:17`](../package
 
 ### `LoopVerdict`
 
-SHA-256: `15ca6f4cdbec6b5315f26739a5d0b3da463a1f6eebc4c9853a9f4ee99fce165f`
+SHA-256: `cddc4c2735f37055024e6b86f07da6a3ade857a9ebc536a1221d03fad7cfa333`
 
-Sources: [`packages/experimental/verifier-gate/src/types.ts:162`](../packages/experimental/verifier-gate/src/types.ts)
+Sources: [`packages/experimental/verifier-gate/src/types.ts:175`](../packages/experimental/verifier-gate/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -6339,7 +6398,7 @@ Sources: [`packages/experimental/verifier-gate/src/types.ts:162`](../packages/ex
 | `continuation` | required | `number` |
 | `continued` | required | `boolean` |
 | `evaluation` | optional | [`EvaluationRecord`](#persistence-type-sha256-aa8440c5317958dcacd747170752e726c856928de906afbf2c7709f7fd6c5d0d) |
-| `evidence` | optional | [`LoopEvidence`](#persistence-type-sha256-92dfef0e33ed716a0140a8c2ba83019b7311b8848bb2e52bb91e3301fce1dca6) |
+| `evidence` | optional | [`LoopEvidence`](#persistence-type-sha256-1b9ec2399cb81c02bd1c273563aecf134b3a493f08c4e19f572df195fe8753f8) |
 | `mode` | required | [`union (2 variants)`](#persistence-type-sha256-0172709524b0a58e45d336b038dede9b10173d745b528e7105336d9ab6bd627c) |
 | `reason` | required | [`LoopVerdictReason`](#persistence-type-sha256-295cf86f568bdd75a456dad4720b760493148da98d886eb24cbcee9b92981a13) |
 | `turn` | required | `number` |
@@ -8142,17 +8201,6 @@ One of:
 - [`{ compactionId, llmStreamCall, maxTokens?, model, … }`](#persistence-type-sha256-a99ec0993c62c058e50af9f68922202a3b54f5e259bc2abf1915a73381d2316d)
 - [`{ compactionId, maxTokens?, model, provider, … }`](#persistence-type-sha256-576a2de8355eb09850963ff5953420b172e274d9283666eb7d889097db120796)
 
-<a id="persistence-type-sha256-e122356aea703be42ae10a7d76f40fa0d362c8d0c4d157f970c34e2b3599cafa"></a>
-
-### `union (2 variants)`
-
-SHA-256: `e122356aea703be42ae10a7d76f40fa0d362c8d0c4d157f970c34e2b3599cafa`
-
-One of:
-
-- `"command"`
-- `"path"`
-
 <a id="persistence-type-sha256-f10975b457a534221f41f840599daa11a82c4a44dcd764494afe647d96d6b26c"></a>
 
 ### `union (2 variants)`
@@ -8163,6 +8211,17 @@ One of:
 
 - `"create"`
 - `"update"`
+
+<a id="persistence-type-sha256-fc36e5ef4d474b02c9caef25b9f1a932cfb14360ab014f626ae25a8954f4a907"></a>
+
+### `union (2 variants)`
+
+SHA-256: `fc36e5ef4d474b02c9caef25b9f1a932cfb14360ab014f626ae25a8954f4a907`
+
+One of:
+
+- `"edge"`
+- `"page"`
 
 <a id="persistence-type-sha256-5776e5553ff2dfe3f5bc202dbb1e7c9f93e35a531aebb7764c23b2b6153b2ccc"></a>
 
@@ -8189,6 +8248,18 @@ One of:
 - `"absence"`
 - `"observed"`
 - `"tool-record"`
+
+<a id="persistence-type-sha256-7cfc0abec485df1f66de664d9d918e6b5cb3ceae4c02c0f11dc528bfdfc9d832"></a>
+
+### `union (3 variants)`
+
+SHA-256: `7cfc0abec485df1f66de664d9d918e6b5cb3ceae4c02c0f11dc528bfdfc9d832`
+
+One of:
+
+- `"command"`
+- `"edge"`
+- `"path"`
 
 <a id="persistence-type-sha256-904bf499d98be4a3a5f836fcac533b6c4899569b018071e6604e1d32657d00fd"></a>
 
@@ -11402,17 +11473,17 @@ SHA-256: `705bbf86ac1cc0d348e09065d8bae5a5d001e24f26839c85698231a081304047`
 | `time` | required | `number` |
 | `type` | required | `"loop/stationarity"` |
 
-<a id="persistence-type-sha256-7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a"></a>
+<a id="persistence-type-sha256-5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f"></a>
 
 <a id="persistence-type-eventloopverdict"></a>
 
 ### `{ type: "loop/verdict" }`
 
-SHA-256: `7e3cc1cf686bd1ddb261308fa8271f40c1a85431b0a7b603ec8696696c77c32a`
+SHA-256: `5b5b837f917dd9a9d1f8a0b0a57c382c07e0284784775b3b968a9857735aa41f`
 
 | Property | Presence | Type |
 |---|---|---|
-| `data` | required | [`LoopVerdict`](#persistence-type-sha256-15ca6f4cdbec6b5315f26739a5d0b3da463a1f6eebc4c9853a9f4ee99fce165f) |
+| `data` | required | [`LoopVerdict`](#persistence-type-sha256-cddc4c2735f37055024e6b86f07da6a3ade857a9ebc536a1221d03fad7cfa333) |
 | `ignorable` | optional | `true` |
 | `seq` | required | `number` |
 | `time` | required | `number` |

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  argumentStrings, claimOf, claimsOf, commandOf, leavesFor, pathMatches, pathOf, pathsIn, withMentions,
+  argumentStrings, claimOf, claimsOf, commandOf, edgeClaimOf, leavesFor, pathMatches, pathOf, pathsIn, withMentions,
 } from '../src/evidence.ts'
 import type { EvidenceLeaf } from '../src/types.ts'
 
@@ -55,6 +55,18 @@ describe('paths and commands', () => {
     ])
   })
 
+  it('reads knowledge edge ids from inline code and prose tokens', () => {
+    expect(edgeClaimOf(' e:0a1b2c3d. ')).toEqual({ kind: 'edge', text: 'e:0a1b2c3d' })
+    expect(edgeClaimOf('e:0A1B2C3D')).toBeUndefined()
+    expect(edgeClaimOf('e:0a1b2c3')).toBeUndefined()
+    expect(claimOf('e:0a1b2c3d')).toBeUndefined()
+    expect(claimsOf('Edge `e:0a1b2c3d` links notes/a.md; so does e:99aabbcc, and `e:0a1b2c3d` again.')).toEqual([
+      { kind: 'edge', text: 'e:0a1b2c3d' },
+      { kind: 'path', text: 'notes/a.md' },
+      { kind: 'edge', text: 'e:99aabbcc' },
+    ])
+  })
+
   it('reads every string in tool arguments and nothing from malformed arguments', () => {
     expect(argumentStrings('{"path":"src/a.ts","opts":{"lines":[1,"x y"],"on":true,"none":null}}')).toEqual(['src/a.ts', 'x y'])
     expect(argumentStrings('"pnpm test"')).toEqual(['pnpm test'])
@@ -88,5 +100,6 @@ describe('mentions and leaves', () => {
     expect(leavesFor({ kind: 'path', text: 'src/a.ts' }, paths, commands)).toEqual([leaf('observed', 9), leaf('absence', 2)])
     expect(leavesFor({ kind: 'command', text: 'pnpm test' }, paths, commands)).toEqual([leaf('tool-record', 4, 'bash')])
     expect(leavesFor({ kind: 'path', text: 'notes/x.md' }, paths, commands)).toEqual([])
+    expect(leavesFor({ kind: 'edge', text: 'e:0a1b2c3d' }, [{ text: 'e:0a1b2c3d', leaves: [leaf('observed', 3)] }], commands)).toEqual([])
   })
 })

@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在 `@deepseek-ai/dsh-experimental-graph-contract` 之后挂载本插件，后者写入本包读取的 `graph/plan` 事件。本插件不约束任何东西，只读取日志，因此没有 `mode` 或 `assumption`；它唯一的配置是 `history_read` 的上限。`history_read` 通过 `@deepseek-ai/dsh-session-query-sqlite` 提供的 `ctx.sessionQuery` 读取。`@deepseek-ai/dsh-experimental-loop-graph-profile` 包会挂载它。
+在 `@deepseek-ai/dsh-experimental-graph-contract` 之后挂载本插件，后者写入本包读取的 `graph/plan` 事件。本插件不约束任何东西，只读取日志，因此没有 `mode` 或 `assumption`；它唯一的配置是 `history_read` 的上限。`history_read` 通过 `@deepseek-ai/dsh-session-query-sqlite` 提供的 `ctx.sessionQuery` 读取。`@deepseek-ai/dsh-experimental-loop-graph-profile` 包会挂载它。`@deepseek-ai/dsh-experimental-knowledge` 是可选的 peer 依赖：本包通过 `ctx.get('knowledge')` 读取知识库，从不注入它，因此在 loop 包旁挂载 knowledge 包会增加知识库叶子，不挂载则行为不变。
 
 ### 何时选择
 
@@ -49,7 +49,7 @@ kind: "package-reference"
 
 `graph` 投影为每个有已准入版本的计划 id 保存最新准入版本的任务图。被拒绝或无法解析的版本不会改变任务图。scope 为 `plans` 的 `graph_query` 列出每个已准入计划及其版本、节点数、就绪数与已执行数；scope 为 `plan` 且带 `plan_id` 时返回该计划的节点、波次、运行以及带触发次数的循环边；scope 为 `node` 且带 `plan_id` 与 `node_id` 时返回一个节点及其输出、子会话与记录的原因。
 
-`graphEvidence` 投影在每个 `turn/start` 时重置。声明是最新 assistant 消息提到的文件路径或 shell 命令：包含空白的行内代码是命令，读作路径的行内代码是路径，正文词元只有在以 `/`、`~/`、`../` 开头，或包含 `/` 且以文件名结尾时才是路径；围栏代码被忽略。每条声明带有同一轮次的叶子：`tool-record`（工具调用参数提到它）、`observed`（成功的工具结果提到它）或 `absence`（失败的工具结果提到它）；没有叶子的声明是 parametric。替换的工具结果以及 `graph_cite` 工具自身的调用不是叶子。`graph_cite` 对一条声明分类并返回其叶子。
+`graphEvidence` 投影在每个 `turn/start` 时重置。声明是最新 assistant 消息提到的文件路径或 shell 命令：包含空白的行内代码是命令，读作路径的行内代码是路径，正文词元只有在以 `/`、`~/`、`../` 开头，或包含 `/` 且以文件名结尾时才是路径；围栏代码被忽略。每条声明带有同一轮次的叶子：`tool-record`（工具调用参数提到它）、`observed`（成功的工具结果提到它）或 `absence`（失败的工具结果提到它）；没有叶子的声明是 parametric。替换的工具结果以及 `graph_cite` 工具自身的调用不是叶子。行内代码或正文中的边 id（`e:` 加八位小写十六进制数字）也是声明，但它没有记录叶子，且只在挂载知识库时才被判定。`graph_cite` 对一条声明分类并返回其叶子。挂载知识库时，`graph_cite` 与 verifier gate 的证据检查还会在知识库能解析声明时给它一个 `graph-edge` 叶子：`.md` 路径声明等于某个可读页面 id 或知识库根目录加该 id，或知识库对某个边 id 恰好返回一条边。没有知识库时，边 id 不是声明，也没有声明得到 `graph-edge` 叶子。
 
 `graphHistory` 投影记录每个 `compaction/summary` 与 `compaction/prune` 片段及其被遮蔽的 seq。不带 `seq` 的 `history_read` 按最新优先列出片段；带 `seq` 时，它通过 `ctx.sessionQuery.readEvent` 以有界窗口读取该片段的原始事件，并把一页转录作为新的工具结果返回。
 
@@ -70,7 +70,8 @@ kind: "package-reference"
 - **每个计划 id 一张任务图。** 之后准入的版本会替换更早的任务图，并把它移到列表末尾；其运行列表从空开始。
 - **容忍 shadow 准入。** 在 `shadow` 模式下准入的计划可能带有对未声明节点的 need 或环；这些节点不进入任何波次。
 - **循环迭代是记录的。** `iteration` 更高的 `graph/node` 记录会重新打开节点；就绪状态再次由 needs 派生。
-- **证据是启发式的。** `graphEvidence` 是 `turn/start`、`tool/call`、`tool/result` 与 `assistant/message` 的纯折叠，不调用模型。`assistant/message` 不能引用来源事件，文件系统观察是 Cordis 事件而非会话事件，也没有把声明关联到代码的服务，因此叶子只来自该轮次的工具记录，也不存在 `graph/claim` 事件：声明与叶子可从日志重建。
+- **证据是启发式的。** `graphEvidence` 是 `turn/start`、`tool/call`、`tool/result` 与 `assistant/message` 的纯折叠，不调用模型。`assistant/message` 不能引用来源事件，文件系统观察是 Cordis 事件而非会话事件，也没有把声明关联到代码的服务，因此记录叶子只来自该轮次的工具记录，也不存在 `graph/claim` 事件：声明与记录叶子可从日志重建。
+- **知识库叶子在判定时读取。** 知识库位于会话日志之外，因此 `graph-edge` 叶子从不属于 `graphEvidence`；`citeKnowledge` 在 `graph_cite` 运行或 verifier gate 判定时添加它们，它们只随使用它们的 `graph_cite` 工具结果或 `loop/verdict` 证据进入日志。
 - **折叠不读取配置。** 投影缓存只按 `stateVersion` 作为键，因此每个可配置上限都在工具或关口读取状态时才生效。
 - **历史是读取，不是恢复。** `history_read` 从不改写 surface；它通过会话查询服务异步读取旧事件，并在末尾返回它们。
 - **不匹配的记录会终止性失败。** 针对非当前任务版本、计划未声明的节点的节点或运行记录，或没有开始的停止，都会设置 `failure`。
@@ -85,6 +86,7 @@ kind: "package-reference"
 | [`src/projection.ts`](src/projection.ts) | `graph` 投影折叠 |
 | [`src/evidence.ts`](src/evidence.ts) | 声明、路径、命令与叶子的纯函数 |
 | [`src/evidence-projection.ts`](src/evidence-projection.ts) | `graphEvidence` 投影折叠 |
+| [`src/knowledge.ts`](src/knowledge.ts) | 来自可选知识库的 `graph-edge` 叶子 |
 | [`src/history.ts`](src/history.ts) | `graphHistory` 投影与分页转录读取器 |
 
 </details>
@@ -129,7 +131,7 @@ Read the admitted task graphs of this session. scope "plans" lists each admitted
 
 #### 模型看到什么
 
-插件挂载时，模型会得到一个名为 `graph_cite` 的只读工具，它有一个必填的 `claim` 字符串参数，描述如下。结果是三种文本之一：`graph_cite: <path|command> <claim> is supported in turn <n> by:` 后跟每个叶子一行 `- <tool-record|observed|absence>: <tool> (#<seq>)`；`graph_cite: <path|command> <claim> is parametric: no tool call or tool result in turn <n> mentions it.`；或 `graph_cite: "<claim>" is neither a file path nor a shell command; cite one path or one command.`
+插件挂载时，模型会得到一个名为 `graph_cite` 的只读工具，它有一个必填的 `claim` 字符串参数，描述如下。结果是四种文本之一：`graph_cite: <path|command|edge> <claim> is supported in turn <n> by:` 后跟每个记录叶子一行 `- <tool-record|observed|absence>: <tool> (#<seq>)`，以及挂载知识库时的一行 `- graph-edge: knowledge <page|edge> <ref>`；`graph_cite: <path|command> <claim> is parametric: no tool call or tool result in turn <n> mentions it.`；`graph_cite: edge <claim> is parametric: the knowledge store has no edge with this id.`；或 `graph_cite: "<claim>" is neither a file path nor a shell command; cite one path or one command.`。没有知识库时，边 id 属于 `unrecognized`。
 
 ##### 该字段的原文
 

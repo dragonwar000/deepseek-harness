@@ -53,6 +53,7 @@
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-experimental-graph-projection": "workspace:*",
     "@deepseek-ai/dsh-experimental-knowledge": "workspace:*",
     "@deepseek-ai/dsh-fs-local": "workspace:*",
     "@deepseek-ai/dsh-fs-observation-policy": "workspace:*",

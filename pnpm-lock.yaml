@@ -8033,6 +8033,9 @@ importers:
       '@deepseek-ai/dsh-compaction':
         specifier: workspace:*
         version: link:../../compaction/compaction
+      '@deepseek-ai/dsh-experimental-knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
       '@deepseek-ai/dsh-llm':
         specifier: workspace:*
         version: link:../../llm/llm
@@ -8251,6 +8254,9 @@ importers:
       '@deepseek-ai/dsh-agent-loop':
         specifier: workspace:*
         version: link:../../core/agent-loop
+      '@deepseek-ai/dsh-experimental-graph-projection':
+        specifier: workspace:*
+        version: link:../graph-projection
       '@deepseek-ai/dsh-experimental-knowledge':
         specifier: workspace:*
         version: link:../knowledge
@@ -8762,6 +8768,9 @@ importers:
       '@deepseek-ai/dsh-agent-loop-testkit':
         specifier: workspace:*
         version: link:../../test-support/agent-loop-testkit
+      '@deepseek-ai/dsh-experimental-knowledge':
+        specifier: workspace:*
+        version: link:../knowledge
       '@deepseek-ai/dsh-goal':
         specifier: workspace:*
         version: link:../../goal/goal
