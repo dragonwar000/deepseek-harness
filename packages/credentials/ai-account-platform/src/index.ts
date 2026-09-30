@@ -162,7 +162,7 @@ export class PlatformAiAccount extends AiAccount {
       await this.attempt?.done
       await this.queue
       this.publish()
-    }, 'ai-account: sign-in and mutation lifetime')
+    }, 'ai-account: sign-in, status check, and mutation lifetime')
   }
 
   async [Service.init](): Promise<void> {
