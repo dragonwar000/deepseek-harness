@@ -10,6 +10,10 @@
  * Model output is untrusted text, so this module treats a reply as a wire boundary: nothing is
  * repaired, no call is invented, no call is dropped, and every rejection is named. The caller
  * decides between a bounded correction run and a named terminal failure.
+ *
+ * A call written without its opening fence is a rejection too, never answer text: the loop ends a
+ * turn on a reply with no tool call, so releasing that JSON as text would end the turn and show the
+ * user a call that never ran.
  */
 
 import type { StreamChunk, ToolSchema } from '@deepseek-ai/dsh-llm'
@@ -36,9 +40,23 @@ export const TOOL_CALL_UNKNOWN_TOOL = 'TOOL_CALL_UNKNOWN_TOOL'
 export const TOOL_CALL_TOO_LARGE = 'TOOL_CALL_TOO_LARGE'
 /** The reply carried more tool-call blocks than the configured cap. */
 export const TOOL_CALL_LIMIT = 'TOOL_CALL_LIMIT'
+/** The reply wrote a call to a declared tool outside a `dsh-tool-call` block. */
+export const TOOL_CALL_UNFENCED = 'TOOL_CALL_UNFENCED'
 
 const FENCE_OPEN = `\`\`\`${TOOL_CALL_FENCE}`
 const FENCE_CLOSE = '```'
+
+/** The members a tool-call object carries; an object opening with either may be a call. */
+const CALL_MEMBERS = ['"name"', '"arguments"'] as const
+
+/** A fence opener line that is not the `dsh-tool-call` one: three backticks, an info string, a newline. */
+const OTHER_FENCE_LINE = /^```([\w+.-]*)[ \t]*\n/u
+/** The start of a fence opener line whose newline has not arrived yet. */
+const OTHER_FENCE_PREFIX = /^```[\w+.-]*[ \t]*$/u
+/** Three backticks that end a block rather than start another opener line. */
+const CLOSING_FENCE = /^```(?![\w+.-])/u
+/** The `name` member of an object that opens with it, as the JSON string literal the model wrote. */
+const LEADING_NAME = /^\{\s*"name"\s*:\s*("(?:[^"\\]|\\.)*")/u
 
 /** How much of a rejected reply a failure message quotes. */
 const EXCERPT_CHARS = 200
@@ -205,10 +223,67 @@ function heldFenceLength(text: string): number {
 }
 
 /**
+ * Find where the JSON object opening at the start of `text` closes.
+ * @param text - text whose first character is `{`.
+ * @returns the index of the matching `}`, or -1 when the object has not closed yet.
+ */
+function objectEnd(text: string): number {
+  let depth = 0
+  let inString = false
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    if (inString) {
+      if (char === '\\') index += 1
+      else if (char === '"') inString = false
+      continue
+    }
+    if (char === '"') inString = true
+    else if (char === '{') depth += 1
+    else if (char === '}') {
+      depth -= 1
+      if (depth === 0) return index
+    }
+  }
+  return -1
+}
+
+/**
+ * Find where a call written outside a `dsh-tool-call` block could next start: an object, or a fence
+ * line.
+ * @param text - the unreleased reply text.
+ * @param from - the index to search from.
+ * @returns the index of the next `{` or three backticks, or `text.length` when there is none.
+ */
+function candidateStart(text: string, from: number): number {
+  const starts = [text.indexOf('{', from), text.indexOf(FENCE_CLOSE, from)].filter(index => index >= 0)
+  return Math.min(text.length, ...starts)
+}
+
+/** What the text at one candidate position turned out to be. */
+type Verdict =
+  /** Undecided until more of the reply arrives. */
+  | { readonly kind: 'pending' }
+  /** Not a call: this many characters are ordinary reply text. */
+  | { readonly kind: 'text'; readonly length: number }
+  /** A call to a declared tool written outside a `dsh-tool-call` block, spanning `length` characters. */
+  | { readonly kind: 'unfenced'; readonly name: string; readonly length: number }
+
+/** What a {@link ReplyScanner} reads one reply against. */
+export interface ReplyScannerOptions {
+  /** The bounds the preamble stated to the model. */
+  readonly limits: EmulationLimits
+  /** The tools the request declared; only a call naming one of them is a call. */
+  readonly tools: readonly ToolSchema[]
+}
+
+/**
  * Splits one assistant reply into plain text and fenced tool-call blocks as it arrives.
  *
- * Text is released as soon as it cannot be the start of a fence, so a plain answer still streams;
- * only the few characters that could still open a fence are held back.
+ * Text is released as soon as it can be neither the start of a fence nor the start of a tool-call
+ * object, so a plain answer still streams. Two things are held back: the few characters that could
+ * still open a fence, and a JSON object that opens with `"name"` or `"arguments"`, together with a
+ * fence opener line directly above it. Such an object is held until it closes, until its `name`
+ * turns out not to be a declared tool, or until it outgrows `limits.maxBytes`, whichever is first.
  */
 export class ReplyScanner {
   /** Set once the reply broke the contract; the scanner then produces nothing more. */
@@ -220,12 +295,15 @@ export class ReplyScanner {
   private closed = false
   private calls = 0
   private readonly limits: EmulationLimits
+  /** Declared tool names, keyed by the JSON string literal a reply would carry. */
+  private readonly names: ReadonlyMap<string, string>
 
   /**
-   * @param limits - the bounds the preamble stated to the model.
+   * @param options - the bounds and the declared tools this reply is read against.
    */
-  constructor(limits: EmulationLimits) {
-    this.limits = limits
+  constructor(options: ReplyScannerOptions) {
+    this.limits = options.limits
+    this.names = new Map(options.tools.map(tool => [JSON.stringify(tool.name), tool.name]))
   }
 
   /**
@@ -287,6 +365,25 @@ export class ReplyScanner {
         continue
       }
       const open = this.buffer.indexOf(FENCE_OPEN)
+      const found = this.nextCandidate(open < 0 ? this.buffer.length : open, final)
+      if (found !== undefined) {
+        if (found.at > 0) segments.push({ kind: 'text', text: this.buffer.slice(0, found.at) })
+        this.buffer = this.buffer.slice(found.at)
+        if (found.verdict.kind === 'pending') return segments
+        const text = this.buffer.slice(0, found.verdict.length)
+        this.buffer = this.buffer.slice(found.verdict.length)
+        if (this.calls === 0) {
+          this.failure = {
+            code: TOOL_CALL_UNFENCED,
+            message: `A call to \`${found.verdict.name}\` was written outside a tool-call block: ${excerpt(text)}. The harness reads a call only from a block that opens with the line ${FENCE_OPEN} and closes with the line ${FENCE_CLOSE}.`,
+          }
+          return segments
+        }
+        // After an accepted call the preamble says everything is discarded, and this is no
+        // exception: it leaves as text so the consumer of these segments counts and drops it.
+        segments.push({ kind: 'text', text })
+        continue
+      }
       if (open >= 0) {
         if (open > 0) segments.push({ kind: 'text', text: this.buffer.slice(0, open) })
         this.buffer = this.buffer.slice(open + FENCE_OPEN.length)
@@ -320,6 +417,116 @@ export class ReplyScanner {
       }
       from = close + FENCE_CLOSE.length
     }
+  }
+
+  /**
+   * Find the first position before `limit` that is, or may still become, a call written outside a
+   * `dsh-tool-call` block.
+   * @param limit - where the next `dsh-tool-call` opener starts, or the buffer length.
+   * @param final - whether the reply has ended, so nothing more can arrive.
+   * @returns the position and its verdict, or `undefined` when the text up to `limit` holds none.
+   */
+  private nextCandidate(
+    limit: number,
+    final: boolean,
+  ): { readonly at: number; readonly verdict: Exclude<Verdict, { kind: 'text' }> } | undefined {
+    for (let at = candidateStart(this.buffer, 0); at < limit;) {
+      const rest = this.buffer.slice(at)
+      const verdict = rest.startsWith('{') ? this.classifyObject(rest, final) : this.classifyFence(rest, final)
+      if (verdict.kind !== 'text') return { at, verdict }
+      at = candidateStart(this.buffer, at + verdict.length)
+    }
+    return undefined
+  }
+
+  /** Whether a candidate spanning `length` characters may wait for more of the reply. */
+  private mayWait(length: number, final: boolean): boolean {
+    return !final && length <= this.limits.maxBytes
+  }
+
+  /**
+   * Classify text that starts with `{`.
+   *
+   * Only an object that opens with `"name"` or `"arguments"` is ever held, and one that opens with
+   * an undeclared `name` is released as soon as that name is complete, so a JSON example in an
+   * answer — a `package.json`, say — pauses the stream for one member at most.
+   */
+  private classifyObject(text: string, final: boolean): Verdict {
+    const opening = text.slice(1).trimStart()
+    if (!CALL_MEMBERS.some(member => opening.startsWith(member))) {
+      const arriving = CALL_MEMBERS.some(member => member.startsWith(opening))
+      return arriving && this.mayWait(text.length, final) ? { kind: 'pending' } : { kind: 'text', length: 1 }
+    }
+    const literal = LEADING_NAME.exec(text)?.[1]
+    const leading = literal === undefined ? undefined : this.names.get(literal)
+    if (literal !== undefined && leading === undefined) return { kind: 'text', length: 1 }
+    const end = objectEnd(text)
+    if (end < 0) {
+      if (this.mayWait(text.length, final)) return { kind: 'pending' }
+      // The object can no longer close within bounds. One that already names a declared tool is a
+      // call the model was writing, so it is rejected whole rather than shown as text.
+      return leading === undefined
+        ? { kind: 'text', length: 1 }
+        : { kind: 'unfenced', name: leading, length: text.length }
+    }
+    const name = this.calledTool(text.slice(0, end + 1))
+    if (name === undefined) return { kind: 'text', length: 1 }
+    // A closing fence after the object belongs to the call: the model wrote the block and left out
+    // its opener line. Three backticks that start another opener line do not.
+    const tail = text.slice(end + 1).trimStart()
+    if (FENCE_CLOSE.startsWith(tail) && this.mayWait(text.length, final)) return { kind: 'pending' }
+    return {
+      kind: 'unfenced',
+      name,
+      length: CLOSING_FENCE.test(tail) ? text.length - tail.length + FENCE_CLOSE.length : end + 1,
+    }
+  }
+
+  /**
+   * Classify text that starts with three backticks and is not the `dsh-tool-call` opener.
+   *
+   * A fence opener line is held only until the first character under it arrives. It is part of a
+   * call when a call object follows directly; otherwise it is ordinary text, and the block under it
+   * streams as any other text does.
+   */
+  private classifyFence(text: string, final: boolean): Verdict {
+    const line = OTHER_FENCE_LINE.exec(text)?.[0]
+    if (line === undefined) {
+      return OTHER_FENCE_PREFIX.test(text) && this.mayWait(text.length, final)
+        ? { kind: 'pending' }
+        : { kind: 'text', length: FENCE_CLOSE.length }
+    }
+    const body = text.slice(line.length)
+    const lead = body.length - body.trimStart().length
+    if (lead === body.length && this.mayWait(text.length, final)) return { kind: 'pending' }
+    if (body[lead] !== '{') return { kind: 'text', length: line.length }
+    const inner = this.classifyObject(body.slice(lead), final)
+    switch (inner.kind) {
+      case 'pending': return inner
+      case 'text': return { kind: 'text', length: line.length }
+      case 'unfenced': return { ...inner, length: line.length + lead + inner.length }
+    }
+  }
+
+  /**
+   * The declared tool a balanced `{…}` text calls, when it is JSON that names one and carries an
+   * `arguments` member.
+   */
+  private calledTool(raw: string): string | undefined {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    }
+    catch {
+      // Braces balance but the text is not JSON, so no tool could be run from it.
+      return undefined
+    }
+    // `objectEnd` closes only on a balanced `{…}`, so text that parses is always an object.
+    const call = parsed as Record<string, unknown>
+    const name = call['name']
+    return typeof name === 'string' && this.names.has(JSON.stringify(name)) && 'arguments' in call
+      ? name
+      : undefined
   }
 }
 
@@ -421,6 +628,12 @@ export class ToolCallEmulator {
   private readonly remap = new Map<number, number>()
   private nextIndex = 0
   private open: OpenText | undefined
+  /**
+   * Whitespace the reply opened with, not yet handed over. It is held so a reply that turns out to
+   * be one rejected call can still be replaced by a correction run, and it is dropped without being
+   * counted when a call follows, since a reply that calls a tool carries no text.
+   */
+  private lead = ''
   private accepted = 0
   private discarded = 0
   private handed = false
@@ -430,7 +643,7 @@ export class ToolCallEmulator {
    */
   constructor(plan: Extract<ToolPlan, { kind: 'prompt' }>) {
     this.tools = plan.tools
-    this.scanner = new ReplyScanner(plan.limits)
+    this.scanner = new ReplyScanner({ limits: plan.limits, tools: plan.tools })
   }
 
   /** Tool calls accepted from this reply. */
@@ -469,7 +682,7 @@ export class ToolCallEmulator {
         return [{ ...chunk, index: this.mapped(chunk.index) }]
       case 'block-end':
         return chunk.block.type === 'text'
-          ? [...this.segments(this.scanner.finish()), ...this.closeText()]
+          ? [...this.segments(this.scanner.finish()), ...this.endText()]
           : [{ ...chunk, index: this.mapped(chunk.index) }]
       case 'finish':
         return [this.terminal(chunk)]
@@ -492,7 +705,7 @@ export class ToolCallEmulator {
           this.discarded += segment.text.length
           continue
         }
-        chunks.push(...this.emitText(segment.text))
+        chunks.push(...this.emitLedText(segment.text))
         continue
       }
       chunks.push(...this.emitCall(segment.raw))
@@ -500,6 +713,16 @@ export class ToolCallEmulator {
     }
     this.failure ??= this.scanner.failure
     return chunks
+  }
+
+  /** Hand over text, unless it only extends the whitespace the reply opened with. */
+  private emitLedText(text: string): readonly StreamChunk[] {
+    if (this.handed) return this.emitText(text)
+    this.lead += text
+    if (this.lead.trim().length === 0) return []
+    const led = this.lead
+    this.lead = ''
+    return this.emitText(led)
   }
 
   /** Append text to the open output block, opening one when needed. */
@@ -527,6 +750,17 @@ export class ToolCallEmulator {
     return [{ type: 'block-end', index: open.index, block: { type: 'text', text: open.text } }]
   }
 
+  /**
+   * End one CLI text block: a reply that was whitespace and nothing else is handed over as written,
+   * because it is neither a call nor a rejection.
+   */
+  private endText(): readonly StreamChunk[] {
+    const lead = this.lead
+    this.lead = ''
+    const kept = lead.length > 0 && this.accepted === 0 && this.failure === undefined
+    return [...(kept ? this.emitText(lead) : []), ...this.closeText()]
+  }
+
   /** Turn one accepted block into a real tool-call block, or name why it is not one. */
   private emitCall(raw: string): readonly StreamChunk[] {
     const result = readToolCall(raw, this.tools)
@@ -535,6 +769,7 @@ export class ToolCallEmulator {
       return []
     }
     const closing = this.closeText()
+    this.lead = ''
     const index = this.nextIndex
     this.nextIndex += 1
     this.accepted += 1

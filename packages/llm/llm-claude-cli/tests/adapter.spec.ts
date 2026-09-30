@@ -11,6 +11,7 @@ import {
   PREAMBLE_TEMPLATE,
   TOOL_CALL_MALFORMED,
   TOOL_CALL_TRUNCATED,
+  TOOL_CALL_UNFENCED,
   TOOL_CALL_UNKNOWN_TOOL,
 } from '../src/emulate.ts'
 import type { CliToolEmulation } from '../src/types.ts'
@@ -448,6 +449,46 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
     const finish = chunks.at(-1)
     expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
       .toBe(TOOL_CALL_UNKNOWN_TOOL)
+  })
+
+  it('answers a call written without its opener line with a correction naming the required fence', async () => {
+    let call = 0
+    const { cli, adapter, records } = build({
+      inference: () => {
+        call += 1
+        return replyLines(call === 1
+          ? '\n{"name": "read_file", "arguments": {"path": "/a"}}\n```'
+          : '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```')
+      },
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(2)
+    // The raw JSON of the rejected reply never reaches the consumer as answer text.
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(chunks.filter(chunk => chunk.type === 'tool-call-delta')).toHaveLength(1)
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    expect(records[1]?.correction?.code).toBe(TOOL_CALL_UNFENCED)
+    const retried = JSON.parse((cli.callsOf('inference')[1]?.stdin ?? '').trim()) as {
+      message: { content: { text: string }[] }
+    }
+    expect(retried.message.content[0]?.text).toContain(
+      'Harness: Your previous reply was rejected and no tool ran. A call to `read_file` was written outside a tool-call block: '
+      + '{"name": "read_file", "arguments": {"path": "/a"}} ```. '
+      + 'The harness reads a call only from a block that opens with the line ```dsh-tool-call and closes with the line ```. '
+      + 'Answer the last message again, following the tool-call format exactly.',
+    )
+  })
+
+  it('ends with the named rejection, and no answer text, when the correction is ignored too', async () => {
+    const { cli, adapter } = build({
+      inference: () => replyLines('\n{"name": "read_file", "arguments": {"path": "/a"}}\n```'),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(2)
+    expect(chunks.some(chunk => chunk.type === 'text-delta' || chunk.type === 'tool-call-delta')).toBe(false)
+    const finish = chunks.at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
+      .toBe(TOOL_CALL_UNFENCED)
   })
 
   it('names a reply that ends inside an unterminated block rather than dropping the call', async () => {

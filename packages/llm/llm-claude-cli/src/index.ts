@@ -36,6 +36,7 @@ export {
   TOOL_CALL_MALFORMED,
   TOOL_CALL_TOO_LARGE,
   TOOL_CALL_TRUNCATED,
+  TOOL_CALL_UNFENCED,
   TOOL_CALL_UNKNOWN_TOOL,
 } from './emulate.ts'
 export type {

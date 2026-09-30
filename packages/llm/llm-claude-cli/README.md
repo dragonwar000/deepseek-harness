@@ -88,7 +88,9 @@ Every CLI invocation is planned by one pure module, `src/launch.ts`, so the exac
 
 A request that declares tools gets an extra section appended to its system prompt: the contract for reporting a call, and every declared tool with its `description` and its `parameters` schema. The wording is fixed, pinned verbatim by a test, and identified by `PREAMBLE_TEMPLATE`; it is not configurable, because it is what makes a reply parseable.
 
-To call a tool the model emits a fenced block whose info string is `dsh-tool-call`, holding one JSON object with `name` and `arguments`. The reply is scanned as it arrives: text is released as soon as it cannot be the start of a fence, so a plain answer still streams, and only the few characters that could open one are held back. A closing fence counts only when the text before it parses as a JSON object, so a fence inside a string argument — a tool writing Markdown, say — does not end the block early.
+To call a tool the model emits a fenced block whose info string is `dsh-tool-call`, holding one JSON object with `name` and `arguments`. The reply is scanned as it arrives: text is released as soon as it can be neither the start of a fence nor the start of a tool-call object, so a plain answer still streams. A closing fence counts only when the text before it parses as a JSON object, so a fence inside a string argument — a tool writing Markdown, say — does not end the block early.
+
+A call written outside a `dsh-tool-call` block is never released as answer text. The agent loop ends a turn on a reply with no tool call, so releasing that JSON would end the turn and show the user a call that never ran. The scanner therefore holds back any JSON object that opens with `"name"` or `"arguments"`, together with a fence opener line directly above it, until the object closes, until its `name` turns out not to be a declared tool, or until it outgrows `toolCallMaxBytes`. An object that names a declared tool and carries an `arguments` member is rejected as `TOOL_CALL_UNFENCED`; every other object is released unchanged, so an answer that quotes a JSON example still reads as written. Whitespace at the start of a reply is held until other text follows it, so a reply that is one rejected call can still be replaced by a correction run.
 
 Model output is untrusted text, and every way a reply can break the contract has one named outcome:
 
@@ -99,6 +101,7 @@ Model output is untrusted text, and every way a reply can break the contract has
 | `TOOL_CALL_UNKNOWN_TOOL` | named a tool the request never declared |
 | `TOOL_CALL_TOO_LARGE` | exceeded `toolCallMaxBytes` inside one block |
 | `TOOL_CALL_LIMIT` | carried more blocks than `toolCallMaxCalls` |
+| `TOOL_CALL_UNFENCED` | wrote a call to a declared tool outside a `dsh-tool-call` block: bare, or under any other fence |
 
 A rejection is answered by a correction run, up to `toolCallRetries` times: the request is sent again with a notice naming what was wrong, and the rejected reply never reaches the caller. That replacement is only possible before the first text or tool-call chunk is handed over; once the caller has seen output, a rejection is instead the terminal `finish` with that code. Either way a call is never dropped in silence, never invented, and never repaired.
 
@@ -152,7 +155,9 @@ None gained and none lost beyond the text case: the preamble is part of the subs
 
 - **Tool calls depend on the model following prose.** Nothing constrains the reply: a fenced block is an instruction, not a decoder constraint, so a model that ignores the format costs a correction run and then the turn. Measured against Claude Code 2.1.285, `sonnet` produced a clean single block on every attempt while `haiku` sometimes wrapped one in stray `<function-calls>` tags — parsed correctly, but the stray text is kept as assistant text. Prefer a strong model on this route.
 - **No parallel-tool guarantee.** `toolCallMaxCalls` bounds how many blocks one reply may carry, but nothing makes the model batch independent calls the way a native `tools` field does.
-- **Streaming pauses at a fence.** Text is released as soon as it cannot open a fence, so a plain answer streams; a reply that opens one shows nothing further until the block closes.
+- **Streaming pauses at a fence and at a possible call object.** Text is released as soon as it cannot open a fence, so a plain answer streams; a reply that opens one shows nothing further until the block closes. A JSON object that opens with `"name"` or `"arguments"` pauses the stream until its `name` is complete and undeclared, or until the object closes.
+- **An answer cannot quote a call to a declared tool.** A JSON object naming a declared tool with an `arguments` member is always read as an attempted call, so an answer that shows one as an example is rejected as `TOOL_CALL_UNFENCED`.
+- **An unfenced call after prose ends the turn with an error.** A correction run can only replace a reply nothing was handed over from. When prose was already streamed, an unfenced call is the terminal `TOOL_CALL_UNFENCED` failure: the raw JSON is withheld, and no tool runs.
 - **`list_models` is undocumented.** The control request this catalog probe uses is not in Claude Code's published CLI reference. It is answered by 2.1.285 and may change without notice; an unreadable answer produces `CLI_CATALOG_UNAVAILABLE` rather than a crash, and `tests/real-cli.e2e.ts` detects a change on any machine with a signed-in CLI.
 - **No image or file input.** The route advertises `text` only. Attachments reach it as the handle text request assembly already substituted.
 - **No prompt caching.** See the KV Cache note above.
