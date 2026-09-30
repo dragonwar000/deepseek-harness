@@ -50,6 +50,7 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'knowledge/inject',
   'knowledge/write',
   'llm/cli-tool-emulation',
+  'llm/cli-tool-emulation-reply',
   'llm/retry',
   'llm/retry-started',
   'loop/budget',

@@ -9,8 +9,8 @@
   en: e7c80d1de4d328b4
   zh: d9f368c27fd9f998
 /session-persistence-event-catalog/persistence-type-fingerprints:
-  en: e20a075f741bedd4
-  zh: 8912c81150d28df8
+  en: 5d60e48bd666e0f8
+  zh: 3deb5ce554cf7767
 /session-persistence-event-catalog/event-envelope:
   en: 7ebb1a2e0dd1f916
   zh: 8946f415dda5c1b8
@@ -153,8 +153,11 @@
   en: 6f4bbe366a17e7f5
   zh: 6f4bbe366a17e7f5
 /session-persistence-event-catalog/events/llm/llm-cli-tool-emulation-log-only:
-  en: 766ff336da23fa08
-  zh: 41a33226f5593c43
+  en: c17023c0b906d4d5
+  zh: fce556a4944e2f4a
+/session-persistence-event-catalog/events/llm/llm-cli-tool-emulation-reply-log-only:
+  en: 023a6a3f5a1de281
+  zh: b8cf52b8d6e7d2e7
 /session-persistence-event-catalog/events/llm/llm-retry-log-only:
   en: a530fc0c1f664155
   zh: 227c8d6303e37c26
@@ -876,8 +879,11 @@
   en: 4dd770700df26353
   zh: 4dd770700df26353
 /session-persistence-event-catalog/resolved-persistence-types/llm-cli-tool-emulation:
-  en: c786eb1a8f93bc91
-  zh: c786eb1a8f93bc91
+  en: fb15e4a7c4a85a23
+  zh: fb15e4a7c4a85a23
+/session-persistence-event-catalog/resolved-persistence-types/llm-cli-tool-emulation-reply:
+  en: 5f52ae4e808d7f62
+  zh: 5f52ae4e808d7f62
 /session-persistence-event-catalog/resolved-persistence-types/llm-retry:
   en: 4a95312d3d196240
   zh: 4a95312d3d196240
@@ -1491,8 +1497,11 @@
   en: e559433c823c31f1
   zh: 08992801eb7178cf
 /session-persistence-event-catalog/resolved-persistence-types/clitoolemulationcorrection:
-  en: df6a94b97bf758a6
-  zh: eb10021bcb0e2683
+  en: 61e3368413d414f8
+  zh: ad233114e01e5179
+/session-persistence-event-catalog/resolved-persistence-types/clitoolemulationreply:
+  en: 3d7c9b2388e80d63
+  zh: cafa43d7965f673f
 /session-persistence-event-catalog/resolved-persistence-types/commandsource:
   en: 86c7e2b4ae099661
   zh: 2ffe1bd3f25b96fd
@@ -2823,8 +2832,11 @@
   en: d19103cd9045796f
   zh: e92bf85f94784e1d
 /session-persistence-event-catalog/resolved-persistence-types/type-llm-cli-tool-emulation:
-  en: 33c162a79207f2b5
-  zh: 75446e6821b0a7e6
+  en: a990b01d344bd522
+  zh: fe152dc2b33fef76
+/session-persistence-event-catalog/resolved-persistence-types/type-llm-cli-tool-emulation-reply:
+  en: b0d94d462fcd51f0
+  zh: b8826829991ce1bb
 /session-persistence-event-catalog/resolved-persistence-types/type-llm-retry:
   en: 6d026baeac30a0f1
   zh: 55131683e3d5ed27

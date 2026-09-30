@@ -39,24 +39,31 @@ const CONFIG = {
   toolCallMaxCalls: 4,
   toolCallMaxBytes: 32_768,
   toolCallRetries: 1,
+  toolCallLenient: true,
 } as const
 
 const LIMITS: EmulationLimits = { maxCalls: 4, maxBytes: 32_768 }
 
 /** The prompt plan a test emulator reads a reply against. */
-function plan(tools: readonly ToolSchema[] = [READ_FILE], limits: EmulationLimits = LIMITS) {
+function plan(tools: readonly ToolSchema[] = [READ_FILE], limits: EmulationLimits = LIMITS, lenient = true) {
   return {
     kind: 'prompt',
     tools,
     preamble: buildToolPreamble(tools, limits),
     limits,
     retries: 1,
+    lenient,
   } as const satisfies Extract<ToolPlan, { kind: 'prompt' }>
 }
 
-/** A scanner reading a reply against the given bounds and declared tools. */
-function scan(limits: EmulationLimits = LIMITS, tools: readonly ToolSchema[] = [READ_FILE, BASH]): ReplyScanner {
-  return new ReplyScanner({ limits, tools })
+/** A scanner reading a reply strictly against the given bounds, with both test tools declared. */
+function scan(limits: EmulationLimits = LIMITS): ReplyScanner {
+  return new ReplyScanner({ limits, tools: [READ_FILE, BASH], lenient: false })
+}
+
+/** The same scanner with lenient reading on, which is the route's default. */
+function scanLeniently(limits: EmulationLimits = LIMITS): ReplyScanner {
+  return new ReplyScanner({ limits, tools: [READ_FILE, BASH], lenient: true })
 }
 
 /** Feed a reply through a scanner one character at a time, as the slowest stream would deliver it. */
@@ -117,6 +124,8 @@ describe('resolveToolPlan', () => {
     expect(resolved.tools).toEqual([READ_FILE, BASH])
     expect(resolved.limits).toEqual({ maxCalls: 4, maxBytes: 32_768 })
     expect(resolved.retries).toBe(1)
+    expect(resolved.lenient).toBe(true)
+    expect(resolveToolPlan([READ_FILE], { ...CONFIG, toolCallLenient: false })).toMatchObject({ lenient: false })
     expect(resolved.preamble).toBe(buildToolPreamble([READ_FILE, BASH], LIMITS))
   })
 })
@@ -209,7 +218,7 @@ describe('ReplyScanner', () => {
     ]
     expect(segments).toEqual([
       { kind: 'text', text: 'Let me read it.\n\n' },
-      { kind: 'call', raw: '{"name":"read_file","arguments":{"path":"/etc/hosts"}}' },
+      { kind: 'call', raw: '{"name":"read_file","arguments":{"path":"/etc/hosts"}}', lenient: false },
       { kind: 'text', text: '\nDone.' },
     ])
   })
@@ -227,7 +236,7 @@ describe('ReplyScanner', () => {
     const scanner = scan()
     const raw = '{"name":"read_file","arguments":{"path":"x","body":"```js\\ncode\\n```"}}'
     const segments = scanner.push(`\`\`\`dsh-tool-call\n${raw}\n\`\`\``)
-    expect(segments).toEqual([{ kind: 'call', raw }])
+    expect(segments).toEqual([{ kind: 'call', raw, lenient: false }])
   })
 
   it('names a reply that ended inside an unterminated block', () => {
@@ -335,7 +344,7 @@ describe('ReplyScanner', () => {
       ...scanner.finish(),
     ]
     expect(segments).toEqual([
-      { kind: 'call', raw: '{"name":"bash","arguments":{}}' },
+      { kind: 'call', raw: '{"name":"bash","arguments":{}}', lenient: false },
       { kind: 'text', text: '\n' },
       { kind: 'text', text: '{"name":"bash","arguments":{}}\n```' },
     ])
@@ -347,7 +356,7 @@ describe('ReplyScanner', () => {
     const reply = '{"name":"widget","arguments":{}}\n```dsh-tool-call\n{"name":"bash","arguments":{}}\n```'
     expect([...scanner.push(reply), ...scanner.finish()]).toEqual([
       { kind: 'text', text: '{"name":"widget","arguments":{}}\n' },
-      { kind: 'call', raw: '{"name":"bash","arguments":{}}' },
+      { kind: 'call', raw: '{"name":"bash","arguments":{}}', lenient: false },
     ])
   })
 
@@ -373,6 +382,42 @@ describe('ReplyScanner', () => {
     const streamed = scan()
     expect(textOf(scanByCharacter(reply, streamed))).toBe(reply)
     expect(streamed.failure).toBeUndefined()
+  })
+
+  it.each([
+    ['a block opened with the json info string', '```json\n{"name":"bash","arguments":{"command":"ls"}}\n```'],
+    ['a block opened with no info string', '```\n{"name":"bash","arguments":{"command":"ls"}}\n```\n'],
+    ['a bare object followed by a closing fence', '\n{"name":"bash","arguments":{"command":"ls"}}\n```'],
+  ])('accepts %s when reading leniently', (_label, reply) => {
+    const expected = [{ kind: 'call', raw: '{"name":"bash","arguments":{"command":"ls"}}', lenient: true }]
+    const whole = scanLeniently()
+    expect([...whole.push(reply), ...whole.finish()].filter(segment => segment.kind === 'call')).toEqual(expected)
+    expect(whole.failure).toBeUndefined()
+    const streamed = scanLeniently()
+    expect(scanByCharacter(reply, streamed).filter(segment => segment.kind === 'call')).toEqual(expected)
+  })
+
+  it.each([
+    ['a bare object with no fence after it', '{"name":"bash","arguments":{}}'],
+    ['a block opened with any other info string', '```tool_call\n{"name":"bash","arguments":{}}\n```'],
+    ['a json block that never closes', '```json\n{"name":"bash","arguments":{}}\n'],
+    ['an object carrying a member beyond name and arguments', '```json\n{"name":"bash","arguments":{},"id":"1"}\n```'],
+    ['arguments that are not an object', '{"name":"bash","arguments":"ls"}\n```'],
+  ])('still rejects %s when reading leniently', (_label, reply) => {
+    const scanner = scanLeniently()
+    expect([...scanner.push(reply), ...scanner.finish()]).toEqual([])
+    expect(scanner.failure?.code).toBe(TOOL_CALL_UNFENCED)
+  })
+
+  it('counts leniently accepted calls against the same cap as fenced ones', () => {
+    const scanner = scanLeniently({ maxCalls: 2, maxBytes: 32_768 })
+    const segments = scanner.push(
+      '{"name":"bash","arguments":{}}\n```\n'
+      + '```dsh-tool-call\n{"name":"bash","arguments":{}}\n```\n'
+      + '```json\n{"name":"bash","arguments":{}}\n```\n',
+    )
+    expect(segments.filter(segment => segment.kind === 'call').map(segment => segment.lenient)).toEqual([true, false])
+    expect(scanner.failure?.code).toBe(TOOL_CALL_LIMIT)
   })
 
   it('releases an object as text once its name is complete and is not a declared tool', () => {
@@ -612,8 +657,46 @@ describe('ToolCallEmulator', () => {
     expect(emulator.committed).toBe(true)
   })
 
-  it('never hands the recorded opener-less reply to the user as text', () => {
+  it('reads the three calls of the recorded opener-less reply when lenient reading is on', () => {
     const emulator = new ToolCallEmulator(plan([READ, BASH]))
+    const chunks = reply(RECORDED_REPLY, emulator)
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(chunks.filter(chunk => chunk.type === 'block-end').map(chunk => chunk.block)).toEqual([
+      {
+        type: 'tool-call',
+        id: 'claude-cli-0',
+        name: 'read',
+        arguments: '{"file_path":"/repo/packages/web/tool-web/src/search.ts"}',
+      },
+      {
+        type: 'tool-call',
+        id: 'claude-cli-1',
+        name: 'read',
+        arguments: '{"file_path":"/repo/packages/credentials/coteccons-sso-msal/tests/sso.spec.ts","limit":90}',
+      },
+      {
+        type: 'tool-call',
+        id: 'claude-cli-2',
+        name: 'bash',
+        arguments: '{"command":"git status --short | head; git log --oneline -1; ls packages/client/ui-settings-coteccons-sso/src/client; wc -l packages/client/ui-settings-coteccons-sso/src/client/*","description":"Check git state and UI files","workdir":"/repo"}',
+      },
+    ])
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    expect(emulator.calls).toBe(3)
+    expect(emulator.lenientCalls).toBe(3)
+    // Only the blank lines between the calls were dropped.
+    expect(emulator.discardedChars).toBe(6)
+  })
+
+  it('counts no lenient call for a reply that used the fence', () => {
+    const emulator = new ToolCallEmulator(plan())
+    reply('```dsh-tool-call\n{"name":"read_file","arguments":{}}\n```', emulator)
+    expect(emulator.calls).toBe(1)
+    expect(emulator.lenientCalls).toBe(0)
+  })
+
+  it('never hands the recorded opener-less reply to the user as text when lenient reading is off', () => {
+    const emulator = new ToolCallEmulator(plan([READ, BASH], LIMITS, false))
     const chunks = reply(RECORDED_REPLY, emulator)
     expect(chunks.some(chunk => chunk.type === 'text-delta' || chunk.type === 'block-start')).toBe(false)
     expect(emulator.failure?.code).toBe(TOOL_CALL_UNFENCED)
@@ -623,7 +706,7 @@ describe('ToolCallEmulator', () => {
   })
 
   it('holds the recorded reply back while it streams, delta by delta', () => {
-    const emulator = new ToolCallEmulator(plan([READ, BASH]))
+    const emulator = new ToolCallEmulator(plan([READ, BASH], LIMITS, false))
     emulator.push({ type: 'block-start', index: 0, blockType: 'text' })
     for (const text of RECORDED_DELTAS) {
       expect(emulator.push({ type: 'text-delta', index: 0, text })).toEqual([])

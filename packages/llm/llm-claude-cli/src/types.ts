@@ -111,6 +111,34 @@ export interface CliToolEmulation {
   readonly correction?: CliToolEmulationCorrection
 }
 
+/**
+ * How the reply of one emulated CLI run was read.
+ *
+ * Recorded after the run, because none of it is known before: the preceding
+ * `llm/cli-tool-emulation` event with the same {@link attempt} holds what the model was shown. A
+ * run whose stream was abandoned by its consumer, or whose child failed before a reply was read,
+ * has no such record.
+ */
+export interface CliToolEmulationReply {
+  /** Provider route that served the request. */
+  readonly provider: string
+  /** Model id pinned on the CLI run. */
+  readonly model: string
+  /** The run this reply answers: 1 for a request's first run; 2 and up for a correction run. */
+  readonly attempt: number
+  /** Tool calls accepted from the reply. */
+  readonly calls: number
+  /**
+   * Of {@link calls}, those read from a near-miss form rather than a `dsh-tool-call` block: a block
+   * opened with `json` or no info string, or a bare object followed by a closing fence.
+   */
+  readonly lenientCalls: number
+  /** Reply characters dropped because they followed an accepted tool call. */
+  readonly discardedChars: number
+  /** The `TOOL_CALL_*` code that rejected the reply; absent when it was accepted. */
+  readonly rejection?: string
+}
+
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /**
@@ -118,5 +146,10 @@ declare module '@deepseek-ai/dsh-session/types' {
      * derived history.
      */
     'llm/cli-tool-emulation': CliToolEmulation
+    /**
+     * How the reply of one such run was read: calls accepted, calls accepted leniently, text
+     * dropped, and the rejection if there was one. Log-only; never derived history.
+     */
+    'llm/cli-tool-emulation-reply': CliToolEmulationReply
   }
 }

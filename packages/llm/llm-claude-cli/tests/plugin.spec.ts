@@ -208,6 +208,7 @@ describe('llm-claude-cli configuration', () => {
       toolCallMaxCalls: 4,
       toolCallMaxBytes: 32_768,
       toolCallRetries: 1,
+      toolCallLenient: true,
     })
   })
 
@@ -304,6 +305,21 @@ describe('llm-claude-cli tool-call emulation through the runtime', () => {
       attempt: 1,
     })
     expect(logged[0]?.data.preambleChars).toBeGreaterThan(0)
+    // The reading of the reply is logged after the run, directly behind the run's own record.
+    const types = session.snapshotEvents().map(event => event.type)
+    expect(types.slice(types.indexOf('llm/cli-tool-emulation'))).toEqual([
+      'llm/cli-tool-emulation',
+      'llm/cli-tool-emulation-reply',
+    ])
+    const read = session.snapshotEvents().filter(event => event.type === 'llm/cli-tool-emulation-reply')
+    expect(read[0]?.data).toEqual({
+      provider: 'claude-cli',
+      model: 'opus',
+      attempt: 1,
+      calls: 1,
+      lenientCalls: 0,
+      discardedChars: 0,
+    })
   })
 
   it('fails loud rather than emulating for a session the log cannot reach', async () => {

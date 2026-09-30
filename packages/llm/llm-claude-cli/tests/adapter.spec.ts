@@ -14,7 +14,7 @@ import {
   TOOL_CALL_UNFENCED,
   TOOL_CALL_UNKNOWN_TOOL,
 } from '../src/emulate.ts'
-import type { CliToolEmulation } from '../src/types.ts'
+import type { CliToolEmulation, CliToolEmulationReply } from '../src/types.ts'
 import { FakeCli, streamLines } from './harness.ts'
 import type { FakeCliScript } from './harness.ts'
 
@@ -41,10 +41,12 @@ function build(
     readonly toolCalls?: 'refuse' | 'prompt'
     readonly toolCallRetries?: number
     readonly toolCallMaxCalls?: number
+    readonly toolCallLenient?: boolean
   } = {},
 ) {
   const cli = new FakeCli(script)
   const records: CliToolEmulation[] = []
+  const replies: CliToolEmulationReply[] = []
   const shared = {
     spawn: cli.spawn,
     workingDirectory: join(root, 'cwd'),
@@ -69,9 +71,13 @@ function build(
     toolCallMaxCalls: overrides.toolCallMaxCalls ?? 4,
     toolCallMaxBytes: 32_768,
     toolCallRetries: overrides.toolCallRetries ?? 1,
-    recordEmulation: (_sessionId, record) => { records.push(record) },
+    toolCallLenient: overrides.toolCallLenient ?? true,
+    recordEmulation: {
+      run: (_sessionId, record) => { records.push(record) },
+      reply: (_sessionId, record) => { replies.push(record) },
+    },
   })
-  return { cli, catalog, adapter, records }
+  return { cli, catalog, adapter, records, replies }
 }
 
 /** The tools a request declares in the emulation tests. */
@@ -338,7 +344,7 @@ describe('ClaudeCliAdapter.stream', () => {
 
 describe('ClaudeCliAdapter tool-call emulation', () => {
   it('declares the request tools in the system prompt and reports the fenced call back', async () => {
-    const { cli, adapter, records } = build({
+    const { cli, adapter, records, replies } = build({
       inference: () => replyLines('```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```'),
     })
     const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
@@ -359,6 +365,34 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
       preambleChars: system.length,
       tools: ['read_file'],
       attempt: 1,
+    }])
+    expect(replies).toEqual([{
+      provider: 'claude-cli',
+      model: 'opus',
+      attempt: 1,
+      calls: 1,
+      lenientCalls: 0,
+      discardedChars: 0,
+    }])
+  })
+
+  it('accepts a call whose block lost its opener line, and logs that it was read leniently', async () => {
+    const { cli, adapter, replies } = build({
+      inference: () => replyLines('\n{"name": "read_file", "arguments": {"path": "/a"}}\n```\nIt says hello.'),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(1)
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    const call = chunks.find(chunk => chunk.type === 'tool-call-delta')
+    expect(call?.type === 'tool-call-delta' && call.argumentsDelta).toBe('{"path":"/a"}')
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    expect(replies).toEqual([{
+      provider: 'claude-cli',
+      model: 'opus',
+      attempt: 1,
+      calls: 1,
+      lenientCalls: 1,
+      discardedChars: '\nIt says hello.'.length,
     }])
   })
 
@@ -453,14 +487,14 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
 
   it('answers a call written without its opener line with a correction naming the required fence', async () => {
     let call = 0
-    const { cli, adapter, records } = build({
+    const { cli, adapter, records, replies } = build({
       inference: () => {
         call += 1
         return replyLines(call === 1
           ? '\n{"name": "read_file", "arguments": {"path": "/a"}}\n```'
           : '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```')
       },
-    })
+    }, { toolCallLenient: false })
     const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
     expect(cli.callsOf('inference')).toHaveLength(2)
     // The raw JSON of the rejected reply never reaches the consumer as answer text.
@@ -477,12 +511,17 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
       + 'The harness reads a call only from a block that opens with the line ```dsh-tool-call and closes with the line ```. '
       + 'Answer the last message again, following the tool-call format exactly.',
     )
+    // Both runs are logged after the fact: the rejected one names its code, the accepted one its call.
+    expect(replies).toEqual([
+      { provider: 'claude-cli', model: 'opus', attempt: 1, calls: 0, lenientCalls: 0, discardedChars: 0, rejection: TOOL_CALL_UNFENCED },
+      { provider: 'claude-cli', model: 'opus', attempt: 2, calls: 1, lenientCalls: 0, discardedChars: 0 },
+    ])
   })
 
   it('ends with the named rejection, and no answer text, when the correction is ignored too', async () => {
     const { cli, adapter } = build({
       inference: () => replyLines('\n{"name": "read_file", "arguments": {"path": "/a"}}\n```'),
-    })
+    }, { toolCallLenient: false })
     const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
     expect(cli.callsOf('inference')).toHaveLength(2)
     expect(chunks.some(chunk => chunk.type === 'text-delta' || chunk.type === 'tool-call-delta')).toBe(false)
@@ -556,8 +595,32 @@ describe('ClaudeCliAdapter tool-call emulation', () => {
   })
 
   it('logs nothing for a request that carries no session identity', async () => {
-    const { adapter, records } = build({ inference: () => replyLines('ok') })
+    const { adapter, records, replies } = build({ inference: () => replyLines('ok') })
     await collect(adapter.stream(request({ tools: TOOLS })))
     expect(records).toEqual([])
+    expect(replies).toEqual([])
+  })
+
+  it('logs nothing for a request that declares no tools, since nothing was emulated', async () => {
+    const { adapter, records, replies } = build({ inference: () => replyLines('ok') })
+    await collect(adapter.stream(request({ sessionId: SESSION })))
+    expect(records).toEqual([])
+    expect(replies).toEqual([])
+  })
+
+  it('logs the rejection of a reply that had already handed text over', async () => {
+    const { adapter, replies } = build({
+      inference: () => replyLines('Let me look.\n```dsh-tool-call\n{"name":"web_search","arguments":{}}\n```'),
+    })
+    await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(replies).toEqual([{
+      provider: 'claude-cli',
+      model: 'opus',
+      attempt: 1,
+      calls: 0,
+      lenientCalls: 0,
+      discardedChars: 0,
+      rejection: TOOL_CALL_UNKNOWN_TOOL,
+    }])
   })
 })

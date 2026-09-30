@@ -50,9 +50,11 @@ const FENCE_CLOSE = '```'
 const CALL_MEMBERS = ['"name"', '"arguments"'] as const
 
 /** A fence opener line that is not the `dsh-tool-call` one: three backticks, an info string, a newline. */
-const OTHER_FENCE_LINE = /^```([\w+.-]*)[ \t]*\n/u
+const OTHER_FENCE_LINE = /^```[\w+.-]*[ \t]*\n/u
 /** The start of a fence opener line whose newline has not arrived yet. */
 const OTHER_FENCE_PREFIX = /^```[\w+.-]*[ \t]*$/u
+/** Info strings of a block that lenient reading accepts a call from: `json`, or none. */
+const LENIENT_INFO_STRINGS: ReadonlySet<string> = new Set(['', 'json'])
 /** Three backticks that end a block rather than start another opener line. */
 const CLOSING_FENCE = /^```(?![\w+.-])/u
 /** The `name` member of an object that opens with it, as the JSON string literal the model wrote. */
@@ -95,6 +97,8 @@ export type ToolPlan =
     readonly limits: EmulationLimits
     /** Correction runs allowed after a rejected reply. */
     readonly retries: number
+    /** Whether a call in one of the two unambiguous near-miss forms is accepted rather than rejected. */
+    readonly lenient: boolean
   }
 
 /** The deployment choices that decide a plan. */
@@ -103,6 +107,7 @@ export interface ToolPlanConfig {
   readonly toolCallMaxCalls: number
   readonly toolCallMaxBytes: number
   readonly toolCallRetries: number
+  readonly toolCallLenient: boolean
 }
 
 /**
@@ -124,6 +129,7 @@ export function resolveToolPlan(
     preamble: buildToolPreamble(tools, limits),
     limits,
     retries: config.toolCallRetries,
+    lenient: config.toolCallLenient,
   }
 }
 
@@ -187,10 +193,14 @@ export function correctionNotice(failure: EmulationFailure): string {
   return `Your previous reply was rejected and no tool ran. ${failure.message} Answer the last message again, following the tool-call format exactly.`
 }
 
-/** One piece of a reply: text for the user, or the raw JSON of one tool-call block. */
+/**
+ * One piece of a reply: text for the user, or the raw JSON of one tool call.
+ *
+ * `lenient` marks a call read from a near-miss form instead of a `dsh-tool-call` block.
+ */
 export type ReplySegment =
   | { readonly kind: 'text'; readonly text: string }
-  | { readonly kind: 'call'; readonly raw: string }
+  | { readonly kind: 'call'; readonly raw: string; readonly lenient: boolean }
 
 /** Quote a bounded excerpt of untrusted model text for a failure message. */
 function excerpt(text: string): string {
@@ -265,8 +275,16 @@ type Verdict =
   | { readonly kind: 'pending' }
   /** Not a call: this many characters are ordinary reply text. */
   | { readonly kind: 'text'; readonly length: number }
-  /** A call to a declared tool written outside a `dsh-tool-call` block, spanning `length` characters. */
-  | { readonly kind: 'unfenced'; readonly name: string; readonly length: number }
+  /**
+   * A call to a declared tool written outside a `dsh-tool-call` block, spanning `length` characters.
+   * `acceptable` is its JSON when it is in a form lenient reading accepts.
+   */
+  | {
+    readonly kind: 'unfenced'
+    readonly name: string
+    readonly length: number
+    readonly acceptable: string | undefined
+  }
 
 /** What a {@link ReplyScanner} reads one reply against. */
 export interface ReplyScannerOptions {
@@ -274,6 +292,13 @@ export interface ReplyScannerOptions {
   readonly limits: EmulationLimits
   /** The tools the request declared; only a call naming one of them is a call. */
   readonly tools: readonly ToolSchema[]
+  /**
+   * Whether a call in one of two near-miss forms is accepted instead of rejected: a block opened
+   * with `json` or no info string, or a bare object followed by a closing fence. Either is accepted
+   * only when the object has exactly the members `name` and `arguments`, names a declared tool, and
+   * carries object `arguments`.
+   */
+  readonly lenient: boolean
 }
 
 /**
@@ -284,6 +309,10 @@ export interface ReplyScannerOptions {
  * still open a fence, and a JSON object that opens with `"name"` or `"arguments"`, together with a
  * fence opener line directly above it. Such an object is held until it closes, until its `name`
  * turns out not to be a declared tool, or until it outgrows `limits.maxBytes`, whichever is first.
+ *
+ * A call written outside a `dsh-tool-call` block is accepted only in the forms
+ * {@link ReplyScannerOptions.lenient} names, and only when that option is on. Any other such call
+ * sets {@link failure}.
  */
 export class ReplyScanner {
   /** Set once the reply broke the contract; the scanner then produces nothing more. */
@@ -295,6 +324,7 @@ export class ReplyScanner {
   private closed = false
   private calls = 0
   private readonly limits: EmulationLimits
+  private readonly lenient: boolean
   /** Declared tool names, keyed by the JSON string literal a reply would carry. */
   private readonly names: ReadonlyMap<string, string>
 
@@ -303,6 +333,7 @@ export class ReplyScanner {
    */
   constructor(options: ReplyScannerOptions) {
     this.limits = options.limits
+    this.lenient = options.lenient
     this.names = new Map(options.tools.map(tool => [JSON.stringify(tool.name), tool.name]))
   }
 
@@ -352,15 +383,8 @@ export class ReplyScanner {
           }
           return segments
         }
-        this.calls += 1
-        if (this.calls > this.limits.maxCalls) {
-          this.failure = {
-            code: TOOL_CALL_LIMIT,
-            message: `The reply carried more than ${this.limits.maxCalls} tool-call blocks.`,
-          }
-          return segments
-        }
-        segments.push({ kind: 'call', raw })
+        if (!this.admit()) return segments
+        segments.push({ kind: 'call', raw, lenient: false })
         this.collecting = false
         continue
       }
@@ -372,6 +396,11 @@ export class ReplyScanner {
         if (found.verdict.kind === 'pending') return segments
         const text = this.buffer.slice(0, found.verdict.length)
         this.buffer = this.buffer.slice(found.verdict.length)
+        if (this.lenient && found.verdict.acceptable !== undefined) {
+          if (!this.admit()) return segments
+          segments.push({ kind: 'call', raw: found.verdict.acceptable, lenient: true })
+          continue
+        }
         if (this.calls === 0) {
           this.failure = {
             code: TOOL_CALL_UNFENCED,
@@ -397,6 +426,20 @@ export class ReplyScanner {
       if (release.length > 0) segments.push({ kind: 'text', text: release })
       return segments
     }
+  }
+
+  /**
+   * Count one more call against the cap.
+   * @returns whether the reply may carry it; when not, {@link failure} names the cap.
+   */
+  private admit(): boolean {
+    this.calls += 1
+    if (this.calls <= this.limits.maxCalls) return true
+    this.failure = {
+      code: TOOL_CALL_LIMIT,
+      message: `The reply carried more than ${this.limits.maxCalls} tool-call blocks.`,
+    }
+    return false
   }
 
   /**
@@ -467,18 +510,21 @@ export class ReplyScanner {
       // call the model was writing, so it is rejected whole rather than shown as text.
       return leading === undefined
         ? { kind: 'text', length: 1 }
-        : { kind: 'unfenced', name: leading, length: text.length }
+        : { kind: 'unfenced', name: leading, length: text.length, acceptable: undefined }
     }
-    const name = this.calledTool(text.slice(0, end + 1))
-    if (name === undefined) return { kind: 'text', length: 1 }
+    const raw = text.slice(0, end + 1)
+    const called = this.calledTool(raw)
+    if (called === undefined) return { kind: 'text', length: 1 }
     // A closing fence after the object belongs to the call: the model wrote the block and left out
     // its opener line. Three backticks that start another opener line do not.
     const tail = text.slice(end + 1).trimStart()
     if (FENCE_CLOSE.startsWith(tail) && this.mayWait(text.length, final)) return { kind: 'pending' }
+    const closed = CLOSING_FENCE.test(tail)
     return {
       kind: 'unfenced',
-      name,
-      length: CLOSING_FENCE.test(tail) ? text.length - tail.length + FENCE_CLOSE.length : end + 1,
+      name: called.name,
+      length: closed ? text.length - tail.length + FENCE_CLOSE.length : end + 1,
+      acceptable: closed && called.exact ? raw : undefined,
     }
   }
 
@@ -504,15 +550,21 @@ export class ReplyScanner {
     switch (inner.kind) {
       case 'pending': return inner
       case 'text': return { kind: 'text', length: line.length }
-      case 'unfenced': return { ...inner, length: line.length + lead + inner.length }
+      case 'unfenced': return {
+        ...inner,
+        length: line.length + lead + inner.length,
+        acceptable: LENIENT_INFO_STRINGS.has(line.slice(FENCE_CLOSE.length).trim()) ? inner.acceptable : undefined,
+      }
     }
   }
 
   /**
-   * The declared tool a balanced `{…}` text calls, when it is JSON that names one and carries an
-   * `arguments` member.
+   * Read a balanced `{…}` text as a call to a declared tool.
+   * @param raw - text whose braces balance.
+   * @returns the tool it names when it is JSON carrying an `arguments` member, and whether it is
+   *   exactly the object the contract asks for: those two members, with object `arguments`.
    */
-  private calledTool(raw: string): string | undefined {
+  private calledTool(raw: string): { readonly name: string; readonly exact: boolean } | undefined {
     let parsed: unknown
     try {
       parsed = JSON.parse(raw)
@@ -524,9 +576,10 @@ export class ReplyScanner {
     // `objectEnd` closes only on a balanced `{…}`, so text that parses is always an object.
     const call = parsed as Record<string, unknown>
     const name = call['name']
-    return typeof name === 'string' && this.names.has(JSON.stringify(name)) && 'arguments' in call
-      ? name
-      : undefined
+    if (typeof name !== 'string' || !this.names.has(JSON.stringify(name)) || !('arguments' in call)) {
+      return undefined
+    }
+    return { name, exact: Object.keys(call).length === 2 && isRecord(call['arguments']) }
   }
 }
 
@@ -635,6 +688,7 @@ export class ToolCallEmulator {
    */
   private lead = ''
   private accepted = 0
+  private acceptedLeniently = 0
   private discarded = 0
   private handed = false
 
@@ -643,12 +697,17 @@ export class ToolCallEmulator {
    */
   constructor(plan: Extract<ToolPlan, { kind: 'prompt' }>) {
     this.tools = plan.tools
-    this.scanner = new ReplyScanner({ limits: plan.limits, tools: plan.tools })
+    this.scanner = new ReplyScanner({ limits: plan.limits, tools: plan.tools, lenient: plan.lenient })
   }
 
   /** Tool calls accepted from this reply. */
   get calls(): number {
     return this.accepted
+  }
+
+  /** Tool calls accepted from a near-miss form rather than from a `dsh-tool-call` block. */
+  get lenientCalls(): number {
+    return this.acceptedLeniently
   }
 
   /** Reply characters dropped because they followed an accepted tool call. */
@@ -710,6 +769,7 @@ export class ToolCallEmulator {
       }
       chunks.push(...this.emitCall(segment.raw))
       if (this.failure !== undefined) break
+      if (segment.lenient) this.acceptedLeniently += 1
     }
     this.failure ??= this.scanner.failure
     return chunks

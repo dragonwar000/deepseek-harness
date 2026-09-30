@@ -2192,7 +2192,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-llm-claude-cli`
 
 - `inject`: `llm` · `subprocess`
-- `source`: [`packages/llm/llm-claude-cli/src/index.ts:97`](../packages/llm/llm-claude-cli/src/index.ts)
+- `source`: [`packages/llm/llm-claude-cli/src/index.ts:105`](../packages/llm/llm-claude-cli/src/index.ts)
 
 ```ts config-catalog
 /** Config with every default applied. */
@@ -2234,6 +2234,13 @@ export interface Config {
   toolCallMaxBytes?: number
   /** Correction runs allowed after a rejected reply that produced no output yet. */
   toolCallRetries?: number
+  /**
+   * Accept a call the model wrote in one of two near-miss forms instead of rejecting it: a block
+   * opened with `json` or no info string, or a bare object followed by a closing fence. Either is
+   * accepted only when the object has exactly `name` and `arguments`, names a declared tool, and
+   * carries object `arguments`; `false` rejects both forms as `TOOL_CALL_UNFENCED`.
+   */
+  toolCallLenient?: boolean
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-claude-cli -->

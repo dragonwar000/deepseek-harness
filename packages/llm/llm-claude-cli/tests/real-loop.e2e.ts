@@ -52,6 +52,13 @@ afterAll(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+/** The session an emulation record belongs to, which this test created through the loop. */
+function reach(ctx: Context, sessionId: SessionId) {
+  const session = ctx.sessions.get(sessionId)
+  if (session === undefined) throw new Error(`no session ${sessionId}`)
+  return session
+}
+
 /** Mount the production loop with one real tool and the CLI-backed model route. */
 async function mount(): Promise<Context> {
   const ctx = new Context()
@@ -84,10 +91,10 @@ async function mount(): Promise<Context> {
     toolCallMaxCalls: 4,
     toolCallMaxBytes: 32_768,
     toolCallRetries: 1,
-    recordEmulation: (sessionId, record) => {
-      const session = ctx.sessions.get(sessionId)
-      if (session === undefined) throw new Error(`no session ${sessionId}`)
-      session.append('llm/cli-tool-emulation', record)
+    toolCallLenient: true,
+    recordEmulation: {
+      run: (sessionId, record) => { reach(ctx, sessionId).append('llm/cli-tool-emulation', record) },
+      reply: (sessionId, record) => { reach(ctx, sessionId).append('llm/cli-tool-emulation-reply', record) },
     },
   }))
   ctx.tools.register(defineTool({
@@ -138,6 +145,10 @@ describe.skipIf(!available)('llm-claude-cli driving the production agent loop', 
     // One record per CLI run: the call step and the answering step, plus any correction run.
     expect(emulated.length).toBeGreaterThanOrEqual(2)
     expect(emulated[0]?.data.tools).toContain('read_marker_file')
+    // The production loop drains each stream to its end, so every run's reply is logged after it.
+    const read = events.filter(event => event.type === 'llm/cli-tool-emulation-reply')
+    expect(read).toHaveLength(emulated.length)
+    expect(read.reduce((calls, event) => calls + event.data.calls, 0)).toBe(1)
     const answers = events.filter(event => event.type === 'assistant/message')
     const text = answers.at(-1)?.type === 'assistant/message'
       ? answers.at(-1)?.data.message.content.map(block => (block.type === 'text' ? block.text : '')).join('')

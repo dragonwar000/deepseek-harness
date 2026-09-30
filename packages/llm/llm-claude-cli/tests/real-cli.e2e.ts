@@ -22,6 +22,7 @@ import {
 } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk, ToolSchema } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import LocalSubprocess from '@deepseek-ai/dsh-subprocess-local'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import * as Route from '../src/index.ts'
@@ -96,12 +97,19 @@ function adapterOf(ctx: Context, overrides: Partial<Route.Config>) {
     toolCallMaxCalls: 4,
     toolCallMaxBytes: 32_768,
     toolCallRetries: overrides.toolCallRetries ?? 1,
-    recordEmulation: (sessionId, record) => {
-      const session = ctx.sessions.get(sessionId)
-      if (session === undefined) throw new Error(`no session ${sessionId}`)
-      session.append('llm/cli-tool-emulation', record)
+    toolCallLenient: overrides.toolCallLenient ?? true,
+    recordEmulation: {
+      run: (sessionId, record) => { reach(ctx, sessionId).append('llm/cli-tool-emulation', record) },
+      reply: (sessionId, record) => { reach(ctx, sessionId).append('llm/cli-tool-emulation-reply', record) },
     },
   })
+}
+
+/** The session an emulation record belongs to, which the test created before its request. */
+function reach(ctx: Context, sessionId: SessionId) {
+  const session = ctx.sessions.get(sessionId)
+  if (session === undefined) throw new Error(`no session ${sessionId}`)
+  return session
 }
 
 /** Call identity shared by the assistant tool call and the tool result answering it. */
@@ -200,6 +208,16 @@ describe.skipIf(!available)('llm-claude-cli against the installed Claude Code CL
     expect(logged).toHaveLength(1)
     expect(logged[0]?.data)
       .toMatchObject({ template: Route.PREAMBLE_TEMPLATE, tools: ['read_file', 'bash'], attempt: 1 })
+    // A model that follows the contract is read from the fence, never leniently.
+    const read = session.snapshotEvents().filter(event => event.type === 'llm/cli-tool-emulation-reply')
+    expect(read.map(event => event.data)).toEqual([{
+      provider: 'claude-cli',
+      model: 'sonnet',
+      attempt: 1,
+      calls: 1,
+      lenientCalls: 0,
+      discardedChars: expect.any(Number) as number,
+    }])
   }, 300_000)
 
   it('answers from a tool result it is handed, so a second loop step completes', async () => {
