@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-09-30-sanctioned-sign-in-model-routes.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-30-sanctioned-sign-in-model-routes.md
+/agent-note-sanctioned-sign-in-model-routes:
+  en: 8e412af7dd6956d6
+  zh: 971bf4449b33c11b
+/agent-note-sanctioned-sign-in-model-routes/problem:
+  en: 5a208cccbe4223ef
+  zh: bbbbd32cba556590
+/agent-note-sanctioned-sign-in-model-routes/decision:
+  en: 4e8d7757b4bdedbd
+  zh: 7e668b25d581d5a7
+/agent-note-sanctioned-sign-in-model-routes/classification-evidence:
+  en: 44a7c81f28772b32
+  zh: abdeecea1ca61649
+/agent-note-sanctioned-sign-in-model-routes/alternatives-considered:
+  en: 73485f0dfe44bbab
+  zh: 5845e21038f7e395
+/agent-note-sanctioned-sign-in-model-routes/consequences:
+  en: 41036be4061e0a42
+  zh: e64c01a2e02e61d8
