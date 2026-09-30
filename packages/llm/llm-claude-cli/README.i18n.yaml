@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/llm/llm-claude-cli/README.md
+/:
+  en: 4330484a1504ea7e
+  zh: 4fce69ab9afdc80c
+/deepseek-ai-dsh-llm-claude-cli:
+  en: 2bd8d3b8b6cfc344
+  zh: e33ea108fc264e7f
+/deepseek-ai-dsh-llm-claude-cli/summary:
+  en: 4c6abf43efc17892
+  zh: 49759821b89477cd
+/deepseek-ai-dsh-llm-claude-cli/table-of-contents:
+  en: e6747830a09a09aa
+  zh: d9fe211fb6d215d0
+/deepseek-ai-dsh-llm-claude-cli/use-this-package:
+  en: b186aac3930ba6c0
+  zh: 6721ba09dcf3e92b
+/deepseek-ai-dsh-llm-claude-cli/understand-the-implementation:
+  en: f49f487e13eabbe6
+  zh: 73573a7cdfa87303
+/deepseek-ai-dsh-llm-claude-cli/further-exploration:
+  en: 90110e1869b8e7f1
+  zh: 8a2354233cbf2d0d
+/deepseek-ai-dsh-llm-claude-cli/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-llm-claude-cli/model-experience/text-requests-over-the-cli-transport:
+  en: 64769f7e085d8a4d
+  zh: 298f6efa69c2abf6
+/deepseek-ai-dsh-llm-claude-cli/model-experience/text-requests-over-the-cli-transport/what-the-model-sees:
+  en: 696dbd556ef79bc4
+  zh: 2fe27ba5bff17f88
+/deepseek-ai-dsh-llm-claude-cli/model-experience/text-requests-over-the-cli-transport/token-effect:
+  en: 97606e4f9d9ef640
+  zh: 1b8a84cfef3e2301
+/deepseek-ai-dsh-llm-claude-cli/model-experience/text-requests-over-the-cli-transport/kv-cache-effect:
+  en: f15a519b0d2ffece
+  zh: 60035f0b0e6331c0
+/deepseek-ai-dsh-llm-claude-cli/known-limitations-and-deferred-work:
+  en: 3e8fe882ae7a4ffa
+  zh: 3e02ff292762f745
+/deepseek-ai-dsh-llm-claude-cli/known-limitations-and-deferred-work/dev-note:
+  en: c5330e72458fba12
+  zh: e29655a8815ea001

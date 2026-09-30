@@ -24,7 +24,7 @@
 | `agent/request-error` | `waterfall` | [`packages/core/agent/src/runtime-types.ts:353`](../packages/core/agent/src/runtime-types.ts) | [`agent-loop`](../packages/core/agent-loop) (`waterfall`) | [`compaction-basic`](../packages/compaction/compaction-basic), [`compaction-image-offload`](../packages/compaction/compaction-image-offload), [`llm-retry`](../packages/llm/llm-retry) |
 | `agent/status` | `emit` | [`packages/core/agent/src/runtime-types.ts:280`](../packages/core/agent/src/runtime-types.ts) | [`agent-loop`](../packages/core/agent-loop) (`emit`) | [`agent`](../packages/core/agent), `agent-team`, [`compaction-basic`](../packages/compaction/compaction-basic), [`goal-round-driver`](../packages/goal/goal-round-driver), `server`, `session-controller` |
 | `agent/turn-stopping` | `serial` | [`packages/core/agent/src/runtime-types.ts:381`](../packages/core/agent/src/runtime-types.ts) | [`agent-loop`](../packages/core/agent-loop) (`serial`) | [`hooks-claude-code`](../packages/hooks/hooks-claude-code), [`hooks-codex`](../packages/hooks/hooks-codex), `loop-budget`, `memory-distill`, `verifier-gate`, [`workspace-changes`](../packages/deliverables/workspace-changes) |
-| `ai-account/default-changed` | `emit` | [`packages/credentials/ai-account/src/types.ts:71`](../packages/credentials/ai-account/src/types.ts) | [`ai-account-platform`](../packages/credentials/ai-account-platform) (`emit`) | [`subagent-ai-account`](../packages/subagent/subagent-ai-account) |
+| `ai-account/default-changed` | `emit` | [`packages/credentials/ai-account/src/types.ts:71`](../packages/credentials/ai-account/src/types.ts) | [`ai-account-platform`](../packages/credentials/ai-account-platform) (`emit`) | [`llm-claude-cli`](../packages/llm/llm-claude-cli), [`subagent-ai-account`](../packages/subagent/subagent-ai-account) |
 | `api-session/activity` | `emit` | [`packages/api/session-controller/src/types.ts:611`](../packages/api/session-controller/src/types.ts) | `session-controller` (`emit`) | `remotes` |
 | `api-session/added` | `emit` | [`packages/api/session-controller/src/types.ts:591`](../packages/api/session-controller/src/types.ts) | `session-controller` (`emit`) | `remotes` |
 | `api-session/error` | `emit` | [`packages/api/session-controller/src/types.ts:618`](../packages/api/session-controller/src/types.ts) | `session-controller` (`emit`) | `remotes` |
@@ -105,7 +105,7 @@
 | `internal/service` | - | [`agent-preset-registry`](../packages/preset/agent-preset-registry), `gateway` |
 | `internal/status` | - | [`agent`](../packages/core/agent), `inspector`, [`web`](../packages/web/web) |
 | `internal/update` | - | [`app-boot`](../packages/boot/app-boot) |
-| `loader/volatile-update` | - | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), `product-analytics`, `speech-to-text` |
+| `loader/volatile-update` | - | [`llm-claude-cli`](../packages/llm/llm-claude-cli), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), `product-analytics`, `speech-to-text` |
 | `slots/changed` | `ui-renderer` (`emit`) | - |
 <!-- END GENERATED event-producer-consumer:undeclared -->
 
