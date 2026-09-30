@@ -24,7 +24,8 @@ export const inject = ['invariants']
 export function admissionViolation(record: GraphPlanRecord, frozen: readonly string[] | null): string | undefined {
   const blocking = record.rejections.some(entry => entry.severity === 'reject')
   const has = (code: string): boolean => record.rejections.some(entry => entry.code === code)
-  if (record.mode === 'shadow' && !record.admitted) return 'a shadow-mode version is recorded as not admitted'
+  if (record.plan === null && record.admitted) return 'an unparsed plan is recorded as admitted'
+  if (record.mode === 'shadow' && record.plan !== null && !record.admitted) return 'a parsed shadow-mode version is recorded as not admitted'
   if (record.mode === 'enforce' && record.admitted && blocking) return 'an admitted enforce-mode version carries a reject finding'
   if (record.mode === 'enforce' && !record.admitted && !blocking) return 'an enforce-mode version without a reject finding is recorded as not admitted'
   if (record.plan === null && !has('SCHEMA_INVALID')) return 'an unparsed plan carries no SCHEMA_INVALID finding'

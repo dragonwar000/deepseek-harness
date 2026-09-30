@@ -50,6 +50,7 @@ describe('graph-contract invariant', () => {
     ['an admitted enforce version with a reject finding', [record(1, { rejections: [finding('CYCLE')] })]],
     ['a refused enforce version without a reject finding', [record(1, { admitted: false })]],
     ['a refused shadow version', [record(1, { mode: 'shadow', admitted: false, rejections: [finding('CYCLE')] })]],
+    ['an admitted unparsed shadow version', [record(1, { mode: 'shadow', plan: null, rejections: [finding('SCHEMA_INVALID')] })]],
     ['an unparsed plan without SCHEMA_INVALID', [record(1, { plan: null, admitted: false, rejections: [finding('CYCLE')] })]],
     ['changed acceptance without ACCEPTANCE_CHANGED', [record(1), record(2, { plan: plan(['other']) })]],
   ])('rejects %s', async (_label, sequence) => {
@@ -57,6 +58,11 @@ describe('graph-contract invariant', () => {
     const last = sequence.at(-1)!
     for (const entry of sequence.slice(0, -1)) session.append('graph/plan', entry)
     expect(() => session.append('graph/plan', last)).toThrow(expect.objectContaining(VIOLATION))
+  })
+
+  it('accepts an unparsed shadow version recorded as not admitted', async () => {
+    const session = await open('gc-shadow-unparsed')
+    expect(() => session.append('graph/plan', record(1, { mode: 'shadow', admitted: false, plan: null, rejections: [finding('SCHEMA_INVALID')] }))).not.toThrow()
   })
 
   it('accepts a changed acceptance that carries ACCEPTANCE_CHANGED', async () => {

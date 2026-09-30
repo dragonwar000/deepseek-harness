@@ -579,7 +579,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'graph/edge': GraphEdgeRecord
 ```
 
-来源：[`packages/experimental/graph-contract/src/types.ts:388`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:391`](../packages/experimental/graph-contract/src/types.ts)
 
 <a id="graphnode--log-only"></a>
 
@@ -590,7 +590,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'graph/node': GraphNodeRecord
 ```
 
-来源：[`packages/experimental/graph-contract/src/types.ts:384`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:387`](../packages/experimental/graph-contract/src/types.ts)
 
 <a id="graphplan--log-only"></a>
 
@@ -601,7 +601,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'graph/plan': GraphPlanRecord
 ```
 
-来源：[`packages/experimental/graph-contract/src/types.ts:382`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:385`](../packages/experimental/graph-contract/src/types.ts)
 
 <a id="graphrun--log-only"></a>
 
@@ -612,7 +612,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'graph/run': GraphRunRecord
 ```
 
-来源：[`packages/experimental/graph-contract/src/types.ts:386`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:389`](../packages/experimental/graph-contract/src/types.ts)
 
 ### `hook/*`
 
@@ -5232,7 +5232,7 @@ SHA-256: `449b33794eb44d54d23b682d3a7e868e5ba26458b07d58e9d34698665e438fce`
 
 SHA-256: `120d4e7e46ab992a78b923056f76205cf5205407354198d0c4e5e998bc368c8f`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:351`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:354`](../packages/experimental/graph-contract/src/types.ts)
 
 以下类型之一：
 
@@ -5251,7 +5251,7 @@ SHA-256: `120d4e7e46ab992a78b923056f76205cf5205407354198d0c4e5e998bc368c8f`
 
 SHA-256: `ed3f58b8cb8e1c0cb69c42f4550b6fa18e07e81588170784d16dac2fcb068ae2`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:354`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:357`](../packages/experimental/graph-contract/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -5402,7 +5402,7 @@ SHA-256: `76d88d9b441e7edd7efa97cf77cb4074499d2df97cf882ed388c1d908f694cb0`
 
 SHA-256: `78caa9fce210201f30310488a3ea3594fce6179c0ea9605b295b7a1bdbead80d`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:283`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/verifier-gate/src/types.ts:10`](../packages/experimental/verifier-gate/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:286`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/verifier-gate/src/types.ts:10`](../packages/experimental/verifier-gate/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -5451,7 +5451,7 @@ SHA-256: `15257452176ae17b0ea9ab182ed12a195e451b72ae99fcf69b68e92f2837114b`
 
 SHA-256: `b97e37a02dfcbbc1a39b585a0cdcd181c402bb79a5edfe8eb5133c3ea9751d34`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:295`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:298`](../packages/experimental/graph-contract/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -5483,7 +5483,7 @@ SHA-256: `b97e37a02dfcbbc1a39b585a0cdcd181c402bb79a5edfe8eb5133c3ea9751d34`
 
 SHA-256: `63e0b5f26a49378ac2c875fa82188a7f332453b974a29a4262262388de8f7bc2`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:261`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:264`](../packages/experimental/graph-contract/src/types.ts)
 
 以下类型之一：
 
@@ -5564,7 +5564,7 @@ SHA-256: `2d767c4d9cc4a12cafd197e031810e3f6a7e41d16053b51b8ae1daf5d61c40c3`
 
 SHA-256: `651df47acd0cd43209bb5054c2ffe761c0c3d486a9c46008ff3cdf614a9f810f`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:277`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:280`](../packages/experimental/graph-contract/src/types.ts)
 
 以下类型之一：
 
@@ -5672,7 +5672,7 @@ SHA-256: `6d9aca2ef9d3a31ee9655183ed486ce1848d11d965c9324dc38870b442e87278`
 
 SHA-256: `b7819c1cde4d7eab2f05e0bf96ca2814e55df513135f629bb4e036ea53c60326`
 
-来源：[`packages/experimental/graph-contract/src/types.ts:333`](../packages/experimental/graph-contract/src/types.ts)
+来源：[`packages/experimental/graph-contract/src/types.ts:336`](../packages/experimental/graph-contract/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -8054,7 +8054,7 @@ SHA-256: `5d03ba38734809bcbd2a55221bd938b3b3fc34b49bb686c6113e9e4931e3aa78`
 
 SHA-256: `4cd48f3e5108bd6ebedf7301c3638839b8b2b9db8dbd493974177fbdeb91a01b`
 
-来源：[`packages/api/session-controller/src/types.ts:398`](../packages/api/session-controller/src/types.ts) · [`packages/attachment/attachment/src/brand.ts:6`](../packages/attachment/attachment/src/brand.ts) · [`packages/compaction/compaction/src/brand.ts:4`](../packages/compaction/compaction/src/brand.ts) · [`packages/core/session/src/types.ts:20`](../packages/core/session/src/types.ts) · [`packages/experimental/agent-team/src/types.ts:20`](../packages/experimental/agent-team/src/types.ts) · [`packages/experimental/agent-team/src/types.ts:32`](../packages/experimental/agent-team/src/types.ts) · [`packages/experimental/agent-team/src/types.ts:8`](../packages/experimental/agent-team/src/types.ts) · [`packages/experimental/graph-contract/src/types.ts:14`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/graph-contract/src/types.ts:17`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/graph-contract/src/types.ts:258`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/knowledge/src/types.ts:12`](../packages/experimental/knowledge/src/types.ts) · [`packages/feedback/message-feedback/src/types.ts:14`](../packages/feedback/message-feedback/src/types.ts) · [`packages/goal/goal/src/types.ts:17`](../packages/goal/goal/src/types.ts) · [`packages/interaction/commands/src/brand.ts:31`](../packages/interaction/commands/src/brand.ts) · [`packages/interaction/user-approval/src/types.ts:17`](../packages/interaction/user-approval/src/types.ts) · [`packages/llm/llm-retry/src/brand.ts:4`](../packages/llm/llm-retry/src/brand.ts) · [`packages/llm/llm/src/brand.ts:16`](../packages/llm/llm/src/brand.ts) · [`packages/llm/llm/src/brand.ts:31`](../packages/llm/llm/src/brand.ts) · [`packages/llm/llm/src/brand.ts:43`](../packages/llm/llm/src/brand.ts) · [`packages/llm/llm/src/brand.ts:67`](../packages/llm/llm/src/brand.ts) · [`packages/schedule/schedule/src/types.ts:14`](../packages/schedule/schedule/src/types.ts) · [`packages/session/session-title/src/index.ts:42`](../packages/session/session-title/src/index.ts) · [`packages/session/session-title/src/types.ts:17`](../packages/session/session-title/src/types.ts) · [`packages/webhook/webhook/src/brand.ts:12`](../packages/webhook/webhook/src/brand.ts) · [`packages/webhook/webhook/src/brand.ts:6`](../packages/webhook/webhook/src/brand.ts) · [`packages/webhook/webhook/src/brand.ts:9`](../packages/webhook/webhook/src/brand.ts) · [`packages/workflow/workflow/src/types.ts:13`](../packages/workflow/workflow/src/types.ts)
+来源：[`packages/api/session-controller/src/types.ts:398`](../packages/api/session-controller/src/types.ts) · [`packages/attachment/attachment/src/brand.ts:6`](../packages/attachment/attachment/src/brand.ts) · [`packages/compaction/compaction/src/brand.ts:4`](../packages/compaction/compaction/src/brand.ts) · [`packages/core/session/src/types.ts:20`](../packages/core/session/src/types.ts) · [`packages/experimental/agent-team/src/types.ts:20`](../packages/experimental/agent-team/src/types.ts) · [`packages/experimental/agent-team/src/types.ts:32`](../packages/experimental/agent-team/src/types.ts) · [`packages/experimental/agent-team/src/types.ts:8`](../packages/experimental/agent-team/src/types.ts) · [`packages/experimental/graph-contract/src/types.ts:14`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/graph-contract/src/types.ts:17`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/graph-contract/src/types.ts:261`](../packages/experimental/graph-contract/src/types.ts) · [`packages/experimental/knowledge/src/types.ts:12`](../packages/experimental/knowledge/src/types.ts) · [`packages/feedback/message-feedback/src/types.ts:14`](../packages/feedback/message-feedback/src/types.ts) · [`packages/goal/goal/src/types.ts:17`](../packages/goal/goal/src/types.ts) · [`packages/interaction/commands/src/brand.ts:31`](../packages/interaction/commands/src/brand.ts) · [`packages/interaction/user-approval/src/types.ts:17`](../packages/interaction/user-approval/src/types.ts) · [`packages/llm/llm-retry/src/brand.ts:4`](../packages/llm/llm-retry/src/brand.ts) · [`packages/llm/llm/src/brand.ts:16`](../packages/llm/llm/src/brand.ts) · [`packages/llm/llm/src/brand.ts:31`](../packages/llm/llm/src/brand.ts) · [`packages/llm/llm/src/brand.ts:43`](../packages/llm/llm/src/brand.ts) · [`packages/llm/llm/src/brand.ts:67`](../packages/llm/llm/src/brand.ts) · [`packages/schedule/schedule/src/types.ts:14`](../packages/schedule/schedule/src/types.ts) · [`packages/session/session-title/src/index.ts:42`](../packages/session/session-title/src/index.ts) · [`packages/session/session-title/src/types.ts:17`](../packages/session/session-title/src/types.ts) · [`packages/webhook/webhook/src/brand.ts:12`](../packages/webhook/webhook/src/brand.ts) · [`packages/webhook/webhook/src/brand.ts:6`](../packages/webhook/webhook/src/brand.ts) · [`packages/webhook/webhook/src/brand.ts:9`](../packages/webhook/webhook/src/brand.ts) · [`packages/workflow/workflow/src/types.ts:13`](../packages/workflow/workflow/src/types.ts)
 
 `string`
 

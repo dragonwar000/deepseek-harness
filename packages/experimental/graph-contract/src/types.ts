@@ -208,7 +208,10 @@ export interface GraphPlanRecord {
   sha: string
   /** Plugin mode at audit time. */
   mode: 'shadow' | 'enforce'
-  /** `shadow`: always true. `enforce`: true iff no rejection has severity `reject`. */
+  /**
+   * `shadow`: true iff the input parsed; an unparsed input is recorded `false` with `mode: 'shadow'`, and no finding
+   * blocked it. `enforce`: true iff the input parsed and no rejection has severity `reject`.
+   */
   admitted: boolean
   /** The normalized plan, or null when the input did not parse. */
   plan: GraphPlan | null

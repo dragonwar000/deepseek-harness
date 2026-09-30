@@ -1,5 +1,5 @@
 ---
-description: "在任何内容运行之前确定性地审计 dsh-graph/v1 计划：graph_audit 报告每个结构性拒绝及其固定修复方法，并把每个版本记录为 graph/plan 事件；shadow 模式准入并只记录。"
+description: "在任何内容运行之前确定性地审计 dsh-graph/v1 计划：graph_audit 报告每个结构性拒绝及其固定修复方法，并把每个版本记录为 graph/plan 事件；shadow 模式准入每个成功解析的计划并只记录。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包定义 `dsh-graph/v1` 计划格式，并注册 `graph_audit` 与 `graph_capabilities` 工具。`graph_audit` 解析一个计划，在不运行任何内容的情况下审计它，返回每个发现及其固定修复方法，并在计划 id 可读时追加一个 `graph/plan` 事件，因此版本、拒绝记忆、准入与能力路由都能从日志重建。`enforce` 只准入没有 `reject` 发现的版本；`shadow` 准入每个版本。本包还声明 `graph/node`、`graph/run` 与 `graph/edge` 事件，以及 graph 运行器与投影共用的节点生命周期与循环规则。本包是实验性的。
+本包定义 `dsh-graph/v1` 计划格式，并注册 `graph_audit` 与 `graph_capabilities` 工具。`graph_audit` 解析一个计划，在不运行任何内容的情况下审计它，返回每个发现及其固定修复方法，并在计划 id 可读时追加一个 `graph/plan` 事件，因此版本、拒绝记忆、准入与能力路由都能从日志重建。`enforce` 只准入没有 `reject` 发现的版本；`shadow` 准入每个成功解析的版本。本包还声明 `graph/node`、`graph/run` 与 `graph/edge` 事件，以及 graph 运行器与投影共用的节点生命周期与循环规则。本包是实验性的。
 
 ## 目录
 
@@ -45,7 +45,7 @@ kind: "package-reference"
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
-| `mode` | `shadow` | `off` 不注册任何东西；`shadow` 准入每个版本并仍报告发现；`enforce` 只在没有严重级别为 `reject` 的发现时准入版本 |
+| `mode` | `shadow` | `off` 不注册任何东西；`shadow` 准入每个成功解析的版本并仍报告发现，并以 `admitted: false` 记录无法解析的版本；`enforce` 只在没有严重级别为 `reject` 的发现时准入版本 |
 | `assumption` | 非 `off` 时必填 | 本审计所编码的、关于模型的假设；空白值会使加载失败 |
 | `allowedTools` | `[]` | 图节点可以声明的全局工具；`run_code` 会使加载失败 |
 | `shellTools` | `[]` | 节点可声明的、运行 shell 命令的工具；agent 节点每声明一个都会得到 `SHELL_WRITES_UNCHECKED` 警告 |
@@ -176,7 +176,7 @@ Status, basis, and version belong to the harness and are rejected inside a plan.
 ##### 该字段的原文
 
 ```markdown
-graph_audit: <admitted | rejected | admitted in shadow mode; the rejections below are recorded, not enforced>
+graph_audit: <admitted | rejected | admitted in shadow mode; the rejections below are recorded, not enforced | not admitted, because the plan does not parse; shadow mode admits only a parsed plan>
 plan: <plan id> version <n> sha <first 12 hex digits>
 identical to version <k>
 previous versions: v<n> <admitted|rejected> (<CODE>, <CODE>); …

@@ -108,17 +108,17 @@
   en: 3b37e5b9d7c3aba9
   zh: 3b37e5b9d7c3aba9
 /session-persistence-event-catalog/events/graph/graph-edge-log-only:
-  en: 92874863b95e337a
-  zh: 6de894be53447396
+  en: 4122f64bc1a232a5
+  zh: b827f4f84c0d745e
 /session-persistence-event-catalog/events/graph/graph-node-log-only:
-  en: 833368a4cae5063e
-  zh: ca8380eb33b7955f
+  en: b77d8763ec674938
+  zh: b7c1d967f9cfcfb6
 /session-persistence-event-catalog/events/graph/graph-plan-log-only:
-  en: 9f33474d698c067f
-  zh: ec989bb91cfc3c86
+  en: 220e4138d4126a29
+  zh: 9a2306aa22281cb1
 /session-persistence-event-catalog/events/graph/graph-run-log-only:
-  en: 7a5ea300b26e481e
-  zh: 715454d95d862fb6
+  en: b61b03e0597d7d92
+  zh: 3813bfeb47bbff77
 /session-persistence-event-catalog/events/hook:
   en: 8d6fa78d450a0e56
   zh: 8d6fa78d450a0e56
@@ -1587,11 +1587,11 @@
   en: 9299bb29c949e49f
   zh: 6cbd98829c94cf29
 /session-persistence-event-catalog/resolved-persistence-types/graphedgeoutcome:
-  en: 46a120c6aec4c093
-  zh: 016ced3de9317902
+  en: b616bd289b87ad64
+  zh: f33638eade2fa970
 /session-persistence-event-catalog/resolved-persistence-types/graphedgerecord:
-  en: 5cf98d9782249b37
-  zh: 45ba166093505753
+  en: a1607bb3a9d0af61
+  zh: c77a764be652f456
 /session-persistence-event-catalog/resolved-persistence-types/graphedgerelation:
   en: d8c042e74ae7c2e2
   zh: 584f799b1a03235a
@@ -1614,8 +1614,8 @@
   en: 12cc95113a965242
   zh: 66f04c729f9a1f39
 /session-persistence-event-catalog/resolved-persistence-types/graphnodecheck:
-  en: 2374b5d818354f37
-  zh: 3512d7fb8eeacbcd
+  en: 729b64b127113a1a
+  zh: 3c37bb89976ea1ca
 /session-persistence-event-catalog/resolved-persistence-types/graphnodecheck~2:
   en: a22fbc9d2fd75021
   zh: 524a074362e95279
@@ -1623,11 +1623,11 @@
   en: a8b1b2bd38e615c4
   zh: d006c6c1de5254bc
 /session-persistence-event-catalog/resolved-persistence-types/graphnoderecord:
-  en: 172dd821cc868fb8
-  zh: 38632ff746c85c49
+  en: 40586f3c467b9dbd
+  zh: 05658b7b3d720d0e
 /session-persistence-event-catalog/resolved-persistence-types/graphnodestatus:
-  en: 0edb4080953c8efe
-  zh: c6bcf7eabaca69bf
+  en: 3b143364c92f2850
+  zh: 7a2f108ba2f73485
 /session-persistence-event-catalog/resolved-persistence-types/graphnode~2:
   en: 000fdc84687900ff
   zh: eba26cacffa25509
@@ -1638,8 +1638,8 @@
   en: 471d43318ba775ff
   zh: d75c1d51eebe2800
 /session-persistence-event-catalog/resolved-persistence-types/graphrecoverystate:
-  en: e09ddcc4ab859847
-  zh: 5dd98a997c91a106
+  en: 7ff91c841c628c81
+  zh: 488e321d064b2a2a
 /session-persistence-event-catalog/resolved-persistence-types/graphrejection:
   en: 6b600f0c1bee0b6e
   zh: 8028e0011c48fc5c
@@ -1656,8 +1656,8 @@
   en: 453afb73f4af6fa3
   zh: 8184219251baa8ba
 /session-persistence-event-catalog/resolved-persistence-types/graphrunrecord:
-  en: 43e47ff071a157df
-  zh: 7e81bf6a9aff6bc5
+  en: 7981ef29fd68ed7a
+  zh: 042876d126c6e0b6
 /session-persistence-event-catalog/resolved-persistence-types/headerline:
   en: 0228dc7dcff3ff5a
   zh: bfab168767453f00
@@ -2016,8 +2016,8 @@
   en: 43c5d065a14e89e8
   zh: cb0032ba21a159f8
 /session-persistence-event-catalog/resolved-persistence-types/string~2:
-  en: 41eb41a521a1ccab
-  zh: 0a5fdcac53fa7ea5
+  en: fb1151e99e537692
+  zh: 912c2162cfba5cfe
 /session-persistence-event-catalog/resolved-persistence-types/string~3:
   en: 0089620bf4638263
   zh: 1922bef1713094bb

@@ -27554,7 +27554,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphEdgeOutcome"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:351"
+        "packages/experimental/graph-contract/src/types.ts:354"
       ]
     },
     {
@@ -28791,7 +28791,7 @@
         "packages/experimental/agent-team/src/types.ts:8",
         "packages/experimental/graph-contract/src/types.ts:14",
         "packages/experimental/graph-contract/src/types.ts:17",
-        "packages/experimental/graph-contract/src/types.ts:258",
+        "packages/experimental/graph-contract/src/types.ts:261",
         "packages/experimental/knowledge/src/types.ts:12",
         "packages/feedback/message-feedback/src/types.ts:14",
         "packages/goal/goal/src/types.ts:17",
@@ -29299,7 +29299,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphNodeStatus"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:261"
+        "packages/experimental/graph-contract/src/types.ts:264"
       ]
     },
     {
@@ -29345,7 +29345,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphRecoveryState"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:277"
+        "packages/experimental/graph-contract/src/types.ts:280"
       ]
     },
     {
@@ -29749,7 +29749,7 @@
         "packages/experimental/verifier-gate/src/types.ts#VerdictCheck"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:283",
+        "packages/experimental/graph-contract/src/types.ts:286",
         "packages/experimental/verifier-gate/src/types.ts:10"
       ]
     },
@@ -31139,7 +31139,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphRunRecord"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:333"
+        "packages/experimental/graph-contract/src/types.ts:336"
       ]
     },
     {
@@ -31203,7 +31203,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphNodeRecord"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:295"
+        "packages/experimental/graph-contract/src/types.ts:298"
       ]
     },
     {
@@ -32061,7 +32061,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphEdgeRecord"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:354"
+        "packages/experimental/graph-contract/src/types.ts:357"
       ]
     },
     {

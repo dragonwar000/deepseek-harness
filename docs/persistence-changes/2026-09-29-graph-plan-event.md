@@ -35,12 +35,12 @@ changes:
 <a id="compatibility"></a>
 ## Compatibility
 
-A new ordinary event type with no predecessor; existing logs and readers are unaffected. It is declared required-on-read in SessionEventMap like loop/verdict, never enters a model request or derived history, and only the graphPlans and graph projections, the graph runner, and the invariant companions read it. The model-visible audit text is ordinary tool/result content. The graph runner reads node routes only from this record, so the model route of every node subagent is reconstructable from the log. The added warning code widens the rejection code enum and cycleGuard is an optional edge field; records written before them still decode.
+A new ordinary event type with no predecessor; existing logs and readers are unaffected. It is declared required-on-read in SessionEventMap like loop/verdict, never enters a model request or derived history, and only the graphPlans and graph projections, the graph runner, and the invariant companions read it. The model-visible audit text is ordinary tool/result content. The graph runner reads node routes only from this record, so the model route of every node subagent is reconstructable from the log. The added warning code widens the rejection code enum and cycleGuard is an optional edge field; records written before them still decode. A version whose input did not parse (plan: null) is recorded with admitted: false in both modes; in shadow mode mode: shadow records that no finding blocked it. Earlier records of an unparsed shadow-mode plan carry admitted: true and still decode, and every reader ignores them because an admitted plan needs a parsed plan.
 
 <a id="verification"></a>
 ## Verification
 
-pnpm exec vitest run packages/experimental/graph-contract packages/experimental/graph-projection packages/experimental/graph-runner: all test files passed.
+pnpm exec vitest run packages/experimental/graph-contract packages/experimental/graph-projection packages/experimental/graph-runner: all test files passed, including the shadow-mode unparsed plan case and its invariant.
 
 <a id="dev-note"></a>
 ## Dev Note

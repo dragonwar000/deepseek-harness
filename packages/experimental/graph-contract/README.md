@@ -1,5 +1,5 @@
 ---
-description: "Audit dsh-graph/v1 plans deterministically before anything runs: graph_audit reports every structural rejection with a fixed remedy and records each version as a graph/plan event; shadow mode admits and only records."
+description: "Audit dsh-graph/v1 plans deterministically before anything runs: graph_audit reports every structural rejection with a fixed remedy and records each version as a graph/plan event; shadow mode admits every parsed plan and only records."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package defines the `dsh-graph/v1` plan format and registers the `graph_audit` and `graph_capabilities` tools. `graph_audit` parses one plan, audits it without running anything, returns every finding with a fixed remedy, and appends a `graph/plan` event when the plan id is readable, so versions, rejection memory, admission, and capability routes are rebuilt from the log. `enforce` admits a version only without a `reject` finding; `shadow` admits every version. The package also declares the `graph/node`, `graph/run`, and `graph/edge` events and the node lifecycle and loop rules the graph runner and projection share. It is experimental.
+This package defines the `dsh-graph/v1` plan format and registers the `graph_audit` and `graph_capabilities` tools. `graph_audit` parses one plan, audits it without running anything, returns every finding with a fixed remedy, and appends a `graph/plan` event when the plan id is readable, so versions, rejection memory, admission, and capability routes are rebuilt from the log. `enforce` admits a version only without a `reject` finding; `shadow` admits every version that parses. The package also declares the `graph/node`, `graph/run`, and `graph/edge` events and the node lifecycle and loop rules the graph runner and projection share. It is experimental.
 
 ## Table of Contents
 
@@ -45,7 +45,7 @@ Choose it when plans need a checked structure before any of them runs: no cycles
 
 | Field | Default | Meaning |
 |---|---|---|
-| `mode` | `shadow` | `off` registers nothing; `shadow` admits every version and still reports findings; `enforce` admits a version only when no finding has severity `reject` |
+| `mode` | `shadow` | `off` registers nothing; `shadow` admits every parsed version and still reports findings, and records an unparsed version with `admitted: false`; `enforce` admits a version only when no finding has severity `reject` |
 | `assumption` | required outside `off` | The assumption about the model that this audit encodes; a blank value fails the load |
 | `allowedTools` | `[]` | Global tools a graph node may declare; `run_code` fails the load |
 | `shellTools` | `[]` | Tools a node may declare that run shell commands; each declaration on an agent node draws a `SHELL_WRITES_UNCHECKED` warning |
@@ -176,7 +176,7 @@ Each call returns text in this form; bracketed parts are filled per call and lin
 ##### Verbatim text for this field
 
 ```markdown
-graph_audit: <admitted | rejected | admitted in shadow mode; the rejections below are recorded, not enforced>
+graph_audit: <admitted | rejected | admitted in shadow mode; the rejections below are recorded, not enforced | not admitted, because the plan does not parse; shadow mode admits only a parsed plan>
 plan: <plan id> version <n> sha <first 12 hex digits>
 identical to version <k>
 previous versions: v<n> <admitted|rejected> (<CODE>, <CODE>); …

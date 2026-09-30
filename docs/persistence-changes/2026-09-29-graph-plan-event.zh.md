@@ -35,12 +35,12 @@ changes:
 <a id="compatibility"></a>
 ## 兼容性
 
-这是没有前身的新普通事件类型，现有日志和读取方不受影响。它像 loop/verdict 一样在 SessionEventMap 中声明为读取时必需，从不进入模型请求或派生历史，只有 graphPlans 与 graph 投影、graph 运行器以及不变量伴随插件读取它。模型可见的审计文本属于普通 tool/result 内容。graph 运行器只从该记录读取节点路由，因此每个节点子代理的模型路由都能从日志重建。新增的警告代码扩展了拒绝代码枚举，cycleGuard 是可选的边字段；在此之前写入的记录仍可解码。
+这是没有前身的新普通事件类型，现有日志和读取方不受影响。它像 loop/verdict 一样在 SessionEventMap 中声明为读取时必需，从不进入模型请求或派生历史，只有 graphPlans 与 graph 投影、graph 运行器以及不变量伴随插件读取它。模型可见的审计文本属于普通 tool/result 内容。graph 运行器只从该记录读取节点路由，因此每个节点子代理的模型路由都能从日志重建。新增的警告代码扩展了拒绝代码枚举，cycleGuard 是可选的边字段；在此之前写入的记录仍可解码。输入无法解析的版本（plan: null）在两种模式下都以 admitted: false 记录；在 shadow 模式下，mode: shadow 表明没有任何发现阻止它。更早写入的 shadow 模式未解析计划记录带有 admitted: true，仍可解码，所有读取方都会忽略它们，因为准入的计划需要已解析的计划。
 
 <a id="verification"></a>
 ## 验证
 
-pnpm exec vitest run packages/experimental/graph-contract packages/experimental/graph-projection packages/experimental/graph-runner：全部测试文件通过。
+pnpm exec vitest run packages/experimental/graph-contract packages/experimental/graph-projection packages/experimental/graph-runner：全部测试文件通过，其中包括 shadow 模式未解析计划的用例及其不变量。
 
 <a id="dev-note"></a>
 ## 开发备注

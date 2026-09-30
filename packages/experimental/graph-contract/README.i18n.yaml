@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/graph-contract/README.md
 /:
-  en: c464c2e7b46add42
-  zh: c227142c62a4eca7
+  en: ef6f9182dece14de
+  zh: 14fc7f1c9c92164b
 /deepseek-ai-dsh-experimental-graph-contract:
   en: d8a1ee5885811890
   zh: 283ff0a285989b04
 /deepseek-ai-dsh-experimental-graph-contract/summary:
-  en: 48095b1e96d499b2
-  zh: 28e2e2c7cacb336b
+  en: d39715cceb4ea6a6
+  zh: 2996565e108da226
 /deepseek-ai-dsh-experimental-graph-contract/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
@@ -21,8 +21,8 @@
   en: 8bb8b847fa0aae9f
   zh: df6b947e3f610c8c
 /deepseek-ai-dsh-experimental-graph-contract/use-this-package/minimal-configuration:
-  en: 84704a6b2ab69685
-  zh: d86e9d6347ec03a0
+  en: f5d83c50c93a20a3
+  zh: 4ac8dfe3dbed9040
 /deepseek-ai-dsh-experimental-graph-contract/use-this-package/what-you-get:
   en: 92380b7157fda5da
   zh: cbb0a02978cd59e1

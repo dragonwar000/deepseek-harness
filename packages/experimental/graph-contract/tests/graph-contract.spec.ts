@@ -108,6 +108,16 @@ describe('graph_audit', () => {
     expect(results(agent)[0]).toContain('graph_audit: admitted in shadow mode; the rejections below are recorded, not enforced')
   })
 
+  it('records an unparsed plan as not admitted in shadow mode and keeps it out of the admitted history', async () => {
+    const ctx = await harness({ ...ENFORCE, mode: 'shadow' })
+    const agent = await audit(ctx, [{ id: 'ship', format: 'dsh-graph/v1' }])
+    expect(records(agent)[0]).toMatchObject({ mode: 'shadow', admitted: false, plan: null })
+    expect(new Set(records(agent)[0]?.rejections.map(entry => entry.code))).toEqual(new Set(['SCHEMA_INVALID']))
+    const verdict = 'graph_audit: not admitted, because the plan does not parse; shadow mode admits only a parsed plan'
+    expect(results(agent)[0]?.split('\n')[0]).toBe(verdict)
+    expect(ctx.sessionProjections.stateOf(agent.session, 'graphPlans')?.plans[0]?.admitted).toBeNull()
+  })
+
   it('records an unparsed plan with a readable id and skips input without one', async () => {
     const ctx = await harness(ENFORCE)
     const agent = await audit(ctx, [{ id: 'ship', format: 'dsh-graph/v1' }, { goal: 'no id' }])

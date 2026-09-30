@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-`@deepseek-ai/dsh-experimental-graph-contract` 定义模型编写的 `dsh-graph/v1` 计划，以及针对它的确定性审计。模型以 JSON 把计划传给 `graph_audit`；zod schema 在这个解析器边界解析它并拒绝未知键，因此由 harness 拥有的字段（`status`、`basis`、`version`）不能出现在计划中。`auditPlan` 检查结构、闭合性、L2 起的锚点与全新验证、L3 的人工与交接关卡、可共享波次的节点之间互不相交的写入前缀、允许且已注册的工具、子代理深度、最坏情况运行预算、输入回退值，以及冻结的 acceptance。每个发现都带有固定的修复方法；在 `enforce` 模式下只有严重级别为 `reject` 的发现会阻止准入，`shadow` 模式准入每个版本，同时报告相同的发现。
+`@deepseek-ai/dsh-experimental-graph-contract` 定义模型编写的 `dsh-graph/v1` 计划，以及针对它的确定性审计。模型以 JSON 把计划传给 `graph_audit`；zod schema 在这个解析器边界解析它并拒绝未知键，因此由 harness 拥有的字段（`status`、`basis`、`version`）不能出现在计划中。`auditPlan` 检查结构、闭合性、L2 起的锚点与全新验证、L3 的人工与交接关卡、可共享波次的节点之间互不相交的写入前缀、允许且已注册的工具、子代理深度、最坏情况运行预算、输入回退值，以及冻结的 acceptance。每个发现都带有固定的修复方法；在 `enforce` 模式下只有严重级别为 `reject` 的发现会阻止准入，`shadow` 模式准入每个成功解析的版本，同时报告相同的发现；无法解析的版本在两种模式下都记录为未准入，因此 `graph_run` 永远不会收到它。
 
 每次输入带有可读计划 id 的调用都会追加一个 `graph/plan` 事件，其中包含由 harness 分配的版本、摘要、准入结果、已解析的计划或 `null`，以及各项发现。`graphPlans` 投影把这些事件折叠为版本、拒绝记忆、由第一个成功解析的版本冻结的 acceptance，以及最新准入的计划；graph 运行器只读取该投影。`./invariant` 伴随插件检查版本连续，且每条记录的准入与其模式和发现一致。
 

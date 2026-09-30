@@ -278,7 +278,7 @@ export function renderAudit(value: GraphAuditValue): string {
   const blocking = value.rejections.filter(entry => entry.severity === 'reject')
   const warnings = value.rejections.filter(entry => entry.severity === 'warn')
   let verdict = 'graph_audit: admitted'
-  if (!value.admitted) verdict = 'graph_audit: rejected'
+  if (!value.admitted) verdict = value.mode === 'shadow' ? 'graph_audit: not admitted, because the plan does not parse; shadow mode admits only a parsed plan' : 'graph_audit: rejected'
   else if (blocking.length > 0) verdict = 'graph_audit: admitted in shadow mode; the rejections below are recorded, not enforced'
   const lines = [
     verdict,
@@ -392,7 +392,8 @@ export function apply(ctx: Context, config: Config): void {
       ? auditPlan(parsed.plan, environment(agent, history))
       : { rejections: parsed.rejections, order: undefined, waves: undefined }
     const sha = planSha(parsed.ok ? parsed.plan : value)
-    const admitted = mode === 'shadow' || result.rejections.every(entry => entry.severity !== 'reject')
+    // Shadow mode records findings without blocking, but only a parsed plan can be admitted.
+    const admitted = parsed.ok && (mode === 'shadow' || result.rejections.every(entry => entry.severity !== 'reject'))
     const previous = history === undefined ? [] : history.versions
     const repeatOf = previous.findLast(version => version.sha === sha)?.version
     const version = previous.length + 1
