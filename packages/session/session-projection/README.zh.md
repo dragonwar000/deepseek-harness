@@ -107,7 +107,7 @@ const { asOfSeq, values } = ctx.sessionProjections.snapshot(session)
 - [会话持久化子系统](../../../docs/subsystems/persistence.zh.md)——投影折叠其上的事件日志。
 - [会话投影缓存](../session-projection-cache/README.zh.md)——让冷读跳过全量日志加载的持久检查点。
 - [会话包映射](../README.zh.md)——相邻的持久化、标题与遥测包。
-- [会话投影 RFC](../../../.agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.zh.md)——投影与命令日志的设计理由。
+- [会话投影 RFC](../../../.agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.md)——投影与命令日志的设计理由。
 
 -----
 

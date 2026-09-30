@@ -49,7 +49,7 @@ MSAL 缓存插件通过 `ctx.credentials` 读写一条 `grant` 记录 `coteccons
 
 - [coteccons-sso](../coteccons-sso/README.zh.md) — 服务定义与视图。
 - [credentials](../credentials/README.zh.md) — 保存令牌缓存的凭据存储。
-- [Coteccons SSO 决策](../../../.agents/notes/implemented/feature/2026-09-30-coteccons-sso-entra-main-model.zh.md) — 设计与 Azure 前置条件。
+- [Coteccons SSO 决策](../../../.agents/notes/implemented/feature/2026-09-30-coteccons-sso-entra-main-model.md) — 设计与 Azure 前置条件。
 - [生成的配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-coteccons-sso-msal) — 所有可接受的字段。
 
 <a id="model-experience"></a>

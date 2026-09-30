@@ -1460,7 +1460,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-memory-zeromem`
 
 - `inject`: `tools` · `subprocess` · `sessionProjections`
-- `source`: [`packages/experimental/memory-zeromem/src/index.ts:81`](../packages/experimental/memory-zeromem/src/index.ts)
+- `source`: [`packages/experimental/memory-zeromem/src/index.ts:90`](../packages/experimental/memory-zeromem/src/index.ts)
 
 ```ts config-catalog
 /** Config with every default applied. */
@@ -1472,8 +1472,13 @@ export interface Config {
   zmPath?: string
   /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
   zmArgs?: string[]
-  /** `default` lets `zm` pick its embedder (fastembed when compiled in); `hash` passes `--no-model` (default `default`). */
+  /**
+   * `default` runs bge-small-en-v1.5 from `modelDir` and needs a `zm` built with zeromem's fastembed feature;
+   * `hash` passes `--no-model` for lexical recall (default `default`).
+   */
   embedder?: 'default' | 'hash'
+  /** Absolute directory holding the embedding model; empty selects `DSH_ZEROMEM_MODELS`, then `<store root>/models` (default empty). */
+  modelDir?: string
   /** `workspace` keeps one store per session working directory; `global` shares one store (default `workspace`). */
   scope?: StoreScope
   /** Absolute directory holding the stores; empty selects `<harness home>/zeromem` (default empty). */
@@ -5176,7 +5181,7 @@ export interface Config {
 
 ## Seam 包（不可直接加载）
 
-抽象服务类——部署时应改为加载具体的实现包（参见[能力 seam](../.agents/notes/implemented/architecture/2026-06-13-capability-seams.zh.md)）。
+抽象服务类——部署时应改为加载具体的实现包（参见[能力 seam](../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md)）。
 
 <!-- BEGIN GENERATED config-catalog:seam -->
 | `package` | `class` | `inject` | `source` |

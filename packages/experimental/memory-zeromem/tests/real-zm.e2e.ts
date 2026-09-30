@@ -1,9 +1,10 @@
 /**
  * The plugin against a real zeromem `zm` binary: spooled turns are ingested with source-uuid dedup,
- * recall leaves the current session out, stats count the store, and forget deletes a session.
- * Self-skips unless `DSH_ZEROMEM_ZM` names an absolute `zm` path, for example one built offline with
- * `cargo build --release --no-default-features` in a zeromem checkout. The hash embedder is always
- * selected, so the run downloads no model.
+ * recall leaves the current session out, stats count the store, and forget deletes a session, all on the
+ * hash embedder. Self-skips unless `DSH_ZEROMEM_ZM` names an absolute `zm` path, for example the one
+ * `pnpm run prepare:desktop:zeromem` builds. When `DSH_ZEROMEM_MODELS` also names the model directory
+ * prepared beside it, the default embedder recalls a paraphrase that the hash embedder misses. Neither
+ * run downloads a model.
  */
 
 import { existsSync } from 'node:fs'
@@ -15,6 +16,12 @@ import type { Booted } from './harness.ts'
 
 const zm = process.env['DSH_ZEROMEM_ZM']
 const available = zm !== undefined && zm !== '' && existsSync(zm)
+const models = process.env['DSH_ZEROMEM_MODELS']
+const modelAvailable = available && models !== undefined && models !== '' && existsSync(models)
+
+/** A stored turn and a query that shares no word with it. */
+const DEPLOY = 'Our deploy script retries failed uploads with exponential backoff.'
+const PARAPHRASE = 'which command handles transient network errors when pushing artifacts?'
 
 afterEach(cleanup)
 
@@ -60,5 +67,23 @@ describe.skipIf(!available)('memory-zeromem with a real zm', () => {
     expect(spooled(workspaceHome(booted)).filter(entry => entry.text === 'The cache TTL is 90 seconds.')).toHaveLength(2)
     await booted.ctx.plugin(MemoryZeromem, { zmPath: zm!, embedder: 'hash', storeRoot: booted.storeRoot })
     expect(await call(booted, 'counter', 'memory_stats', {})).toEqual({ turns: 4, sessions: 1 })
+  })
+})
+
+describe.skipIf(!modelAvailable)('memory-zeromem with a real zm and bge-small-en-v1.5', () => {
+  /** Store two unrelated conversations, then recall the paraphrase from a third session. */
+  async function recallParaphrase(embedder: 'default' | 'hash'): Promise<{ session: string; text: string }[]> {
+    const booted = await boot({ config: { zmPath: zm!, zmArgs: [], embedder, modelDir: models! } })
+    await turn(booted, 'deploy', DEPLOY, [textResponse('Understood, the upload retry policy is noted.')])
+    await turn(booted, 'lunch', 'We ordered pizza for the team lunch on Friday.', [textResponse('Sounds good, enjoy the pizza.')])
+    const recalled = await call(booted, 'asker', 'memory_recall', { query: PARAPHRASE, limit: 2 }) as { turns: { session: string; text: string }[] }
+    return recalled.turns
+  }
+
+  it('recalls a paraphrase with the default embedder that the hash embedder misses', async () => {
+    const semantic = await recallParaphrase('default')
+    expect(semantic.map(entry => entry.session)).toEqual(['deploy', 'deploy'])
+    expect(semantic.map(entry => entry.text)).toContain(DEPLOY)
+    expect((await recallParaphrase('hash')).map(entry => entry.text)).not.toContain(DEPLOY)
   })
 })

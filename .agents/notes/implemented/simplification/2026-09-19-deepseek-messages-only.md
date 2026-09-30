@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-19-deepseek-messages-only.zh.md)
-
 ## Problem
 
 The official DeepSeek route needs Messages thinking replay, image uploads, and in-history updates. Selecting a second transport duplicates serializers, stream handling, Files wire formats, configuration branches, and fixtures without adding a required capability to this route.

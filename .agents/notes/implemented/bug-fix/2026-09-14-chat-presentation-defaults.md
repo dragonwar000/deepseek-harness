@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-14-chat-presentation-defaults.zh.md)
-
 ## Problem
 
 Trajectory inspection benefits from exposing complete recorded reasoning. Applying that default to Chat expands the live transcript during reasoning and changes its height when an answer or Tool call arrives. The Trajectory inspection change also added historical first-token recovery to Chat without a separate Chat behavior decision.

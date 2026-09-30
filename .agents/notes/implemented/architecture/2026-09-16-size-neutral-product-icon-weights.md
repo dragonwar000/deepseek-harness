@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-16-size-neutral-product-icon-weights.zh.md)
-
 ## Problem
 
 Shared product-icon exports encoded one historical render size in each symbol name even though every component accepted a `size` prop. Consumers also thickened selected icons through local CSS or separate drawings, so emphasis had no named library choice and could drift between features.

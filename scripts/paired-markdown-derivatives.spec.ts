@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { partitionPairedMarkdownDerivatives } from './paired-markdown-derivatives.ts'
+import type { TranslationCounterpartPolicy } from './translation-counterpart.ts'
 
 interface Block {
   doc: string
@@ -7,10 +8,11 @@ interface Block {
   code: string
 }
 
-const partition = (blocks: Block[]) => partitionPairedMarkdownDerivatives(
+const partition = (blocks: Block[], policy: TranslationCounterpartPolicy = 'required') => partitionPairedMarkdownDerivatives(
   blocks,
   block => block.doc,
   block => `${block.kind}\0${block.code}`,
+  policy,
 )
 
 describe('partitionPairedMarkdownDerivatives', () => {
@@ -25,10 +27,16 @@ describe('partitionPairedMarkdownDerivatives', () => {
     expect(partition([...english, ...chinese, unrelated])).toEqual({
       primary: [...english, unrelated],
       derivatives: chinese,
+      unchecked: [],
+    })
+    expect(partition([...english, ...chinese, unrelated], 'optional')).toEqual({
+      primary: [...english, unrelated],
+      derivatives: chinese,
+      unchecked: [],
     })
   })
 
-  it('keeps reordered, changed, partial, and orphan Chinese sequences primary', () => {
+  it('keeps reordered, changed, partial, and orphan Chinese sequences primary under required and unchecked under optional', () => {
     const sequence = (doc: string) => [
       { doc, kind: 'ts', code: 'const one = 1' },
       { doc, kind: 'ts', code: 'const two = 2' },
@@ -54,13 +62,19 @@ describe('partitionPairedMarkdownDerivatives', () => {
       ...orphan,
     ]
 
-    expect(partition(blocks)).toEqual({ primary: blocks, derivatives: [] })
+    expect(partition(blocks)).toEqual({ primary: blocks, derivatives: [], unchecked: [] })
+    expect(partition(blocks, 'optional')).toEqual({
+      primary: [...english, ...reorderedEnglish, ...partialEnglish],
+      derivatives: [],
+      unchecked: [...changed, ...reordered, ...partial, ...orphan],
+    })
   })
 
   it('requires the fence kind to match as well as the body', () => {
     const english = { doc: 'docs/example.md', kind: 'type-equiv', code: 'interface Example {}' }
     const chinese = { ...english, doc: 'docs/example.zh.md', kind: 'public-api' }
 
-    expect(partition([english, chinese])).toEqual({ primary: [english, chinese], derivatives: [] })
+    expect(partition([english, chinese])).toEqual({ primary: [english, chinese], derivatives: [], unchecked: [] })
+    expect(partition([english, chinese], 'optional')).toEqual({ primary: [english], derivatives: [], unchecked: [chinese] })
   })
 })

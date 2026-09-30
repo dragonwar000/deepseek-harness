@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-29-graph-runner-foreground-scheduling.zh.md)
-
 ## Problem
 
 An admitted `dsh-graph/v1` plan must run as a set of independent units without trusting what each unit says about itself, must survive a crash, and must keep parallel units from overwriting each other. The loop layer gates one session; nothing scheduled several sessions, decided when a unit's result counts, or recovered a partially finished plan.

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-16-present-delayed-windows-installer.zh.md)
-
 ## Problem
 
 The native installer hides its window while preparing resources. If the user activates another application during that interval, the welcome page can appear behind that application and seem absent.

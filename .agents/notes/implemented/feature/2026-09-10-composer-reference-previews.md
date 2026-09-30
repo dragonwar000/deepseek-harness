@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-10-composer-reference-previews.zh.md)
-
 ## Problem
 
 Users need to inspect referenced files and skill instructions while composing a message and after sending it. File chips and editable slash tokens have different editing semantics, but both need recognizable preview gestures without changing what the next prompt sends.

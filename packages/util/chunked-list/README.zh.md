@@ -62,7 +62,7 @@ console.log([...iterateChunkedList(second)])
 ## 进一步探索
 
 - [工具包映射](../README.zh.md)——共享原语。
-- [Subagent 目录决策](../../../.agents/notes/implemented/architecture/2026-09-01-parent-owned-subagent-catalog.zh.md)——projection state 使用分片的原因。
+- [Subagent 目录决策](../../../.agents/notes/implemented/architecture/2026-09-01-parent-owned-subagent-catalog.md)——projection state 使用分片的原因。
 
 -----
 

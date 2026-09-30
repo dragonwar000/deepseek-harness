@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-19-evidence-led-simplification-surveys.zh.md)
-
 ## Problem
 
 Unused-symbol searches can miss working behavior whose implementation costs more than its required outcome, and can misclassify public extension APIs without fixed repository callers as dead. The previous simplification skill also combined discovery with lengthy archive procedures, omitted application and Python paths from its consumer examples, and suggested a proposal outline without the mandatory `Alternatives considered` section.

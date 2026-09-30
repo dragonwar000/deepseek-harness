@@ -95,8 +95,8 @@ kind: "package-reference"
 当包级约定不够用时阅读以下页面。它们从审批词汇逐步进入消费方与设计依据。
 
 - [审批子系统参考](../../../docs/subsystems/approval.zh.md)——共享的请求／结果词汇与 `ctx.approval` 的 Cordis 接口面。
-- [审批 seam Agent Note](../../../.agents/notes/implemented/feature/2026-07-06-approval-seam.zh.md)——该 seam 的设计依据。
-- [沙箱 Agent Note](../../../.agents/notes/implemented/feature/2026-07-06-sandbox.zh.md)——沙箱 bash 工具如何为升权重试消费审批。
+- [审批 seam Agent Note](../../../.agents/notes/implemented/feature/2026-07-06-approval-seam.md)——该 seam 的设计依据。
+- [沙箱 Agent Note](../../../.agents/notes/implemented/feature/2026-07-06-sandbox.md)——沙箱 bash 工具如何为升权重试消费审批。
 - [交互组映射](../README.zh.md)——相邻的权限预设与问答包。
 
 -----

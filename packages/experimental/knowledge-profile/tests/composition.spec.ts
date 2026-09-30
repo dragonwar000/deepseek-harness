@@ -16,7 +16,7 @@ import { STORE_WRITE_REASON } from '@deepseek-ai/dsh-experimental-knowledge-rule
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
-import { boot, cleanup, FAKE_ZM, recallRoundTrip, storeRoot } from './loader-harness.ts'
+import { boot, cleanup, FAKE_ZM, fakeModel, recallRoundTrip, storeRoot } from './loader-harness.ts'
 
 afterEach(async () => {
   vi.unstubAllEnvs()
@@ -86,12 +86,13 @@ describe('knowledge bundle Loader composition', () => {
     expect(trip.recall).not.toContain('What did we decide')
   })
 
-  it('runs the zm named by DSH_ZEROMEM_ZM when the patch keeps the row\'s empty zmPath', async () => {
+  it('runs the zm and model named by DSH_ZEROMEM_ZM and DSH_ZEROMEM_MODELS when the patch keeps the row\'s empty paths', async () => {
     vi.stubEnv('DSH_ZEROMEM_ZM', process.execPath)
+    vi.stubEnv('DSH_ZEROMEM_MODELS', fakeModel())
     const { ctx, workspace } = await boot(new Map(), [{
       id: 'memory-zeromem',
       disabled: false,
-      config: { zmPath: '', zmArgs: [FAKE_ZM], embedder: 'hash', storeRoot: storeRoot() },
+      config: { zmPath: '', zmArgs: [FAKE_ZM], embedder: 'default', modelDir: '', storeRoot: storeRoot() },
     }])
     const trip = await recallRoundTrip(ctx, workspace)
     expect(trip.isError).toBe(false)

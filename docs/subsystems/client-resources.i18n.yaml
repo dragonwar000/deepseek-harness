@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/subsystems/client-resources.md
 /client-resources:
-  en: a7972413b1780235
-  zh: 74d70a11d7e7f7e3
+  en: 4f73b8ae56db4f0e
+  zh: 3cfc12eabed2d6f2
 /client-resources/addresses:
   en: 47da087087a3b0c5
   zh: ddf0ffe347a1fe0c

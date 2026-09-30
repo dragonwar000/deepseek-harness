@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /ctd-core-desktop:
-  en: e817316fea691e15
-  zh: 6bb3eeb2326c7f3e
+  en: 9746be3a2a406831
+  zh: 253197cf768fba57
 /ctd-core-desktop/terminal-command:
   en: bef92953c237363f
   zh: d21d6effd21b8c00
@@ -12,20 +12,20 @@
   en: 0131742bb84b8570
   zh: 0ff1ab69fc644411
 /ctd-core-desktop/key-technical-decisions:
-  en: 30a9de67852cca0c
-  zh: 755c0e29d3353889
+  en: 63b2b9888dcb4a34
+  zh: ac0f8b04084c0c4d
 /ctd-core-desktop/key-technical-decisions/bundled-workspace-dependencies:
-  en: 320733f93ede61a4
-  zh: 33206c3c4753c802
+  en: c68d9920965d6c1b
+  zh: 4dfed29dee16131d
 /ctd-core-desktop/bundled-command-runtime:
-  en: beecf076aa2f0796
-  zh: c9001ce0f22d2379
+  en: 2150c957c8ce5d6b
+  zh: 27a03b11861bc0db
 /ctd-core-desktop/installation-ownership:
   en: 22153a298a6662e1
   zh: 3600803c8c9d0274
 /ctd-core-desktop/installation-ownership/runtime-and-plugin-activation:
-  en: e7c6efe65d0915c3
-  zh: 0f036b6c7213d4cc
+  en: a3510396260e76ce
+  zh: 421fefd49473371b
 /ctd-core-desktop/installation-ownership/host-environment:
   en: 84a9cc7ca9455aa8
   zh: 4091b8aa8231b74a
@@ -36,41 +36,41 @@
   en: f9851f3e39c721b9
   zh: b336d1e77fab0a85
 /ctd-core-desktop/develop/welcome-window-appearance:
-  en: ae319a496639b38d
-  zh: ef044103240ac9da
+  en: 3efdadffd33ca38e
+  zh: e5e06411d9f02740
 /ctd-core-desktop/package:
   en: 4cd8a8da6977928d
   zh: 9f624855a2edac37
 /ctd-core-desktop/package/release-versions:
-  en: f461b255133384cc
-  zh: 2b9db718f22fdd04
+  en: 3385ff93c7745c6c
+  zh: 3edc11a448dd6253
 /ctd-core-desktop/package/runtime-file-selection:
   en: c409637d93fd1941
   zh: db6f6b6b8140f774
 /ctd-core-desktop/package/bundled-zeromem-executable:
-  en: 92c278463acbc27d
-  zh: 6d7e4eea4e3e70e3
+  en: da6d273bf2fa990d
+  zh: 9928d423fe312f49
 /ctd-core-desktop/package/upload-updates:
-  en: 72073b2e72590067
-  zh: 63b1f9790395c37d
+  en: 2a2b18961d8fdc09
+  zh: 5c7904df0428bd4f
 /ctd-core-desktop/package/unsigned-windows-test-installer:
   en: cfd5780dd26a8e46
   zh: f7a16b1ede793b7b
 /ctd-core-desktop/package/windows-installer-interface:
-  en: f176a8b1c7de3064
-  zh: 6ea2dbe6bb808c34
+  en: 16a44f35f3f688b1
+  zh: d75f81c53a3650ec
 /ctd-core-desktop/package/windows-ev-signing:
-  en: 8efe3498dbe8686d
-  zh: a88c16f20a9430f3
+  en: cd1248306ac9d586
+  zh: 41f640fa53f7f52d
 /ctd-core-desktop/updates:
   en: d0df867b69cbffa4
   zh: eeb47b79b86fe5ee
 /ctd-core-desktop/updates/mandatory-update-policy:
-  en: 2f789a4949fafb12
-  zh: d8b28c01cfee11b7
+  en: 3c2215f9770e810d
+  zh: 0b5775b670024c79
 /ctd-core-desktop/updates/local-updater-qualification:
-  en: bc50fd8a4d96c227
-  zh: fb0a6ce80c31cda6
+  en: 6ceb4938f0fae4d6
+  zh: 1ed1736d0143a866
 /ctd-core-desktop/low-level-development-overrides:
   en: 0b225f914142ef0b
   zh: 9ffd07768d37824e
@@ -78,5 +78,5 @@
   en: 55bb87bc4050cd7e
   zh: a72115796c610acb
 /ctd-core-desktop/dev-note:
-  en: 8e26b460ba31f21b
-  zh: fbcd0307b3867125
+  en: ae8c884e29307df8
+  zh: 825d472376c28444

@@ -8,7 +8,7 @@ English | [中文](reviewing-persistence-type-changes.zh.md)
 
 ## Summary
 
-Use this tutorial after changing a declared Session persistence type in a contributor checkout with dependencies installed. Supply a bilingual compatibility explanation, then let one command classify the change and generate its records. The [record reference](../persistence-changes/README.md) explains the files and automatic rules. All comparison inputs live in the checkout; no base branch or network access is required.
+Use this tutorial after changing a declared Session persistence type in a contributor checkout with dependencies installed. Supply a compatibility explanation in English, then let one command classify the change and generate its records. The [record reference](../persistence-changes/README.md) explains the files and automatic rules. All comparison inputs live in the checkout; no base branch or network access is required.
 
 ## Table of Contents
 
@@ -48,7 +48,7 @@ The current machine inventory stores complete graphs in `roots`. A `types` entry
 
 Check the [accepted baseline](../session-format-status.md#finalization-record) first. Preserve its locked records. Record backward-compatible evolution in a new same-version acknowledgement; implement a higher writer version before recording a breaking change.
 
-Write a local JSON file containing `en` and `zh`, each with `summary`, `compatibility`, and `verification` strings. The following input describes an exercised required-to-optional hook audit field change. Replace the explanation and test evidence with facts about your change; the CLI does not establish these claims.
+Write a local JSON file containing `en` with `summary`, `compatibility`, and `verification` strings. `zh` takes the same three strings and is optional: without it the command writes the English text into the Chinese record document. The following input describes an exercised required-to-optional hook audit field change. Replace the explanation and test evidence with facts about your change; the CLI does not establish these claims.
 
 Save the input as `.artifacts/persistence-change.prose.json`, creating the ignored directory if needed:
 
@@ -88,7 +88,7 @@ pnpm run doc-sync
 
 `doc-sync` checks persistence inventory and catalog freshness, the complete history, and bilingual pairing. A recording command's `ok: true` does not replace these checks or the owner's behavior and migration tests. JSON failures retain `ok: false`, a diagnostic `code`, and exit code 1. Structured changes include stable kinds and per-root before/after digests, so automation need not parse descriptions.
 
-Record generation owns its catalog and record pairs; edits to a package README or other bilingual page still follow their normal pairing workflow. Review and stage the intended diff, then commit and push normally. The staged lint, pairing, and whitespace hooks and the pre-push Host/Client typecheck still apply.
+Record generation owns its catalog and record pairs; edits to a package README or other page are written in English only. Review and stage the intended diff, then commit and push normally. The staged lint, pairing, and whitespace hooks and the pre-push Host/Client typecheck still apply.
 
 <a id="competing-records"></a>
 ## Update an unaccepted record

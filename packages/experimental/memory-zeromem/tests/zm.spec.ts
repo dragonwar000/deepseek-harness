@@ -38,10 +38,13 @@ async function failureOf(call: Promise<unknown>): Promise<Error> {
 }
 
 describe('callZeromem with the scripted zm', () => {
-  it('returns the parsed result of a tool call', async () => {
+  it('returns the parsed result of a tool call with the zm stderr text', async () => {
     const spawn = await localSpawn()
-    const value = await callZeromem(spawn, operation('normal'), 'zeromem_stats', {}, new AbortController().signal)
+    const { value, stderr } = await callZeromem(spawn, operation('normal'), 'zeromem_stats', {}, new AbortController().signal)
     expect(value).toMatchObject({ turns: 0, sessions: 0, embedder_is_fallback: false })
+    expect(stderr).toBe('')
+    const fallback = await callZeromem(spawn, operation('fallback'), 'zeromem_stats', {}, new AbortController().signal)
+    expect(fallback.stderr).toBe('zeromem: fastembed unavailable (Failed to retrieve onnx/model.onnx), falling back to hash embedder')
   })
 
   it.each([
@@ -134,7 +137,7 @@ describe('callZeromem with a scripted handle', () => {
 
   it('reads a final line without a terminator', async () => {
     const call = JSON.stringify({ jsonrpc: '2.0', id: 2, result: { content: [{ type: 'text', text: '{"ok":true}' }], isError: false } })
-    const spawn: SpawnChild = () => ({ ...scriptedHandle([], Promise.resolve({ exitCode: 0, signal: null })), stdout: Readable.from([`${INIT}\n`, call]) })
-    expect(await callZeromem(spawn, SPEC, 'zeromem_stats', {}, new AbortController().signal)).toEqual({ ok: true })
+    const spawn: SpawnChild = () => ({ ...scriptedHandle([], Promise.resolve({ exitCode: 0, signal: null }), ' note \n'), stdout: Readable.from([`${INIT}\n`, call]) })
+    expect(await callZeromem(spawn, SPEC, 'zeromem_stats', {}, new AbortController().signal)).toEqual({ value: { ok: true }, stderr: 'note' })
   })
 })

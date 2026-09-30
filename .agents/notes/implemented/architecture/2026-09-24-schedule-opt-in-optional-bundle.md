@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-24-schedule-opt-in-optional-bundle.zh.md)
-
 ## Problem
 
 Schedule adds four tool schemas to every live root Agent request and one durable clock message per eligible step, so the shipped Web composition must not mount it by default. A person using the shipped Web profile still needs a product-surface switch to turn it on; a profile patch layer or a `--patch` overlay is a configuration file that person cannot reach.

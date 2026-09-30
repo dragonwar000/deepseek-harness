@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-14-docs-mermaid-viewer.zh.md)
-
 ## Problem
 
 Complex Mermaid diagrams and interface screenshots lose readable detail when scaled to the documentation column. Readers need both magnification and movement to inspect interactions while retaining an overview.

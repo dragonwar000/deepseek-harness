@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-16-shared-subagent-settings-card.zh.md)
-
 ## Problem
 
 Delegation limits and model authorization describe the same Subagent workflow, but separate settings cards make users locate and save them independently.

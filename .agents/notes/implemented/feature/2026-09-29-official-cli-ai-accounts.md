@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-29-official-cli-ai-accounts.zh.md)
-
 Superseded in part by [Consumer Subscription Account for the Main Model](../../proposed/feature/2026-09-30-subscription-account-main-model.md), which reverses the main-model half of this decision; everything else below remains in force.
 
 ## Problem

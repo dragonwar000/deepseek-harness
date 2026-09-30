@@ -126,7 +126,7 @@ notice 是单向的，且从不携带机密：一条消息，以及可选的「�
 - [凭据包映射](../README.zh.md)——凭据引用、本地存储与授权三个包。
 - [凭据引用 seam](../credentials/README.zh.md)——每个 flow 都经由它提交的记录存储。
 - [能力 seam](../../../docs/capability-seams.zh.md)——本 seam 遵循的 Service Definition / Service Provider / Consumer 拆分。
-- [凭据记录与授权 flow](../../../.agents/notes/implemented/architecture/2026-08-13-credential-records-and-authorization-flows.zh.md)——记录半侧与本 seam 背后的理由与决策。
+- [凭据记录与授权 flow](../../../.agents/notes/implemented/architecture/2026-08-13-credential-records-and-authorization-flows.md)——记录半侧与本 seam 背后的理由与决策。
 
 -----
 

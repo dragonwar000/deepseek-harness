@@ -81,7 +81,7 @@ kind: "package-reference"
 
 ### 渲染意图
 
-按[渲染意图 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-02-tool-render-intent-union.zh.md)预先确定：使用 `generic` 卡片，标题为 `workflow: <meta.name>`，直接从 `args.meta.name` 读取——呈现是参数的纯函数——脚本文本作为 `rawInput` 携带。结果继续使用 generic 卡片。
+按[渲染意图 Agent Note](../../../.agents/notes/implemented/architecture/2026-07-02-tool-render-intent-union.md)预先确定：使用 `generic` 卡片，标题为 `workflow: <meta.name>`，直接从 `args.meta.name` 读取——呈现是参数的纯函数——脚本文本作为 `rawInput` 携带。结果继续使用 generic 卡片。
 
 ### 源码地图
 
@@ -106,7 +106,7 @@ kind: "package-reference"
 - [PTC 工作流引擎](../workflow-ptc/README.zh.md)——执行脚本的引擎。
 - [subagent 工具](../../subagent/tool-subagent/README.zh.md)——一两项委派时的普通委派替代方案。
 - [组地图](../README.zh.md)——工作流能力家族及其包。
-- [动态工作流 Agent Note](../../../.agents/notes/implemented/feature/2026-07-05-dynamic-workflows.zh.md)——seam 设计及其决策。
+- [动态工作流 Agent Note](../../../.agents/notes/implemented/feature/2026-07-05-dynamic-workflows.md)——seam 设计及其决策。
 
 -----
 

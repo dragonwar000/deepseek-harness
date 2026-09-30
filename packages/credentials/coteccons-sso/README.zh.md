@@ -47,7 +47,7 @@ kind: "package-reference"
 - [coteccons-sso-msal](../coteccons-sso-msal/README.zh.md) — MSAL 提供者。
 - [llm-coteccons-sso](../../llm/llm-coteccons-sso/README.zh.md) — 发送用户令牌的 `coteccons` 模型路由。
 - [api-coteccons-sso-controller](../../api/coteccons-sso-controller/README.zh.md) — 供设置界面使用的 Remote 控制器。
-- [Coteccons SSO 决策](../../../.agents/notes/implemented/feature/2026-09-30-coteccons-sso-entra-main-model.zh.md) — 为何由每个用户自己的 Entra ID 令牌调用 Azure AI。
+- [Coteccons SSO 决策](../../../.agents/notes/implemented/feature/2026-09-30-coteccons-sso-entra-main-model.md) — 为何由每个用户自己的 Entra ID 令牌调用 Azure AI。
 
 <a id="model-experience"></a>
 ## 模型体验

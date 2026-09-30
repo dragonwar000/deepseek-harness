@@ -79,14 +79,15 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
 
 ### 开启对话记忆
 
-`memory-zeromem` 运行 zeromem 的 `zm` 可执行文件。CTD Core Desktop 在 macOS 与 Windows 上自带一个；其他主机需要 `PATH` 上的 `zm`，[其 README](../memory-zeromem/README.zh.md#use-this-package) 说明如何构建。启用后，它把用户消息与最终助手回复的文本（从不包括工具输出）存入 `<harness home>/zeromem` 下按工作区划分的存储，并提供 `memory_recall` 与 `memory_stats`。在你的 profile patch 中启用它，并重写该行配置：
+`memory-zeromem` 以 bge-small-en-v1.5 嵌入模型运行 zeromem 的 `zm` 可执行文件。CTD Core Desktop 在 macOS 与 Windows 上自带二者；其他主机需要 `PATH` 上的 `zm` 与模型目录，[其 README](../memory-zeromem/README.zh.md#use-this-package) 说明如何提供。启用后，它把用户消息与最终助手回复的文本（从不包括工具输出）存入 `<harness home>/zeromem` 下按工作区划分的存储，并提供 `memory_recall` 与 `memory_stats`。在你的 profile patch 中启用它，并重写该行配置：
 
 ```yaml
 - id: memory-zeromem
   disabled: false
   config:
     zmPath: ''
-    embedder: hash
+    embedder: default
+    modelDir: ''
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -100,7 +101,7 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
     maxConcurrent: 1
 ```
 
-`zmPath` 为空时运行 `DSH_ZEROMEM_ZM` 指定的 `zm`（Desktop 将其设为自带的 `zm`），否则运行 `PATH` 上的 `zm`；设置绝对路径可运行其他构建。`embedder: hash` 与 Desktop 自带的 `zm` 相符，后者构建时不含 fastembed 特性；对含该特性的 `zm` 使用 `embedder: default`。
+`zmPath` 为空时运行 `DSH_ZEROMEM_ZM` 指定的 `zm`，否则运行 `PATH` 上的 `zm`；`modelDir` 为空时从 `DSH_ZEROMEM_MODELS` 读取模型，否则从 `<harness home>/zeromem/models` 读取。Desktop 把这两个变量设为其自带的内容。使用 `embedder: default` 时，模型目录不完整会使该行加载失败，`zm` 构建时不含 fastembed 特性会使召回失败；`embedder: hash` 二者都不需要，但只按共有词语为已存储的轮次排序，因此改写的查询可能错过它们。
 
 -----
 

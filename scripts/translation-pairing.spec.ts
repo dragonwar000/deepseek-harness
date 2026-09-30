@@ -30,6 +30,7 @@ import {
   translationStructureDiff,
   translationStructureSignature,
 } from './translation-pairing.ts'
+import { TRANSLATION_COUNTERPART_POLICY } from './translation-counterpart.ts'
 
 const fixturePairSource = (): boolean => true
 
@@ -467,12 +468,14 @@ describe('pair CLI arguments', () => {
       mode: 'check',
       scope: 'pairs',
       anchors: ['docs/bar.md', 'docs/foo.md'],
+      policy: 'optional',
     })
     expect(parseTranslationPairingCliArgs([])).toEqual({
       input: 'worktree',
       mode: 'check',
       scope: 'corpus',
       anchors: [],
+      policy: 'optional',
     })
   })
 
@@ -483,12 +486,14 @@ describe('pair CLI arguments', () => {
       mode: 'write',
       scope: 'pairs',
       anchors: ['docs/foo.md'],
+      policy: 'optional',
     })
     expect(parseTranslationPairingCliArgs(['--write', '--all'])).toEqual({
       input: 'worktree',
       mode: 'write',
       scope: 'corpus',
       anchors: [],
+      policy: 'optional',
     })
     expect(() => parseTranslationPairingCliArgs(['--write', '--all', 'docs/foo.md'])).toThrow('not both')
   })
@@ -499,6 +504,7 @@ describe('pair CLI arguments', () => {
       mode: 'list',
       scope: 'corpus',
       anchors: [],
+      policy: 'optional',
     })
     expect(() => parseTranslationPairingCliArgs(['--list', 'docs/foo.md'])).toThrow('takes no other flags or paths')
     expect(() => parseTranslationPairingCliArgs(['--all'])).toThrow('--all only applies to --write')
@@ -511,9 +517,26 @@ describe('pair CLI arguments', () => {
       mode: 'check',
       scope: 'pairs',
       anchors: ['docs/foo.md'],
+      policy: 'optional',
     })
     expect(() => parseTranslationPairingCliArgs(['--cached'])).toThrow('requires the staged pair paths')
     expect(() => parseTranslationPairingCliArgs(['--cached', '--write', 'docs/foo.md'])).toThrow('read-only')
+  })
+
+  it('takes the repository counterpart policy unless --policy names another', () => {
+    expect(parseTranslationPairingCliArgs([]).policy).toBe(TRANSLATION_COUNTERPART_POLICY)
+    expect(parseTranslationPairingCliArgs(['--policy=required', 'docs/foo.md'])).toEqual({
+      input: 'worktree',
+      mode: 'check',
+      scope: 'pairs',
+      anchors: ['docs/foo.md'],
+      policy: 'required',
+    })
+    expect(parseTranslationPairingCliArgs(['--list', '--policy=required']).policy).toBe('required')
+    expect(parseTranslationPairingCliArgs(['--cached', '--policy=optional', 'docs/foo.md']).policy).toBe('optional')
+    expect(() => parseTranslationPairingCliArgs(['--policy=strict'])).toThrow('unknown counterpart policy "strict"')
+    expect(() => parseTranslationPairingCliArgs(['--policy=required', '--policy=optional'])).toThrow('--policy may be given once')
+    expect(() => parseTranslationPairingCliArgs(['--policy'])).toThrow('unknown flag(s): --policy')
   })
 })
 

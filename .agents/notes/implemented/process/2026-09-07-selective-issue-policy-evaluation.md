@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-07-selective-issue-policy-evaluation.zh.md)
-
 ## Problem
 
 Informational Issue references provide context, while resolving references carry a Priority obligation. Requiring Project access for both makes unrelated board configuration or App availability block context-only PRs. Looking up referenced Issues before determining enforcement eligibility also spends credentials and API requests on PRs that cannot fail policy.

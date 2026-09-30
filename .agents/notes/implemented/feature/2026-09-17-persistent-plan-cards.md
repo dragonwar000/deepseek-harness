@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-17-persistent-plan-cards.zh.md)
-
 ## Problem
 
 A plan review occupies the composer only until the user answers or dismisses it. A completed Turn also folds its tool calls into the process disclosure. Neither lifetime gives a submitted plan a discoverable place to read while implementation continues.

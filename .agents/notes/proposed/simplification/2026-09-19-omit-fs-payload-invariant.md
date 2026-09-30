@@ -2,8 +2,6 @@
 
 Status: proposed
 
-English | [中文](2026-09-19-omit-fs-payload-invariant.zh.md)
-
 ## Problem
 
 The [filesystem invariant](../../../../packages/fs/fs/src/invariant.ts) checks non-empty target strings, a non-empty present version, and an observation discriminant. It reads one dispatch payload, retains no history, and compares no provider, policy, filesystem, or independently mutable state. Its [tests](../../../../packages/fs/fs/tests/invariant.spec.ts) construct malformed payloads directly. Publishing this check costs a companion module, export/build wiring, invariant dependencies, compiler references, and dedicated tests.

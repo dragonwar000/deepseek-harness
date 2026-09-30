@@ -1458,7 +1458,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-memory-zeromem`
 
 - `inject`: `tools` · `subprocess` · `sessionProjections`
-- `source`: [`packages/experimental/memory-zeromem/src/index.ts:81`](../packages/experimental/memory-zeromem/src/index.ts)
+- `source`: [`packages/experimental/memory-zeromem/src/index.ts:90`](../packages/experimental/memory-zeromem/src/index.ts)
 
 ```ts config-catalog
 /** Config with every default applied. */
@@ -1470,8 +1470,13 @@ export interface Config {
   zmPath?: string
   /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
   zmArgs?: string[]
-  /** `default` lets `zm` pick its embedder (fastembed when compiled in); `hash` passes `--no-model` (default `default`). */
+  /**
+   * `default` runs bge-small-en-v1.5 from `modelDir` and needs a `zm` built with zeromem's fastembed feature;
+   * `hash` passes `--no-model` for lexical recall (default `default`).
+   */
   embedder?: 'default' | 'hash'
+  /** Absolute directory holding the embedding model; empty selects `DSH_ZEROMEM_MODELS`, then `<store root>/models` (default empty). */
+  modelDir?: string
   /** `workspace` keeps one store per session working directory; `global` shares one store (default `workspace`). */
   scope?: StoreScope
   /** Absolute directory holding the stores; empty selects `<harness home>/zeromem` (default empty). */

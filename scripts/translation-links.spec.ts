@@ -10,6 +10,7 @@ import {
   translationLinkLocaleViolations,
   type TranslationLinkContext,
 } from './translation-links.ts'
+import type { TranslationCounterpartPolicy } from './translation-counterpart.ts'
 import { removeFixtureSafely } from './test-fixture-cleanup.ts'
 
 const roots: string[] = []
@@ -35,15 +36,18 @@ function fixture(): string {
   return root
 }
 
+/** Link context under the `required` counterpart policy unless a test names `optional`. */
 function linkContext(
   root: string,
   sourcePath: string,
   repositoryFileExists?: (repoPath: string) => boolean,
+  counterpartPolicy: TranslationCounterpartPolicy = 'required',
 ): TranslationLinkContext {
   return {
     repoRoot: root,
     sourcePath,
     isTranslationPairSource: path => path.startsWith('docs/'),
+    counterpartPolicy,
     ...(repositoryFileExists === undefined ? {} : { repositoryFileExists }),
   }
 }
@@ -112,6 +116,14 @@ describe('translation link locale validation', () => {
       '[missing](unpaired.md)\n',
       linkContext(root, 'docs/guide.zh.md'),
     )[0]).toMatchObject({ expectedUrl: 'unpaired.zh.md' })
+  })
+
+  it('keeps the English path to a target with no locale sibling under the optional policy', () => {
+    const root = fixture()
+    const context = linkContext(root, 'docs/guide.zh.md', undefined, 'optional')
+    expect(translationLinkLocaleViolations('[missing](unpaired.md)\n', context)).toEqual([])
+    expect(translationLinkLocaleViolations('[paired](reference.md)\n', context)[0])
+      .toMatchObject({ expectedUrl: 'reference.zh.md' })
   })
 
   it('requires English sources to use the English sibling', () => {
