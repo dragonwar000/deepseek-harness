@@ -18,6 +18,7 @@ import { openSettings, saveFailureShot } from './support.ts'
 
 const SNAPSHOT_DIR = fileURLToPath(new URL('./expected/bonus-notice', import.meta.url))
 const OVERLAY_TEMPLATE = fileURLToPath(new URL('./fixtures/bonus-notice/cordis.patch.yml', import.meta.url))
+const ACCOUNT_ROWS = fileURLToPath(new URL('./fixtures/deepseek-account/cordis.patch.yml', import.meta.url))
 const MODE = webSnapshotMode()
 
 const TOKEN = 'dsh_bonus_notice_test'
@@ -256,7 +257,7 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
       { mode: 0o600 })
     const overlay = join(root, 'bonus-notice.overlay.yml')
     await writeFile(overlay, (await readFile(OVERLAY_TEMPLATE, 'utf8')).replaceAll('{{origin}}', platform.origin))
-    scaffold = await launchWebScaffold({ harnessHome: home, extraOverlayPath: overlay })
+    scaffold = await launchWebScaffold({ harnessHome: home, extraOverlayPath: [ACCOUNT_ROWS, overlay] })
     // Resolve the signed-in identity before opening the renderer. First profile discovery
     // emits another account frame, which would supersede the held startup bonus read.
     expect(await scaffold.ctx.deepseekAccount.getProfile({
@@ -342,6 +343,8 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     })
     observations.push(`open.shown painted-under-settings=${String(paintedUnderOverlay)} cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
     expect(paintedUnderOverlay).toBe(true)
+    // The DeepSeek account group and its balances live on the AI Account page.
+    await settings.getByRole('button', { name: 'AI 账号', exact: true }).click()
     await expect.poll(async () => (await settings.textContent()) ?? '', { timeout: 30_000 }).toContain('¥13.00')
     // Still one read after the refresh settled.
     expect(platform.gets.length).toBe(getsBefore + 1)
@@ -396,8 +399,8 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     const nav = reopened.locator('nav')
     await nav.getByRole('button', { name: '模型', exact: true }).click()
     await expect.poll(async () => nav.getByRole('button', { name: '模型', exact: true }).getAttribute('aria-current'), { timeout: 30_000 }).toBe('true')
-    await nav.getByRole('button', { name: '账号与余额', exact: true }).click()
-    await expect.poll(async () => nav.getByRole('button', { name: '账号与余额', exact: true }).getAttribute('aria-current'), { timeout: 30_000 }).toBe('true')
+    await nav.getByRole('button', { name: 'AI 账号', exact: true }).click()
+    await expect.poll(async () => nav.getByRole('button', { name: 'AI 账号', exact: true }).getAttribute('aria-current'), { timeout: 30_000 }).toBe('true')
     platform.releaseGet()
     const sectionPanel = (await reopened.textContent()) ?? ''
     observations.push(`reopen.section-switch gets=${String(platform.gets.length - sectionGetsBefore)} summaries=${String(platform.summaries.length - sectionSummariesBefore)} amount=${String(sectionPanel.includes('¥13.00'))} cards=${String(await noticeCards(page).count())} acks=${String(platform.acks.length)}`)
@@ -423,8 +426,9 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     await expect.poll(() => platform.summaries.length, { timeout: 30_000 }).toBe(topUpSummariesBefore + 1)
     observations.push(`topup.open gets=${String(platform.gets.length - topUpGetsBefore)} summaries=${String(platform.summaries.length - topUpSummariesBefore)}`)
     const callsBefore = (await platformCalls(page)).length
+    await topUpSettings.getByRole('button', { name: 'AI 账号', exact: true }).click()
     await topUpSettings.getByRole('link', { name: '充值', exact: true }).click()
-    const topUpOverlay = page.getByRole('dialog', { name: '返回 DeepSeek Harness', exact: true })
+    const topUpOverlay = page.getByRole('dialog', { name: '返回 CTD Core', exact: true })
     await topUpOverlay.waitFor()
     // Opening the native view reads nothing by itself.
     expect(platform.gets.length).toBe(topUpGetsBefore + 1)
@@ -436,7 +440,7 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     platform.grant(ORDER_TOPUP, '11.00')
     // Holding the notice read proves the return does not wait for the refresh it starts.
     platform.holdNextGet()
-    await topUpOverlay.getByRole('button', { name: '返回 DeepSeek Harness', exact: true }).click()
+    await topUpOverlay.getByRole('button', { name: '返回 CTD Core', exact: true }).click()
     await topUpOverlay.waitFor({ state: 'detached', timeout: 30_000 })
     const topUpCalls = (await platformCalls(page)).slice(callsBefore).join(',')
     observations.push(`topup.returned bridge=${topUpCalls} cards=${String(await noticeCards(page).count())}`)
@@ -530,6 +534,7 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     await openSettings(page, 'zh')
     const failedSettings = page.getByRole('dialog', { name: '设置', exact: true })
     await failedSettings.waitFor()
+    await failedSettings.getByRole('button', { name: 'AI 账号', exact: true }).click()
     const failedLinks = failedSettings.getByRole('link', { name: '前往开放平台查看', exact: true })
     await expect.poll(() => failedLinks.count(), { timeout: 30_000 }).toBe(2)
     await expect.poll(() => platform.summaries.length, { timeout: 30_000 }).toBe(failedSummariesBefore + 1)
@@ -540,9 +545,9 @@ describe.skipIf(MODE === 'record')('web e2e: bonus notice', () => {
     // Returning from usage refreshes nothing, because only a payment changes the account.
     for (const index of [0, 1]) {
       await failedLinks.nth(index).click()
-      const usageOverlay = page.getByRole('dialog', { name: '返回 DeepSeek Harness', exact: true })
+      const usageOverlay = page.getByRole('dialog', { name: '返回 CTD Core', exact: true })
       await usageOverlay.waitFor()
-      await usageOverlay.getByRole('button', { name: '返回 DeepSeek Harness', exact: true }).click()
+      await usageOverlay.getByRole('button', { name: '返回 CTD Core', exact: true }).click()
       await usageOverlay.waitFor({ state: 'detached', timeout: 30_000 })
     }
     const failedUsages = (await platformCalls(page)).filter(call => call === 'open:usage').length - failedUsagesBefore

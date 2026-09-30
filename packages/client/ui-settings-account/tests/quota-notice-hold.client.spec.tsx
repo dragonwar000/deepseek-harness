@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The account takeover inside the shipped composition: the frame-wide notice
- * chain, the account settings page, and the one shared native Platform host.
+ * chain, the DeepSeek group of the AI Account page, and the one shared native Platform host.
  */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -25,6 +25,7 @@ import type { DesktopOnboardingState } from '../src/client/onboarding-contract.t
 import { createPlatformPages, type PlatformPages } from '../src/client/platform-pages.ts'
 import type { PlatformBridge } from '../src/client/PlatformOverlay.tsx'
 import { en, zh } from '../src/client/locales.ts'
+import type {} from '@deepseek-ai/dsh-client-ui-settings-ai-account/client'
 
 usePinnedBrowserLanguages('en')
 
@@ -73,7 +74,7 @@ function sectionOperations(account: AccountSnapshot, pages: PlatformPages): Acco
 
 /**
  * Mount the real Chat quota host, this package's own shared Platform host, and
- * the account settings page, registered as the account plugin registers them.
+ * the DeepSeek account group, registered as the account plugin registers them.
  * @returns the runtime, the live account store, the page channel, and the bridge.
  */
 async function bench() {
@@ -110,7 +111,7 @@ async function bench() {
   runtime.ctx.effect(() => locale.register('settings.account', { en, zh }), 'spec: account dictionaries')
   await runtime.declare({
     'shell.overlay': { kind: 'list', scope: 'root' },
-    'settings.section': { kind: 'list', scope: 'root' },
+    'settings.ai-account.group': { kind: 'list', scope: 'root' },
     'conversation.approval.detail': { kind: 'single', scope: 'session' },
   })
   await runtime.mount({ inject: [...injectConversation], apply: applyConversation })
@@ -152,8 +153,8 @@ async function bench() {
     unregisterNotice = dispose
     return dispose
   })
-  runtime.ctx.slots.inject('settings.section', () => runtime.ctx.slots.register({
-    name: 'settings.section', id: 'account', locale: 'settings.account',
+  runtime.ctx.slots.inject('settings.ai-account.group', () => runtime.ctx.slots.register({
+    name: 'settings.ai-account.group', id: 'deepseek', locale: 'settings.account',
     inject: () => sectionOperations(accountSnapshot.getSnapshot(), pages),
   }, AccountSection))
   runtime.ctx.slots.inject('shell.overlay', () => runtime.ctx.slots.register({
@@ -170,7 +171,7 @@ async function bench() {
   references.push(reference)
   descriptor.resolve(reference.binding)
   runtime.renderSlot('shell.overlay', {})
-  runtime.renderSlot('settings.section', { close: () => {} })
+  runtime.renderSlot('settings.ai-account.group', {})
   return {
     runtime,
     pages,

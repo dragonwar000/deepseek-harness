@@ -831,10 +831,11 @@ inspect( sessionId: SessionId, signal?: AbortSignal, ): Promise<SessionInspectio
 @Remote('selectModel') selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue>
 
 /**
- * Select the first available account model after login when no provider API key is configured.
- * @returns after saving the first available model or retaining the existing default.
+ * Save the first available model of an account route as the Agent default after that account signs in.
+ * @param provider - account route whose first model becomes the default, such as `coteccons`.
+ * @returns after the selection is saved.
  */
-@Remote async initializeDefaultModel(): Promise<void>
+@Remote async initializeDefaultModel(provider: string): Promise<void>
 
 /**
  * Describe every currently routable model for Host-generation selectors.

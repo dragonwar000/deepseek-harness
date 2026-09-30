@@ -22,6 +22,17 @@ import type { SettingsSchemaOperations } from './schema-operations.ts'
  */
 const PROBE_ROUTE = '\u0000probe'
 
+/**
+ * Suffix that identifies account-based providers — routes whose credentials
+ * are bound through an OAuth account login instead of a user-provided API key.
+ */
+const ACCOUNT_SUFFIX = '-account'
+
+/** Whether a provider route id identifies an account-based provider. */
+function isAccountProvider(provider: string): boolean {
+  return provider.endsWith(ACCOUNT_SUFFIX)
+}
+
 /** One provider row after joining the configurable directory with live routes. */
 export interface ProviderDirectoryEntry {
   readonly provider: string
@@ -65,8 +76,8 @@ export function joinProviderDirectory(
     })
   }
   return rows.toSorted((left, right) =>
-    (left.provider === 'deepseek-account' ? 0 : left.provider === 'deepseek-official' ? 1 : 2)
-      - (right.provider === 'deepseek-account' ? 0 : right.provider === 'deepseek-official' ? 1 : 2))
+    (isAccountProvider(left.provider) ? 0 : left.provider === 'deepseek-official' ? 1 : 2)
+      - (isAccountProvider(right.provider) ? 0 : right.provider === 'deepseek-official' ? 1 : 2))
 }
 
 /** One provider row the page renders. */
@@ -212,18 +223,19 @@ export class ModelsSettingsStore {
         entry,
         configured,
         removable,
-        apiKeyEnv: entry.provider === 'deepseek-account' ? undefined : apiKeyEnvOf(namespace, entry.settingsPath, this.schema),
+        apiKeyEnv: isAccountProvider(entry.provider) ? undefined : apiKeyEnvOf(namespace, entry.settingsPath, this.schema),
         credential: undefined,
       }
     })
-    if (rows.some(row => row.entry.provider === 'deepseek-account')) {
+    if (rows.some(row => isAccountProvider(row.entry.provider))) {
       const catalog = await this.ctx.remote.session.modelCatalog()
       for (const row of rows) {
-        if (row.entry.provider === 'deepseek-account') row.accountAvailable = catalog.ok
-          && catalog.value.groups.some(group => group.id === 'deepseek-account' && group.models.length > 0)
+        if (isAccountProvider(row.entry.provider)) row.accountAvailable = catalog.ok
+          && catalog.value.groups.some(group => group.id === row.entry.provider && group.models.length > 0)
       }
     }
-    const refs = [...new Set(rows.filter(row => row.entry.provider !== 'deepseek-account').map(row => row.apiKeyEnv ?? deriveKeyRef(row.entry.provider)))]
+    const refs = [...new Set(rows.filter(row => !isAccountProvider(row.entry.provider))
+      .map(row => row.apiKeyEnv ?? deriveKeyRef(row.entry.provider)))]
     let credentials: Record<string, CredentialInfo> = {}
     let credentialError: string | null = null
     if (refs.length > 0) {
@@ -240,8 +252,8 @@ export class ModelsSettingsStore {
       s.error = null
       s.credentialError = credentialError
       s.writable = writable
-      s.rows = rows.filter(row => row.entry.provider !== 'deepseek-account' || row.accountAvailable === true).map((row) => {
-        if (row.entry.provider === 'deepseek-account') return row
+      s.rows = rows.filter(row => !isAccountProvider(row.entry.provider) || row.accountAvailable === true).map((row) => {
+        if (isAccountProvider(row.entry.provider)) return row
         const named = row.apiKeyEnv === undefined ? undefined : credentials[row.apiKeyEnv]
         const derived = row.apiKeyEnv !== undefined ? undefined : credentials[deriveKeyRef(row.entry.provider)]
         return {
@@ -276,7 +288,7 @@ export class ModelsSettingsStore {
  */
 export function providerUsable(row: ProviderRow): boolean {
   if (!row.entry.active) return false
-  if (row.entry.provider === 'deepseek-account') return row.accountAvailable === true
+  if (isAccountProvider(row.entry.provider)) return row.accountAvailable === true
   if (row.apiKeyEnv === undefined) return true
   return row.credential?.configured === true
 }
@@ -318,6 +330,7 @@ export function onboardingReadiness(state: ModelsSettingsState): OnboardingReadi
     }
   }
   if (state.rows.some(providerUsable)) return { kind: 'provider-ready' }
+  // Find the first row with a writable credential that is missing a value — the best candidate for onboarding.
   const row = state.rows.find(candidate =>
     candidate.entry.provider === 'deepseek-official'
     && candidate.entry.settingsNs === 'llm-deepseek'

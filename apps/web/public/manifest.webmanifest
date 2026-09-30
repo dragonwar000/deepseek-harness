@@ -1,6 +1,6 @@
 {
-  "name": "DeepSeek Harness",
-  "short_name": "DSH",
+  "name": "CTD Core",
+  "short_name": "CTD Core",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

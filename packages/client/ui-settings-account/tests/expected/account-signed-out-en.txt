@@ -1,1 +1,1 @@
-You are not signed in to DeepSeek HarnessSign in to DeepSeek Harness to get your dedicated API KeySign in
+DeepSeek — used for the main modelSign in with your DeepSeek account to run the main model on its balance.You are not signed in to a DeepSeek accountSign in to your DeepSeek account to get your dedicated API KeySign in

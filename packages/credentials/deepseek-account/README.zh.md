@@ -21,6 +21,8 @@ getUnnotifiedBonuses 返回平台尚未记录为已展示的赠金及其所属�
 
 账号使用方可读取本地登录状态、发起或取消浏览器登录，并在保留 API Key 的情况下退出。Host 模型使用方仅能为提供者配置的推理来源解析账号凭证。
 
+已发布的 Bundle 将此服务定义的提供者与使用方行保持禁用：在 CTD Core 中，[Coteccons SSO](../coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用这些行。
+
 ## 目录
 
 - [使用此包](#use-this-package)

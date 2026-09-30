@@ -1,6 +1,6 @@
 /** Operations available to the isolated native welcome renderer. */
 
-import type { AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
+import type { CotecconsSsoSignInId, CotecconsSsoView } from '@deepseek-ai/dsh-coteccons-sso/types'
 import type { DesktopLocale } from './locale.ts'
 
 /** Private native welcome channels, installed only while its window exists. */
@@ -12,48 +12,66 @@ export const WELCOME_IPC = {
   copyLink: 'dsh-welcome:copy-link',
   state: 'dsh-welcome:state',
   takeNotice: 'dsh-welcome:take-notice',
+  providers: 'dsh-welcome:providers',
 } as const
 
 /** Credential writes return a safe outcome without exposing Host diagnostics. */
 export type WelcomeSaveResult = { readonly ok: true } | { readonly ok: false }
 
-/** One-time notification retained by the main process until Welcome receives it. */
+/** One-time notification retained by the main process until Welcome receives it: the Coteccons SSO sign-in expired. */
 export type WelcomeNotice = 'session-expired'
+
+/**
+ * A writable provider identity the welcome page can offer in the provider selector.
+ * The `settingsNs` is passed back to `saveApiKey` to target the right credential.
+ */
+export interface WritableProvider {
+  /** Settings namespace used to write the key (e.g. `llm-deepseek`, `llm-pi-ai`). */
+  readonly settingsNs: string
+  /** Human-readable name shown in the provider dropdown. */
+  readonly displayName: string
+}
 
 /** Host-owned operations used by the welcome window. */
 export interface WelcomeOperations {
   /** @returns the pending notification, clearing it before another renderer can receive it. */
   takeNotice(): Promise<WelcomeNotice | undefined>
-  /** @returns account state after starting a login attempt. */
-  startSignIn(): Promise<AccountView>
+  /** @returns Coteccons SSO state after starting a browser sign-in. */
+  startSignIn(): Promise<CotecconsSsoView>
   /** @param id - attempt to cancel. @returns the settled state. */
-  cancelSignIn(id: SignInAttemptId): Promise<AccountView>
-  /** @param id - current waiting attempt whose authorization URL is copied to the system clipboard. */
-  copySignInLink(id: SignInAttemptId): Promise<void>
+  cancelSignIn(id: CotecconsSsoSignInId): Promise<CotecconsSsoView>
+  /** @param id - current attempt whose Microsoft sign-in URL is copied to the system clipboard. */
+  copySignInLink(id: CotecconsSsoSignInId): Promise<void>
 
   /**
-   * Store the official provider's key before entering the workspace.
-   * @param value - validated, trimmed API key.
+   * Store a provider's API key before entering the workspace.
+   * @param settingsNs - Provider settings namespace (e.g. `llm-deepseek`, `llm-pi-ai`).
+   * @param value - Validated, trimmed API key.
    * @returns whether the write completed, without private error details.
    */
-  saveApiKey(value: string): Promise<WelcomeSaveResult>
+  saveApiKey(settingsNs: string, value: string): Promise<WelcomeSaveResult>
   /**
    * Enter the workspace without writing an onboarding-completion setting.
    * @returns completion after the workspace opens.
    */
   skip(): Promise<void>
+  /** @returns writable provider settings namespaces known at this launch. */
+  getWritableProviders(): Promise<readonly string[]>
 }
 
-/** The renderer receives localized copy, login operations, and safe account snapshots. */
+/** The renderer receives localized copy, sign-in operations, and token-free Coteccons SSO snapshots. */
 export type WelcomeApi = DesktopLocale & WelcomeOperations & {
-  /** @param listener - safe account snapshot recipient. @returns subscription disposer. */
-  onAccountState(listener: (state: AccountView) => void): () => void
+  /** @param listener - token-free Coteccons SSO snapshot recipient. @returns subscription disposer. */
+  onSsoState(listener: (state: CotecconsSsoView) => void): () => void
 }
 
 /** Authentication facts supplied at cold start or after a completed sign-out. */
 export interface WelcomeAuthentication {
+  /** Whether a Coteccons SSO account is signed in. */
   readonly loggedIn: boolean
   readonly hasApiKey: boolean
+  /** Provider namespaces with writable credentials, sorted for display. */
+  readonly writableProviders: readonly string[]
 }
 
 /**

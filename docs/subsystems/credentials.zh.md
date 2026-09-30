@@ -69,6 +69,68 @@ AccountDetails.balance 将充值钱包投影为 value、赠送钱包投影为 bo
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
+<a id="ctxaiaccount--aiaccount-abstract-seam"></a>
+
+### `ctx.aiAccount` — `AiAccount` (abstract seam)
+
+Account registry whose credentials never leave the official Claude Code and Codex CLIs. Each account owns one CLI configuration directory; implementations sign in, identify, and sign out only by running the official CLI against that directory.
+
+```ts cordis-catalog
+/**
+ * Read the registered accounts and the latest sign-in attempt.
+ * @returns a snapshot without credentials or directory paths.
+ */
+abstract getState(): Promise<AiAccountsView>
+
+/**
+ * Join the active sign-in attempt or start the official CLI login for a new account.
+ * @param kind - account kind to add.
+ * @returns the snapshot after the attempt starts, without waiting for authorization.
+ */
+abstract startSignIn(kind: AiAccountKind): Promise<AiAccountsView>
+
+/**
+ * Cancel the named attempt and discard its unfinished configuration directory.
+ * @param id - attempt identity from this Host; any other id leaves state unchanged.
+ * @returns the snapshot after the attempt settles.
+ */
+abstract cancelSignIn(id: AiAccountSignInId): Promise<AiAccountsView>
+
+/**
+ * Make one account the default of its kind.
+ * @param id - registered account.
+ * @returns the snapshot after the default changes.
+ * @throws when no account has this id.
+ */
+abstract setDefault(id: AiAccountId): Promise<AiAccountsView>
+
+/**
+ * Sign the account out through its official CLI, delete its configuration directory, and forget it.
+ * Removing the default promotes the oldest remaining account of the same kind.
+ * @param id - registered account.
+ * @returns the snapshot after removal.
+ * @throws when no account has this id.
+ */
+abstract remove(id: AiAccountId): Promise<AiAccountsView>
+
+/**
+ * Subscribe to complete snapshots, starting with the current one.
+ * @param signal - subscription lifetime; ending it never cancels a sign-in.
+ * @returns snapshots as accounts or the attempt change.
+ */
+abstract watch(signal: AbortSignal): AsyncIterable<AiAccountsView>
+
+/**
+ * Resolve the configuration directory of the default account of one kind, for launching that
+ * kind's official CLI (`CLAUDE_CONFIG_DIR` for Claude Code, `CODEX_HOME` for Codex).
+ * @param kind - account kind.
+ * @returns the absolute directory, or `undefined` when the kind has no default account.
+ */
+abstract defaultHome(kind: AiAccountKind): string | undefined
+```
+
+Source: [`packages/credentials/ai-account/src/index.ts`](../../packages/credentials/ai-account/src/index.ts)
+
 <a id="ctxauthorization--authorizationservice"></a>
 
 ### `ctx.authorization` — `AuthorizationService`
@@ -129,6 +191,59 @@ async begin(request: AuthorizationRequest): Promise<AuthorizationOutcome>
 ```
 
 Source: [`packages/credentials/authorization/src/index.ts`](../../packages/credentials/authorization/src/index.ts)
+
+<a id="ctxcotecconssso--cotecconssso-abstract-seam"></a>
+
+### `ctx.cotecconsSso` — `CotecconsSso` (abstract seam)
+
+One Entra ID sign-in per Host. Views never carry tokens; getAccessToken is Host-only and its result must never be sent to a Client, logged, or stored outside the provider's token cache.
+
+```ts cordis-catalog
+/**
+ * Read the current sign-in state.
+ * @returns a snapshot without tokens.
+ */
+abstract getState(): Promise<CotecconsSsoView>
+
+/**
+ * Join the active attempt or start an interactive browser sign-in. While the deployment is not configured
+ * or an account is signed in, the state is returned unchanged.
+ * @returns the snapshot after the attempt starts, without waiting for the user.
+ */
+abstract startSignIn(): Promise<CotecconsSsoView>
+
+/**
+ * Cancel the named attempt.
+ * @param id - attempt identity from this Host; any other id leaves state unchanged.
+ * @returns the snapshot after the attempt settles.
+ */
+abstract cancelSignIn(id: CotecconsSsoSignInId): Promise<CotecconsSsoView>
+
+/**
+ * Forget the signed-in account and delete its stored token cache.
+ * @returns the signed-out snapshot.
+ */
+abstract signOut(): Promise<CotecconsSsoView>
+
+/**
+ * Subscribe to complete snapshots, starting with the current one.
+ * @param signal - subscription lifetime; ending it never cancels a sign-in.
+ * @returns snapshots as the state changes.
+ */
+abstract watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView>
+
+/**
+ * Return a current access token for the signed-in account, refreshing it silently when it expired.
+ * @param scope - resource scope the token is for.
+ * @param signal - caller cancellation.
+ * @returns the bearer token value.
+ * @throws CotecconsSsoTokenUnavailableError when the deployment is not configured, nobody is signed in,
+ * or Entra ID requires the user to sign in again.
+ */
+abstract getAccessToken(scope: string, signal?: AbortSignal): Promise<string>
+```
+
+Source: [`packages/credentials/coteccons-sso/src/index.ts`](../../packages/credentials/coteccons-sso/src/index.ts)
 
 <a id="ctxcredentials--credentialprovider-abstract-seam"></a>
 
@@ -359,6 +474,27 @@ abstract getPlatformSession(): Promise<PlatformSession | null>
 ```
 
 Source: [`packages/credentials/deepseek-account/src/index.ts`](../../packages/credentials/deepseek-account/src/index.ts)
+
+<a id="ai-account-events"></a>
+
+### `ai-account/*` events
+
+<a id="ai-accountdefault-changed--emit"></a>
+
+#### `ai-account/default-changed` — emit
+
+The default account of one kind changed, including to no default.
+
+```ts cordis-catalog
+/**
+ * The default account of one kind changed, including to no default.
+ * @mode emit
+ * @param kind - account kind whose default changed.
+ */
+'ai-account/default-changed'(kind: AiAccountKind): void
+```
+
+Source: [`packages/credentials/ai-account/src/types.ts`](../../packages/credentials/ai-account/src/types.ts)
 
 <a id="authorization-events"></a>
 

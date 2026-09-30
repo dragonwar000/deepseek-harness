@@ -74,8 +74,8 @@ import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
 
 export { PiAiAdapter } from './adapter.ts'
-export type { PiAiAdapterOptions } from './adapter.ts'
-export { Config } from './config.ts'
+export type { PiAiAdapterOptions, PiAiAuthInjection } from './adapter.ts'
+export { Config, PiAiModelProfileSchema, resolveProfiles } from './config.ts'
 export type {
   Options,
   PiAiCompatProfile,

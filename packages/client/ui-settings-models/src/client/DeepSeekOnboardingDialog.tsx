@@ -89,11 +89,11 @@ export function DeepSeekOnboardingDialog(props: DeepSeekOnboardingDialogProps): 
       return assertNever(readiness)
   }
 
+  // Find the first row that lacks a credential — this is the best candidate for onboarding.
   const row = state.rows.find(candidate =>
-    candidate.entry.provider === 'deepseek-official'
-    && candidate.entry.settingsNs === 'llm-deepseek'
-    && candidate.entry.settingsPath.length === 0)
-  const namespace = state.namespaces.get('llm-deepseek')
+    candidate.entry.settingsPath.length === 0
+    && candidate.entry.active)
+  const namespace = row !== undefined ? state.namespaces.get(row.entry.settingsNs) : undefined
   /* v8 ignore next 2 -- credential-missing is derived only from this exact joined row. */
   if (row === undefined || namespace === undefined) return null
 

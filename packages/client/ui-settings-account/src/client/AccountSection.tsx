@@ -1,15 +1,17 @@
-/** Account settings renders safe Host state and explicit login actions. */
+/** DeepSeek account group on the AI Account settings page: safe Host state, balances, and explicit sign-in and sign-out actions. */
 import { Big } from 'big.js'
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { Button, IconRightUpOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { AccountDetails, AccountView, SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { PropsRuntime, PropsLocale, InjectFace, HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings-ai-account/client'
 import type { PlatformPage, PlatformPages } from './platform-pages.ts'
 import { formatBalance } from './formatBalance.ts'
 import { AccountAvatar } from './AccountAvatar.tsx'
 import { authorizeUrlWithTheme } from './authorize-url.ts'
 import type { BonusNotice } from './bonus-notices.ts'
+import { SignOutDialog } from './SignOutDialog.tsx'
 import css from './AccountSection.module.css'
 
 /** Safe account snapshot shared by the settings page and launcher. */
@@ -77,11 +79,16 @@ export interface AccountSectionInjected {
   /** @returns after local account credentials are removed. */
   signOut: () => Promise<void>
 }
-/** Composed account section props. */
+/** Composed props of the DeepSeek group in the AI Account settings page. */
 export type AccountSectionProps =
-  PropsRuntime<'settings.section'> & PropsLocale<'settings.account'> & InjectFace<AccountSectionInjected>
-/** @param props - localized actions, account subscription, and the shared Platform page channel. @returns account settings UI. */
-export function AccountSection({ t, useAccount, useTheme, start, cancel, openPlatformPage }: AccountSectionProps) {
+  PropsRuntime<'settings.ai-account.group'> & PropsLocale<'settings.account'> & InjectFace<AccountSectionInjected>
+/**
+ * @param props - localized actions, account subscription, and the shared Platform page channel.
+ * @returns the DeepSeek account group: sign-in while signed out; profile, balances, Platform links, and sign-out while signed in.
+ */
+export function AccountSection({
+  t, useAccount, useTheme, start, cancel, signOut, hasRunningAccountTasks, openPlatformPage,
+}: AccountSectionProps) {
   const { view: state, details, failed: streamFailed } = useAccount(value => value)
   const colorScheme = useTheme(snapshot => snapshot.active.colorScheme)
   // The shared host owns the native view; this page holds only its own request,
@@ -89,6 +96,7 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
   const releasePage = useRef<(() => void) | undefined>(undefined)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [signOutImpact, setSignOutImpact] = useState<boolean | 'unknown'>()
   const profile = details?.profile?.status === 'ready' ? details.profile.value : undefined
   const wallets = details?.balance?.status === 'ready' ? details.balance.value : undefined
   const bonusWallets = details?.balance?.status === 'ready'
@@ -112,6 +120,17 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
     setFailed(false)
     try { await action() } catch { setFailed(true) } finally { setBusy(false) }
   }
+  /** Read the running-task impact, then open the shared sign-out confirmation; an unknown impact still opens it with its warning. */
+  const requestSignOut = async () => {
+    setBusy(true)
+    try { setSignOutImpact(await hasRunningAccountTasks()) }
+    catch (_error) { setSignOutImpact('unknown') }
+    finally { setBusy(false) }
+  }
+  const header = <header className={css.groupHeader}>
+    <h4 className={css.groupTitle}>{t('groupTitle')}</h4>
+    <p className={css.groupDescription}>{t('groupDescription')}</p>
+  </header>
   /**
    * @param event - click on a Platform destination link.
    * @returns nothing; on Desktop the embedded page replaces the pending navigation.
@@ -137,8 +156,9 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
       : active ? t(attempt.phase === 'initializing' ? 'initializing' : attempt.phase === 'waiting-browser' ? 'waiting' : 'completing')
         : signedIn ? profile?.contact ?? t(details?.profile === undefined ? 'loading' : 'profileUnavailable') : t('signInDescription')
   if (!signedIn && !active) return (
-    <section className={css.signedOut} aria-label={t('nav')}>
-      <div className={css.signedOutContent}>
+    <section className={css.section} aria-label={t('groupTitle')} data-kind="deepseek">
+      {header}
+      <div className={css.signedOut}>
         <div className={css.signedOutCopy}>
           <span className={css.signedOutTitle}>{t('settingsSignedOutTitle')}</span>
           <span className={css.signedOutDescription} role="status">
@@ -151,7 +171,8 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
     </section>
   )
   return (
-    <section className={css.section} aria-label={t('nav')}>
+    <section className={css.section} aria-label={t('groupTitle')} data-kind="deepseek">
+      {header}
       <div className={css.card}>
         <div className={css.identity}>
           <span className={css.avatar}><AccountAvatar url={signedIn ? profile?.avatarUrl : null} /></span>
@@ -160,9 +181,12 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
             <span className={css.status} role="status">{status}</span>
           </div>
         </div>
-        {signedIn && <a className={css.accountInfo} href={new URL('/', state.links.usageUrl).href} target="_blank" rel="noopener noreferrer">
-          {t('accountInfo')}<IconRightUpOutlineRegular size={12} />
-        </a>}
+        {signedIn && <div className={css.cardActions}>
+          <a className={css.accountInfo} href={new URL('/', state.links.usageUrl).href} target="_blank" rel="noopener noreferrer">
+            {t('accountInfo')}<IconRightUpOutlineRegular size={12} />
+          </a>
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => { void requestSignOut() }}>{t('signOut')}</Button>
+        </div>}
       </div>
       {active && <div className={css.actions}>
         {attempt.authorizeUrl && <a className={css.linkButton} href={authorizeUrlWithTheme(attempt.authorizeUrl, colorScheme)}
@@ -211,6 +235,8 @@ export function AccountSection({ t, useAccount, useTheme, start, cancel, openPla
           </div>
         </div>
       </div>
+      {signedIn && signOutImpact !== undefined && <SignOutDialog running={signOutImpact} signOut={signOut}
+        close={() => { setSignOutImpact(undefined) }} t={t} />}
     </section>
   )
 }

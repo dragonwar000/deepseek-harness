@@ -19,6 +19,8 @@ getPlatformSession 仅在已存授权的 issuer 与 platformOrigin 一致时导�
 
 通过系统浏览器登录，并将账号凭证保存在现有本地凭证存储中。本地取消会阻止迟到的回调和兑换响应使用户登录。
 
+已发布的组合将 base Bundle 的 `deepseek-account` 行保持禁用：在 CTD Core 中，[Coteccons SSO](../coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用该行。
+
 ## 目录
 
 - [使用此包](#use-this-package)

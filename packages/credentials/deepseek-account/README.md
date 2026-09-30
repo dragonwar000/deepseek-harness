@@ -21,6 +21,8 @@ getUnnotifiedBonuses returns the granted bonuses Platform has not yet recorded a
 
 Account consumers read stored login state, start or cancel a browser login, and sign out without editing API keys. Host model consumers resolve account credentials only for the provider-configured inference origin.
 
+The shipped Bundles keep the provider and consumer rows of this Service Definition disabled: [Coteccons SSO](../coteccons-sso/README.md) replaces DeepSeek Platform sign-in in CTD Core. A profile patch can re-enable those rows.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

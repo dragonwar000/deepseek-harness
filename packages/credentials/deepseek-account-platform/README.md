@@ -19,6 +19,8 @@ Profile and balance HTTP 401 responses or top-level response code `40003` (inval
 
 Sign in through the system browser and keep the account credential in the existing local credential store. Local cancellation prevents late callbacks and exchange responses from signing the user in.
 
+The shipped composition keeps row `deepseek-account` (base Bundle) disabled: [Coteccons SSO](../coteccons-sso/README.md) replaces DeepSeek Platform sign-in in CTD Core. A profile patch can re-enable the row.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

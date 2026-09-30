@@ -1,0 +1,8 @@
+/* Brand ink for the Coteccons mark and CTD Core name: navy in the light theme, white in the dark theme. */
+.ink {
+  color: #16315e;
+}
+
+:global(body[data-ds-dark-theme]) .ink {
+  color: #fff;
+}

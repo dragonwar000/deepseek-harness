@@ -1,1 +1,1 @@
-当前未登录 DeepSeek Harness 账号登录 DeepSeek Harness 账号获取专属 API Key登录
+DeepSeek — 用于主模型登录 DeepSeek 账号，使用账号余额运行主模型。当前未登录 DeepSeek 账号登录 DeepSeek 账号获取专属 API Key登录

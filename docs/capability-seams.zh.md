@@ -112,6 +112,16 @@ flowchart LR
   svc_deepseekAccount["ctx.deepseekAccount<br/>DeepSeek account"]
   pkg_deepseek_account_platform["deepseek-account-platform"]
   pkg_api_account_controller["api-account-controller"]
+  pkg_ai_account["ai-account"]
+  svc_aiAccount["ctx.aiAccount<br/>AI Account"]
+  pkg_ai_account_platform["ai-account-platform"]
+  pkg_api_ai_account_controller["api-ai-account-controller"]
+  pkg_subagent_ai_account["subagent-ai-account"]
+  pkg_coteccons_sso["coteccons-sso"]
+  svc_cotecconsSso["ctx.cotecconsSso<br/>Coteccons SSO"]
+  pkg_coteccons_sso_msal["coteccons-sso-msal"]
+  pkg_api_coteccons_sso_controller["api-coteccons-sso-controller"]
+  pkg_llm_coteccons_sso["llm-coteccons-sso"]
   pkg_authorization["authorization"]
   svc_authorization["ctx.authorization<br/>Authorization flow registry"]
   pkg_host_product_telemetry_otel["host-product-telemetry-otel"]
@@ -277,6 +287,8 @@ flowchart LR
   pkg_agent_default_model --> svc_agentDefaultModel
   pkg_agent_loop --> svc_agentLoop
   pkg_agent_preset_registry --> svc_agentPresets
+  pkg_ai_account --> svc_aiAccount
+  pkg_ai_account_platform --> svc_aiAccount
   pkg_api_gateway --> svc_typertGateway
   pkg_api_job_controller --> svc_jobController
   pkg_api_session_controller --> svc_sessionController
@@ -308,6 +320,8 @@ flowchart LR
   pkg_config_editor --> svc_configEditor
   pkg_cordis_host_runner --> svc_cordisInspect
   pkg_cordis_host_runner --> svc_dynamicCordisRunner
+  pkg_coteccons_sso --> svc_cotecconsSso
+  pkg_coteccons_sso_msal --> svc_cotecconsSso
   pkg_credentials --> svc_credentials
   pkg_credentials_local --> svc_credentials
   pkg_deepseek_account --> svc_deepseekAccount
@@ -427,6 +441,8 @@ flowchart LR
   svc_agents --> pkg_acp
   svc_agents --> pkg_agent_loop
   svc_agents --> pkg_subagent_in_process_driver
+  svc_aiAccount --> pkg_api_ai_account_controller
+  svc_aiAccount --> pkg_subagent_ai_account
   svc_approval --> pkg_acp
   svc_approval --> pkg_tool_bash
   svc_approval --> pkg_tools
@@ -447,6 +463,8 @@ flowchart LR
   svc_connection --> pkg_api_gateway
   svc_connection --> pkg_host_frontend_static
   svc_cordisInspect --> pkg_tool_cordis
+  svc_cotecconsSso --> pkg_api_coteccons_sso_controller
+  svc_cotecconsSso --> pkg_llm_coteccons_sso
   svc_credentials --> pkg_api_settings_controller
   svc_credentials --> pkg_llm_deepseek
   svc_credentials --> pkg_llm_pi_ai
@@ -606,6 +624,8 @@ flowchart LR
 | `ctx.subagentModelSelection` | `core` | [`tool-subagent`](../packages/subagent/tool-subagent) | - | [`tool-subagent`](../packages/subagent/tool-subagent) | - | 拥有默认关闭的设置命名空间；Agent 作用域的委派工具会在组合新顶层 Session 时读取它。 |
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`api-settings-controller`](../packages/api/settings-controller), [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | 配置携带对机密信息的引用；提供方拥有实际值。消费方按操作解析，因此轮换后的凭据会在紧接着的下一次请求中生效；settings controller 提供不含实际值的视图和只写存储。 |
 | `ctx.deepseekAccount` | `seam` | [`deepseek-account`](../packages/credentials/deepseek-account) | [`deepseek-account-platform`](../packages/credentials/deepseek-account-platform) | [`api-account-controller`](../packages/api/account-controller), [`llm-deepseek`](../packages/llm/llm-deepseek) | - | Host 负责浏览器授权和本地凭证；UI 使用方只接收不含 token 的状态。 |
+| `ctx.aiAccount` | `seam` | [`ai-account`](../packages/credentials/ai-account) | [`ai-account-platform`](../packages/credentials/ai-account-platform) | [`api-ai-account-controller`](../packages/api/ai-account-controller), [`subagent-ai-account`](../packages/subagent/subagent-ai-account) | - | 订阅登录保留在官方 Claude Code 与 Codex CLI 中；使用方只接收不含凭据的视图，或用于启动同一 CLI 的配置目录。 |
+| `ctx.cotecconsSso` | `seam` | [`coteccons-sso`](../packages/credentials/coteccons-sso) | [`coteccons-sso-msal`](../packages/credentials/coteccons-sso-msal) | [`api-coteccons-sso-controller`](../packages/api/coteccons-sso-controller), [`llm-coteccons-sso`](../packages/llm/llm-coteccons-sso) | - | Microsoft Entra ID 登录保留在 Host 上；界面使用方只接收不含令牌的视图，模型路由把用户本人的访问令牌发送给 Azure AI。 |
 | `ctx.authorization` | `seam` | [`authorization`](../packages/credentials/authorization) | - | [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | flow 由知道如何取得某份凭据的插件注册，并以其写入的记录为键；seam 拥有这段对话与"每个键同时只跑一次尝试"的生命周期，而非协议本身。 |
 | `ctx.productTelemetry` | `service` | [`host-product-telemetry-otel`](../packages/host/product-telemetry-otel) | - | - | - | 通过 OTLP/HTTP 发送显式提交的分析事件；仅挂载插件不会采集信息。 |
 | `ctx.sessionTelemetry` | `seam` | [`session-telemetry`](../packages/session/session-telemetry) | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | - | 该 seam 捕获会话记录、进行脱敏并交给一个后端；没有其他组件消费该服务，其输出会离开当前进程。 |

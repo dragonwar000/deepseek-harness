@@ -1,6 +1,6 @@
-import type { SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 /** Native welcome window and its presentation-only renderer. */
 
+import type { CotecconsSsoSignInId } from '@deepseek-ai/dsh-coteccons-sso/types'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
@@ -53,7 +53,7 @@ let disposeActiveHandlers: (() => void) | undefined
  * Open the process's sole welcome window with desktop-owned operations.
  * Replaces IPC ownership immediately; the caller closes the previous native window.
  * @param locale - shell-owned localized copy.
- * @param operations - credential write and this-launch-only skip actions.
+ * @param operations - Coteccons SSO sign-in, credential write, and this-launch-only skip actions.
  * @returns the visible window; a failed load destroys it before rejecting.
  */
 export async function openWelcomeWindow(locale: DesktopLocale, operations: WelcomeOperations): Promise<BrowserWindow> {
@@ -65,6 +65,7 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
     active = false
     for (const channel of [
       WELCOME_IPC.takeNotice, WELCOME_IPC.saveApiKey, WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink,
+      WELCOME_IPC.providers,
     ]) {
       ipcMain.removeHandler(channel)
     }
@@ -77,10 +78,11 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
     }
   }
   ipcMain.handle(WELCOME_IPC.takeNotice, async (event) => { assertSender(event); return operations.takeNotice() })
-  ipcMain.handle(WELCOME_IPC.saveApiKey, async (event, value: unknown) => {
+  ipcMain.handle(WELCOME_IPC.providers, async (event) => { assertSender(event); return operations.getWritableProviders() })
+  ipcMain.handle(WELCOME_IPC.saveApiKey, async (event, settingsNs: unknown, value: unknown) => {
     assertSender(event)
-    if (typeof value !== 'string' || !/^[\x21-\x7e]+$/.test(value)) return { ok: false }
-    return operations.saveApiKey(value)
+    if (typeof settingsNs !== 'string' || typeof value !== 'string' || !/^[\x21-\x7e]+$/.test(value)) return { ok: false }
+    return operations.saveApiKey(settingsNs, value)
   })
   ipcMain.handle(WELCOME_IPC.skip, async (event) => {
     assertSender(event)
@@ -90,12 +92,12 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
   ipcMain.handle(WELCOME_IPC.cancel, async (event, id: unknown) => {
     assertSender(event)
     if (typeof id !== 'string') throw new Error('desktop welcome: invalid attempt')
-    return operations.cancelSignIn(id as SignInAttemptId)
+    return operations.cancelSignIn(id as CotecconsSsoSignInId)
   })
   ipcMain.handle(WELCOME_IPC.copyLink, async (event, id: unknown) => {
     assertSender(event)
     if (typeof id !== 'string') throw new Error('desktop welcome: invalid attempt')
-    return operations.copySignInLink(id as SignInAttemptId)
+    return operations.copySignInLink(id as CotecconsSsoSignInId)
   })
   window.once('closed', disposeHandlers)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))

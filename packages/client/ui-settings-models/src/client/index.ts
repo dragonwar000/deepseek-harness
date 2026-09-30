@@ -153,7 +153,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('settings.onboarding', () => ctx.slots.register({
     name: 'settings.onboarding',
     id: 'deepseek-official',
-    children: { 'settings.models.sign-in': { kind: 'single', scope: 'root' } },
+    children: { 'settings.models.sign-in': { kind: 'list', scope: 'root' } },
     order: 0,
     inject: deepSeekOnboardingInjected,
   }, DeepSeekOnboardingDialog))

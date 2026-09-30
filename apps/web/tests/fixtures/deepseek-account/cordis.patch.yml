@@ -1,0 +1,14 @@
+# Re-enables the DeepSeek Platform sign-in rows that the shipped Web composition
+# disables, for scenarios that cover the kept account packages: the account
+# provider and its model route, the account Remote controller, and the account UI.
+- id: deepseek-account
+  disabled: false
+
+- id: llm-deepseek-account
+  disabled: false
+
+- id: account-controller
+  disabled: false
+
+- id: ui-settings-account
+  disabled: false

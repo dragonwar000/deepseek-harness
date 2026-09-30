@@ -3,13 +3,13 @@
 import { afterEach, beforeEach, expect, vi } from 'vitest'
 import { ok } from '@deepseek-ai/dsh-remote-mock'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
-import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
+import { createClientTest, type TestClient } from '@deepseek-ai/dsh-client-test-runtime/src/assembly/index.ts'
+import { accountRoster } from './roster.client.ts'
 import type {
   AccountBonusBatch, AccountBonusOrderId, AccountDetails, AccountUserId, AccountView, SignInAttemptId,
 } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { QuotaNoticeOwnerProps } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { Config as OnboardingConfig } from '../src/index.ts'
 import { ChatSettingsSchema as ChatConfig } from '../../ui-chat/src/chat-settings.ts'
@@ -22,7 +22,7 @@ import type { AccountPlatformHostInjected } from '../src/client/AccountPlatformH
 import { AccountQuotaNotice } from '../src/client/AccountQuotaNotice.tsx'
 import type { AccountQuotaNoticeInjected } from '../src/client/AccountQuotaNotice.tsx'
 
-const it = createClientTest({ roster: webApp })
+const it = createClientTest({ roster: accountRoster })
 const SELF = '@deepseek-ai/dsh-client-ui-settings-account'
 const view: AccountView = {
   status: 'signed-out', attempt: null,
@@ -60,18 +60,24 @@ function injectedOf(entry: { inject?: (() => object) | undefined }): object {
 beforeEach(() => { vi.stubEnv('DSH_CLIENT_VERSION', '0.0.0-test') })
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
 
-it('keeps account UI and account RPC inactive in a plain browser, including after reload', async ({ start, mock }) => {
+it('activates account UI in a plain browser and registers sign-in and launcher slots', async ({ start, mock }) => {
   const c = await start()
   for (const reload of [false, true]) {
     if (reload) await c.reload(SELF)
     await c.flush()
-    expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(0)
-    expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(0)
+    // Web activates the account plugin: launcher and sign-in slots are registered
+    // even when signed out, so the user can sign in.
+    expect(c.ctx.slots.entries('settings.launcher')).toHaveLength(1)
+    expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(1)
+    // The DeepSeek account has no settings page of its own; its group on the AI Account page is registered in every state.
     expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'account')).toBe(false)
-    expect(quotaNoticeEntry(c)).toBeUndefined()
+    expect(c.ctx.slots.entries('settings.ai-account.group').map(entry => entry.options.id)).toContain('deepseek')
+    // Quota notice chain entry is always registered; it selects by owner code.
+    expect(quotaNoticeEntry(c)).toBeDefined()
+    // Native platform host is desktop-only.
     expect(platformHostEntry(c)).toBeUndefined()
-    expect(mock.log.calls().filter(call => call.endpoint.startsWith('account/'))).toEqual([])
-    expect(mock.log.streams().filter(stream => stream.endpoint.startsWith('account/'))).toEqual([])
+    // The account watch stream starts.
+    expect(mock.log.streams().filter(stream => stream.endpoint.startsWith('account/'))).not.toEqual([])
   }
 }, 60_000)
 
@@ -94,7 +100,8 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   vi.stubGlobal('dshDesktop', {})
   const c = await start()
   const actions = operations(c)
-  expect(c.ctx.slots.entries('settings.models.sign-in')[0]!.inject!()).toBe(actions)
+  const deepseekEntry = c.ctx.slots.entries('settings.models.sign-in').find(entry => entry.options.id === 'deepseek')
+  expect(deepseekEntry!.inject!()).toBe(actions)
   // The account UI follows the live theme service through the framework hook channel.
   const theme = c.ctx.get('theme') as ThemeRuntime
   const onTheme = vi.fn()
@@ -123,9 +130,9 @@ it('shares account actions across seats, publishes dialog ownership, and opens c
   c.mock.remote.account.getProfile.mockResolvedValue(ok(profile))
   c.mock.streams.push('account/watch', stored)
   await vi.waitFor(() => { expect(actions.hooks.account.getSnapshot().details?.profile).toEqual(profile) })
-  const entry = c.ctx.slots.entries('settings.section').find(entry => entry.options.id === 'account')!
+  const entry = c.ctx.slots.entries('settings.ai-account.group').find(entry => entry.options.id === 'deepseek')!
   expect(entry.inject!()).toBe(actions)
-  expect(resolveSlotLabel(entry.options.label)).toBe('Account')
+  expect(c.ctx.slots.entries('settings.section').some(section => section.options.id === 'account')).toBe(false)
   vi.spyOn(c.ctx.locale, 'getSnapshot').mockReturnValue({ ...c.ctx.locale.getSnapshot(), active: 'zh' })
   actions.contactUs()
   const support = new URL(String(open.mock.calls.at(-1)![0]))
