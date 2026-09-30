@@ -394,7 +394,8 @@ export function apply(ctx: Context, config: Config): void {
    * must end in exactly one re-registration whose input is the last read.
    */
   let refreshing: Promise<void> | undefined
-  let refreshQueued = false
+  let requested = 0
+  let served = 0
   const applySignInRoutes = async (): Promise<void> => {
     const spec = resolveSignInRoutes({
       stored: await storedSignIns(),
@@ -411,23 +412,31 @@ export function apply(ctx: Context, config: Config): void {
     ensureDirectory()
   }
   const refreshSignInRoutes = (): void => {
-    if (refreshing !== undefined) {
-      refreshQueued = true
-      return
-    }
+    // A request counter against a served watermark, rather than a queued flag:
+    // the pass in flight reads the store once for every request up to the one
+    // it started with, and a request arriving after that still leaves the two
+    // unequal, so nothing is coalesced away.
+    requested += 1
+    if (refreshing !== undefined) return
     refreshing = (async () => {
-      do {
-        refreshQueued = false
-        try { await applySignInRoutes() }
-        catch (error) {
-          // The route set stays as it is: a store that cannot be read says
-          // nothing about which sign-ins exist, and dropping live routes on a
-          // transient read failure would end sessions mid-turn.
-          ctx.logger.warn('llm-pi-ai: could not resolve the routes stored sign-ins activate')
-          ctx.logger.warn(error)
+      try {
+        while (served !== requested) {
+          served = requested
+          try { await applySignInRoutes() }
+          catch (error) {
+            // The route set stays as it is: a store that cannot be read says
+            // nothing about which sign-ins exist, and dropping live routes on a
+            // transient read failure would end sessions mid-turn.
+            ctx.logger.warn('llm-pi-ai: could not resolve the routes stored sign-ins activate')
+            ctx.logger.warn(error)
+          }
         }
-      } while (refreshQueued && ctx.fiber.state === FiberState.ACTIVE)
-    })().finally(() => { refreshing = undefined })
+      }
+      // Released here rather than from a `.finally()` on the promise, so the
+      // slot reopens in the same step the loop ends: a request landing between
+      // the two would otherwise find a pass that can no longer serve it.
+      finally { refreshing = undefined }
+    })()
   }
 
   // Scoped to the credential seam rather than injected outright: a composition

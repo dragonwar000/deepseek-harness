@@ -65,11 +65,15 @@ describe('sign-in classification', () => {
   })
 
   it('points every declared substitute at an installed API-key sign-in', () => {
+    const offersKey = new Set(signInClassifications()
+      .filter(entry => entry.credential === 'api-key')
+      .map(entry => entry.provider))
     for (const [withheldProvider, substitute] of Object.entries(KEY_SIGN_IN_SUBSTITUTE)) {
       // The withheld provider must be one that genuinely ships no key, or the
-      // substitute is hiding its own sign-in.
-      expect(catalogProvider(withheldProvider)?.auth.apiKey).toBeUndefined()
-      expect(catalogProvider(substitute)?.auth.apiKey?.login).toBeTypeOf('function')
+      // substitute would be hiding its own sign-in.
+      expect(offersKey.has(withheldProvider)).toBe(false)
+      // And the substitute must be a sign-in the product actually offers.
+      expect(offersKey.has(substitute)).toBe(true)
     }
   })
 
