@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
 /ctd-core-desktop:
-  en: eae388fbbdddaffe
-  zh: 2ee85c3ddc07fb37
+  en: e817316fea691e15
+  zh: 6bb3eeb2326c7f3e
 /ctd-core-desktop/terminal-command:
   en: bef92953c237363f
   zh: d21d6effd21b8c00
