@@ -209,6 +209,12 @@ export interface Config {
   loginCols?: number
   /** Terminal type advertised to the login command through `TERM`; the Host must have its terminfo entry. */
   loginTerminalType?: string
+  /** Interval between periodic sign-in status checks of every account, in milliseconds; `0` disables periodic checks. */
+  statusCheckIntervalMs?: number
+  /** Deadline for one account's status command during a sign-in status check, in milliseconds. */
+  statusCheckTimeoutMs?: number
+  /** Accounts whose status commands one sign-in status check runs at the same time. */
+  statusCheckConcurrency?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->
