@@ -745,6 +745,26 @@ describe('persistence changes current-tree commands', () => {
     expect(jsonResult(runPersistenceChanges(['--check', '--json'], root, () => after)).ok).toBe(true)
   })
 
+  it('authors both record documents from English-only prose and rejects an incomplete Chinese section', () => {
+    const root = fixture()
+    baseline(root)
+    const after = inventory({ value: 'string', 'label?': 'string' })
+    const prose = join(root, 'prose.json')
+    writeFileSync(prose, JSON.stringify({ en: AUTHORED_PROSE.en, zh: { summary: '添加可选元数据。' } }))
+    expect(() => runPersistenceChanges(['--record', NEXT_ID, '--decision', 'same-version', '--prose', prose], root, () => after))
+      .toThrow('persistence prose zh: missing field compatibility')
+    writeFileSync(prose, JSON.stringify({ zh: AUTHORED_PROSE.zh }))
+    expect(() => runPersistenceChanges(['--record', NEXT_ID, '--decision', 'same-version', '--prose', prose], root, () => after))
+      .toThrow('persistence prose: missing field en')
+    writeFileSync(prose, JSON.stringify({ en: AUTHORED_PROSE.en }))
+    const written = jsonResult(runPersistenceChanges(['--record', NEXT_ID, '--decision', 'same-version', '--prose', prose, '--json'], root, () => after))
+    expect(written).toMatchObject({ ok: true, operation: 'record', recordId: NEXT_ID })
+    for (const suffix of ['.md', '.zh.md']) {
+      expect(readFileSync(join(root, `docs/persistence-changes/${NEXT_ID}${suffix}`), 'utf8')).toContain(AUTHORED_PROSE.en.compatibility)
+    }
+    expect(jsonResult(runPersistenceChanges(['--check', '--json'], root, () => after)).ok).toBe(true)
+  })
+
   it('refreshes only a terminal acknowledgement while preserving its authored prose and predecessor', () => {
     const root = fixture()
     baseline(root)

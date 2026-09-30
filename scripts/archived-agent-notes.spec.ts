@@ -70,18 +70,66 @@ describe('archived Agent Notes', () => {
     expect(validateArchiveArtifacts(artifacts).join('\n')).toMatch(/incomplete archived triplet/)
   })
 
-  // Active Agent Notes are English-only
-  // (.agents/notes/implemented/process/2026-09-30-english-only-agent-notes.md);
-  // the frozen archive is not, so a sealed note keeps its complete triplet.
+  it('accepts a note archived English-only and still checks its archive metadata', () => {
+    const source = fixture().get('process/2026-07-26-example.md')!
+    expect(validateArchiveArtifacts(new Map([['process/2026-07-26-example.md', source]]))).toEqual([])
+    expect(validateArchiveArtifacts(new Map([
+      ['process/2026-07-26-example.md', Buffer.from('# Agent Note: Example\n\nStatus: proposed\nArchived: 2026-07-25\n')],
+    ]))).toEqual([
+      'process/2026-07-26-example.md: requires `Status: implemented`',
+      'process/2026-07-26-example.md: archive date 2026-07-25 predates the note filename',
+    ])
+  })
+
+  it('accepts English-only notes beside complete triplets', () => {
+    const artifacts = fixture()
+    artifacts.set('feature/2026-09-30-english-only.md', Buffer.from('# Agent Note: Later\n\nStatus: implemented\nArchived: 2026-09-30\n'))
+    expect(validateArchiveArtifacts(artifacts)).toEqual([])
+  })
+
+  // A note with any Chinese artifact must be the complete triplet: the only
+  // accepted sets are the English file alone and all three files.
   it.each([
     ['the Chinese counterpart', 'process/2026-07-26-example.zh.md'],
     ['the English side', 'process/2026-07-26-example.md'],
     ['the consistency record', 'process/2026-07-26-example.i18n.yaml'],
-  ])('rejects an archived note missing %s', (_case, path) => {
+  ])('rejects an archived triplet missing %s', (_case, path) => {
     const artifacts = fixture()
     artifacts.delete(path)
     expect(validateArchiveArtifacts(artifacts))
       .toEqual([`process/2026-07-26-example: incomplete archived triplet; missing ${path}`])
+  })
+
+  it('rejects a complete triplet whose record no longer matches a changed side', () => {
+    const artifacts = fixture()
+    artifacts.set('process/2026-07-26-example.zh.md', Buffer.from('# Agent Note: 示例\n\nStatus: implemented\nArchived: 2026-07-26\n\n改动。\n'))
+    expect(validateArchiveArtifacts(artifacts)).toEqual([
+      'process/2026-07-26-example.i18n.yaml: consistency record must contain the current Git blob hashes of both archived sides',
+    ])
+  })
+
+  it('rejects stripping a sealed triplet down to its English file', () => {
+    const artifacts = fixture()
+    const sealed: ArchiveManifest = { version: 1, files: extendArchiveManifest({ version: 1, files: {} }, artifacts).files }
+    const stripped = new Map([['process/2026-07-26-example.md', artifacts.get('process/2026-07-26-example.md')!]])
+    expect(validateArchiveArtifacts(stripped)).toEqual([])
+    expect(extendArchiveManifest(sealed, stripped).errors).toEqual([
+      'process/2026-07-26-example.i18n.yaml: sealed artifact is missing',
+      'process/2026-07-26-example.zh.md: sealed artifact is missing',
+    ])
+  })
+
+  it('seals a newly archived English-only note without changing existing seals', () => {
+    const artifacts = fixture()
+    const sealed: ArchiveManifest = { version: 1, files: extendArchiveManifest({ version: 1, files: {} }, artifacts).files }
+    artifacts.set('feature/2026-09-30-english-only.md', Buffer.from('# Agent Note: Later\n\nStatus: implemented\nArchived: 2026-09-30\n'))
+    const extended = extendArchiveManifest(sealed, artifacts)
+    expect(extended.errors).toEqual([])
+    expect(extended.added).toEqual(['feature/2026-09-30-english-only.md'])
+    expect(validateArchiveManifestExtension(sealed, { version: 1, files: extended.files })).toEqual([])
+    artifacts.set('feature/2026-09-30-english-only.md', Buffer.from('changed'))
+    expect(extendArchiveManifest({ version: 1, files: extended.files }, artifacts).errors)
+      .toEqual(['feature/2026-09-30-english-only.md: sealed content hash changed'])
   })
 
   it('extends the manifest without permitting a sealed change or removal', () => {

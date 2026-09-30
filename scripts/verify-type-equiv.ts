@@ -5,7 +5,8 @@
  * declaration. Blocks and entries have a one-to-one relationship; comparison
  * ignores whitespace and non-JSDoc comments but preserves declaration
  * structure and every original JSDoc comment. Byte-identical `.zh.md` blocks
- * reuse the manifest-backed check of their unsuffixed sibling.
+ * reuse the manifest-backed check of their unsuffixed sibling; `.zh.md` blocks
+ * that differ from it are unchecked under the `optional` counterpart policy.
  */
 
 import { globSync, readFileSync, existsSync } from 'node:fs'
@@ -13,6 +14,7 @@ import { resolve, sep } from 'node:path'
 import ts from 'typescript'
 import { markdownFences } from './markdown.ts'
 import { partitionPairedMarkdownDerivatives } from './paired-markdown-derivatives.ts'
+import { TRANSLATION_COUNTERPART_POLICY } from './translation-counterpart.ts'
 import { isArchivedAgentNotePath } from './repo-files.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -284,10 +286,11 @@ for (const pattern of MARKDOWN_GLOBS) {
   }
 }
 const extractedBlocks: EquivBlock[] = [...docSet].sort().flatMap(extractEquivBlocks)
-const { primary: blocks, derivatives } = partitionPairedMarkdownDerivatives(
+const { primary: blocks, derivatives, unchecked } = partitionPairedMarkdownDerivatives(
   extractedBlocks,
   block => block.doc,
   block => `${block.projection ?? 'declaration'}\0${block.code}`,
+  TRANSLATION_COUNTERPART_POLICY,
 )
 
 const errors: string[] = []
@@ -366,7 +369,7 @@ for (const e of entries) {
 }
 
 if (errors.length === 0) {
-  console.log(`verify-type-equiv: ${verified} type-equiv block(s) match source structure and JSDoc (1:1 with manifest); ${derivatives.length} paired derivative(s).`)
+  console.log(`verify-type-equiv: ${verified} type-equiv block(s) match source structure and JSDoc (1:1 with manifest); ${derivatives.length} paired derivative(s), ${unchecked.length} unchecked block(s) in out-of-date Chinese counterparts.`)
   process.exit(0)
 }
 
