@@ -9,7 +9,7 @@
 ## 配对约定
 
 - **两种语言同权。** 一篇文档可以先用任一语言撰写和评审（先写中文的 Agent Note 与先写英文的一样正当），另一侧由它翻译而来。两个文件谁也不高于谁；约束它们的是二者必须说同样的话。
-- **一对文档是三个同目录文件。** 英文 `foo.md`、中文 `foo.zh.md`，加一份一致性记录 `foo.i18n.yaml`，都在同一目录。不用语言目录，不用独立翻译仓库，不用中英混排的单文件。配对必须整体合并：PR（Pull Request）永远不会只带一种语言而缺其余两个文件。
+- **一对文档是三个同目录文件。** 英文 `foo.md`、中文 `foo.zh.md`，加一份一致性记录 `foo.i18n.yaml`，都在同一目录。不用语言目录，不用独立翻译仓库，不用中英混排的单文件。配对必须整体合并：PR（Pull Request）永远不会只带一种语言而缺其余两个文件。仅用英文维护的源文档在补齐对侧文件之前不构成配对，补齐之后则与其他配对一视同仁。
 - **一致性记录。**`foo.i18n.yaml` 为每个仍含语言特有内容的标题分节保存一个条目。键是该分节英文标题 slug 组成的路径（第一个标题之前的文本为 `/`；重复路径依次加 `~2`、`~3`……），条目保存该分节中两侧不同的英文块与中文块各自的 hash：
 
   ```yaml
@@ -25,19 +25,19 @@
 
   中文文件必须保留指向英文的反向链接；普通撰写的英文源必须保留指向中文的链接，而清单内的生成英文源不作此要求。[按分节记录配对 Agent Note](../../.agents/notes/implemented/process/2026-09-23-section-keyed-translation-pairing-records.zh.md) 负责记录该记录格式与备选方案。
 - **语言切换行。** 中文文件一律在 H1 标题后立即以 `[English](foo.md) | 中文` 链回英文。普通撰写的英文文件在同一位置以 `English | [中文](foo.zh.md)` 互链；清单内的生成英文源省略此行，以便与生成器输出逐字节一致。发布到 GitHub 以外位置的 README（例如 PyPI 项目元数据）可以改用指向同一对侧文件的规范 `https://github.com/deepseek-ai/deepseek-harness/blob/master/<repository-path>` URL，使切换行在该位置仍可访问。
-- **结构与另一侧一一对应。** 标题深度与顺序、列表类型、有序列表起始编号、列表项数量、表格行列数、保留原样 query/fragment 后缀的语义链接目标，以及逐字节一致的代码块在配对两侧一一对应。相对文档链接的目标属于活跃双语语料时，英文侧使用其 `.md` 路径，中文侧使用其 `.zh.md` 路径。该范围内缺少对侧属于配对完整性错误，不得回退；范围外的目标保留原路径。完整保持规则见 [translation-rules.md](translation-rules.zh.md)。既有 Markdown 门禁对 `.zh.md` 文件原样生效（`verify-md-wrap`、`verify-md-links`）。
+- **结构与另一侧一一对应。** 标题深度与顺序、列表类型、有序列表起始编号、列表项数量、表格行列数、保留原样 query/fragment 后缀的语义链接目标，以及逐字节一致的代码块在配对两侧一一对应。相对文档链接的目标属于活跃双语语料时，英文侧使用其 `.md` 路径，中文侧使用其 `.zh.md` 路径。该范围内缺少对侧属于配对完整性错误，不得回退；范围外的目标以及仅用英文维护的源文档，两侧都保留原有的 `.md` 路径。为仅用英文维护的源文档补上对侧文件后，指向它的链接重新按语言切换，门禁会逐条指出中文侧仍停留在 `.md` 路径的链接。完整保持规则见 [translation-rules.md](translation-rules.zh.md)。既有 Markdown 门禁对 `.zh.md` 文件原样生效（`verify-md-wrap`、`verify-md-links`）。
 
 ## 门禁：verify-translation-pairing
 
 `pnpm run verify-translation-pairing`（`doc-sync`（文档同步门禁）的一环，贡献者会针对文档变更在本地运行，CI 则会完整运行）机械地强制执行这份约定：
 
-1. 范围内的每篇文档都有完整配对。发现 README 时，basename 不区分大小写，因此 `missions/readme.md` 与其他文档根一样属于范围。
+1. 范围内的每篇文档都有完整配对，活跃 Agent Note 除外，它可以仅用英文合入。发现 README 时，basename 不区分大小写，因此 `missions/readme.md` 与其他文档根一样属于范围。
 2. 任何已存在的配对产物都完整且一致：三个文件齐全、记录为规范形式，且其条目等于根据当前内容计算出的条目（任一侧的语言特有内容改了而没重新确认配对就变红）、中文侧和所有普通撰写的英文源都带语言切换行（清单内的生成英文源除外）、每条普通相对文档链接都使用源文件一侧对应的目标 locale，且结构签名按序一致：标题深度、逐字节一致的代码块（信息字符串与内容）、表格行列数、列表类型、有序列表起始编号、列表项数量，以及除切换行之外保留原样 query/fragment 后缀的语义链接目标。
 3. 列为 `excluded` 的文件完全没有 `.zh.md`，也没有 `.i18n.yaml`。`.agents/notes/archived/` 下冻结的 Agent Note 不受这个持续演进的门禁约束；专用校验器会要求其现有的三个配对文件完整，并将其封存。
 
 面向源码的代码门禁会把精确的 `.zh.md` 围栏序列视为其无后缀兄弟文件的派生内容，而不会再次编译相同代码或在 manifest（元数据清单）中重复登记。该序列必须在长度、顺序、围栏类型和按字节精确的正文上一致；否则两份副本仍会独立受检，配对门禁也会报告结构不匹配。
 
-`pnpm run verify-translation-pairing --list` 打印范围内每篇文档的当前配对状态（missing、out-of-sync 或 ok）。它从不失败；其中 `missing` 与 `out-of-sync` 行指出普通检查会拒绝的违规。
+`pnpm run verify-translation-pairing --list` 打印范围内每篇文档的当前配对状态（missing、out-of-sync、english-only 或 ok）。它从不失败；其中 `missing` 与 `out-of-sync` 行指出普通检查会拒绝的违规，而 `english-only` 标出一份没有对侧文件、但被接受的 Agent Note。
 
 `pnpm run verify-translation-pairing <pair...>` 只检查被点名的配对——配对的三个文件中的任意一个（或其裸词干）都能点名它——因此更新循环几秒内就能验证自己的配对，而不必重新扫描全语料。`doc-sync` 与 CI 运行的是无参数的全语料形式；限定范围的绿灯在 PR 层面永远不能替代它。
 
@@ -48,6 +48,8 @@
 ## 范围与排除
 
 **范围**：根目录 `CONTRIBUTING.md`、`BRAND_GUIDELINES.md` 与 `SAFETY.md` 文档、除 vendor 源码外的全部 README，以及 `.agents/notes/**`、`docs/**` 与 `python/**` 下的全部活跃文档。匹配 README 时只看文件名且不区分大小写，因此今后新增的目录无需再修改 manifest。依赖目录、被忽略的构建产物目录以及冻结的 `.agents/notes/archived/` 目录树只在发现阶段排除，不属于持续演进的翻译源文档。
+
+**仅用英文维护**（在范围内；对侧文件为可选）：全部活跃 Agent Note，即 `.agents/notes/{proposed,implemented,rejected}/{class}/yyyy-mm-dd-topic-title.md` 这些带日期的文件。一份 Agent Note 只需英文 `.md` 即可合入；[scripts/translation-counterpart.ts](../../scripts/translation-counterpart.ts) 是该规则的唯一归属地，门禁与语言感知的链接解析都读取它。该豁免只免除「必须拥有对侧文件」这一项要求：已经拥有对侧文件的 Agent Note 与其他配对一视同仁，同样要求完整并接受一致性检查，因此已有配对不会悄然失准。它的作用范围不扩展到任何其他文件——`.agents/notes/README.md`、`docs/**`、`python/**`、各包 README 以及根目录的配对文档全部保持双语，归档目录也继续要求完整的三文件配对。设计依据见[仅用英文维护 Agent Note 的决策](../../.agents/notes/implemented/process/2026-09-30-english-only-agent-notes.md)。
 
 有经评审的中文对侧的生成英文参考文档和图文档遵循配对规则。生成器把生成数据放在生成区域中，并把每个区域写入两种语言的页面，因此重新生成不需要手工更新中文，也不需要重新记录；只有区域外的说明文字需要翻译并计入记录。新鲜度门禁与配对门禁各自独立强制其约束。
 
@@ -64,7 +66,7 @@
 - [review-ownership/README.md](../../.github/review-ownership/README.md)：仓库内部审批策略，只以英文维护。
 - `.agents/notes/archived/`：冻结的历史三文件配对。[`verify-archived-agent-notes`](../../scripts/verify-archived-agent-notes.ts) 校验其完整性和内容封存记录；翻译维护绝不能重写这些文件。
 
-**统一要求**：当前及今后纳入范围的每篇文档，合并时都必须构成完整的双语配对。[scripts/translation-pairing.manifest.json](../../scripts/translation-pairing.manifest.json) 只包含显式排除项；不存在逐文件推进清单、日期分界或 README 专用政策类别。
+**统一要求**：当前及今后纳入范围的每篇文档，合并时都必须构成完整的双语配对，上述两类除外——排除项文件可以既无对侧文件也无伴随记录，仅用英文维护的 Agent Note 则要么两者都有、要么两者都无。[scripts/translation-pairing.manifest.json](../../scripts/translation-pairing.manifest.json) 只包含显式排除项；不存在逐文件推进清单、日期分界或 README 专用政策类别。
 
 ## 分工
 

@@ -70,6 +70,20 @@ describe('archived Agent Notes', () => {
     expect(validateArchiveArtifacts(artifacts).join('\n')).toMatch(/incomplete archived triplet/)
   })
 
+  // Active Agent Notes are English-only
+  // (.agents/notes/implemented/process/2026-09-30-english-only-agent-notes.md);
+  // the frozen archive is not, so a sealed note keeps its complete triplet.
+  it.each([
+    ['the Chinese counterpart', 'process/2026-07-26-example.zh.md'],
+    ['the English side', 'process/2026-07-26-example.md'],
+    ['the consistency record', 'process/2026-07-26-example.i18n.yaml'],
+  ])('rejects an archived note missing %s', (_case, path) => {
+    const artifacts = fixture()
+    artifacts.delete(path)
+    expect(validateArchiveArtifacts(artifacts))
+      .toEqual([`process/2026-07-26-example: incomplete archived triplet; missing ${path}`])
+  })
+
   it('extends the manifest without permitting a sealed change or removal', () => {
     const artifacts = fixture()
     const empty: ArchiveManifest = { version: 1, files: {} }

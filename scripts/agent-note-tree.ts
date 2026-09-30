@@ -24,6 +24,34 @@ const AGENT_NOTE_ARCHIVE = 'archived'
 /** Non-Agent Note Markdown allowed to sit directly at a lifecycle root. */
 const ROOT_ALLOWLIST = new Set(['AGENTS.md', 'CLAUDE.md'])
 
+/** Repository-relative prefix of the Agent Note tree. */
+const AGENT_NOTE_TREE_PREFIX = '.agents/notes/'
+
+/** Dated Agent Note filename grammar: `yyyy-mm-dd-topic-title.md`. */
+const AGENT_NOTE_FILENAME = /^\d{4}-\d{2}-\d{2}-.+\.md$/
+
+/**
+ * Whether a repository-relative path is an English Agent Note in the active
+ * lifecycle tree: `.agents/notes/{lifecycle}/{class}/yyyy-mm-dd-topic-title.md`.
+ * A `.zh.md` counterpart, the tree's `README`/`AGENTS.md`/`CLAUDE.md`
+ * instruction pages, and every frozen path under `archived/` are not Agent Note
+ * files and do not match.
+ *
+ * @param file - Repository-relative path with `/` separators.
+ * @returns True for an English Agent Note in the active lifecycle tree.
+ */
+export function isActiveAgentNotePath(file: string): boolean {
+  if (!file.startsWith(AGENT_NOTE_TREE_PREFIX)) return false
+  const segments = file.slice(AGENT_NOTE_TREE_PREFIX.length).split('/')
+  if (segments.length !== 3) return false
+  const [lifecycle, cls, base] = segments
+  if (lifecycle === undefined || cls === undefined || base === undefined) return false
+  return (AGENT_NOTE_LIFECYCLES as readonly string[]).includes(lifecycle)
+    && (AGENT_NOTE_CLASSES as readonly string[]).includes(cls)
+    && !base.endsWith('.zh.md')
+    && AGENT_NOTE_FILENAME.test(base)
+}
+
 /** One Agent Note file, as discovered by the walker. */
 export interface AgentNote {
   lifecycle: string
@@ -72,7 +100,7 @@ export function walkAgentNoteTree(): { notes: AgentNote[]; errors: string[] } {
         errors.push(`structure: ${match} — unknown class folder "${cls}" (allowed: ${AGENT_NOTE_CLASSES.join(', ')})`)
         continue
       }
-      if (!/^\d{4}-\d{2}-\d{2}-.+\.md$/.test(base)) {
+      if (!AGENT_NOTE_FILENAME.test(base)) {
         errors.push(`structure: ${match} — filename must be yyyy-mm-dd-topic.md`)
         continue
       }

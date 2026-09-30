@@ -1,7 +1,9 @@
 /**
  * Enforce complete English/Chinese pairs, matching structure, and recorded
  * per-section hashes for every in-scope document. The manifest contains only explicit
- * exclusions, which may have neither a counterpart nor a sidecar.
+ * exclusions, which may have neither a counterpart nor a sidecar. Active Agent
+ * Notes are English-only and need no counterpart, per `translation-counterpart.ts`;
+ * one that has a counterpart anyway is still checked in full.
  * `--list` reports state; `--write <pairs...>` records the named confirmed
  * pairs (`--write --all` records every complete pair); `--cached <pairs...>`
  * checks exact index bytes for hooks. A check or write named with pair paths
@@ -12,6 +14,7 @@
 
 import { existsSync, globSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
+import { translationCounterpartVerdict } from './translation-counterpart.ts'
 import { gitIndexPaths, readGitIndexBlob } from './translation-pairing-git.ts'
 import {
   computeTranslationPairingRecord,
@@ -184,16 +187,17 @@ if (writeMode) {
 }
 
 const errors: string[] = []
-const state = new Map<string, 'ok' | 'out-of-sync' | 'missing'>()
+const state = new Map<string, 'ok' | 'out-of-sync' | 'missing' | 'english-only'>()
 
-// 1. Every discovered, non-excluded source merges bilingual.
+// 1. Every discovered, non-excluded source merges bilingual, except where
+// `translation-counterpart.ts` makes the counterpart optional.
 for (const source of sources) {
   if (isExcluded(source)) continue
   const { zh } = translationPairPaths(source)
-  if (!repositoryFileExists(zh)) {
-    errors.push(`${source}: in-scope documentation must merge bilingual (docs/i18n/README.md); add the counterpart and record the pair`)
-    state.set(source, 'missing')
-  }
+  if (repositoryFileExists(zh)) continue
+  const verdict = translationCounterpartVerdict(source)
+  if (verdict.state === 'missing') errors.push(verdict.error)
+  state.set(source, verdict.state)
 }
 
 // 2. Every pair that exists at all is complete and consistent. Anchor on the
@@ -344,14 +348,14 @@ for (const source of sources) {
 }
 
 if (listMode) {
-  const order = { 'out-of-sync': 0, missing: 1, ok: 2 } as const
+  const order = { 'out-of-sync': 0, 'missing': 1, 'english-only': 2, 'ok': 3 } as const
   const rows = [...state.entries()].sort((a, b) => order[a[1]] - order[b[1]] || a[0].localeCompare(b[0]))
   for (const [file, status] of rows) {
-    console.log(`${status.padEnd(11)} ${file}${status === 'missing' ? '  (required)' : ''}`)
+    console.log(`${status.padEnd(12)} ${file}${status === 'missing' ? '  (required)' : ''}`)
   }
-  const counts = { 'ok': 0, 'out-of-sync': 0, 'missing': 0 }
+  const counts = { 'ok': 0, 'out-of-sync': 0, 'missing': 0, 'english-only': 0 }
   for (const status of state.values()) counts[status]++
-  console.log(`verify-translation-pairing: ${counts.ok} ok, ${counts['out-of-sync']} out-of-sync, ${counts.missing} missing (of ${state.size} in scope)`)
+  console.log(`verify-translation-pairing: ${counts.ok} ok, ${counts['out-of-sync']} out-of-sync, ${counts['english-only']} english-only, ${counts.missing} missing (of ${state.size} in scope)`)
   process.exit(0)
 }
 
