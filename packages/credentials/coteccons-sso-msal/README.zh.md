@@ -34,6 +34,7 @@ Web App Bundle 以 `coteccons-sso` 行挂载此提供者，并配置 CTD-Core �
 | `allowedDomains` | 空 | 允许登录的小写邮箱域名；为空时允许租户中的所有账号 |
 | `openBrowser` | `true` | 在 Host 的默认浏览器中打开登录页面；无论如何都会发布该 URL |
 | `signInTimeoutMs` | `300000` | 一次浏览器登录的期限（10 秒–30 分钟） |
+| `m365.mail` / `m365.chat` / `m365.files` | 未设置 | Microsoft 365 连接器：连接器企业应用的 `clientId` 以及可选的 Graph `scopes`（默认为该类别的只读 scope） |
 
 `tenantId` 或 `clientId` 未设置时，状态为 `not-configured` 并列出缺失字段；提供者仍会启动，因此 AI 账号页面可以加载。已设置但格式错误的值（非 GUID 的 `clientId`、非 HTTPS 的 `authority`、含大写字母的域名）会在加载时使该行失败。应用注册需要在"移动和桌面应用程序"平台上配置重定向 URI `http://localhost` 并允许公共客户端流，需要委托权限 Azure Cognitive Services `user_impersonation` 并授予管理员同意；每个用户需要在 AI 资源上拥有 Azure RBAC 角色，例如"Cognitive Services OpenAI User"。
 
@@ -43,6 +44,8 @@ Web App Bundle 以 `coteccons-sso` 行挂载此提供者，并配置 CTD-Core �
 `startSignIn` 以 `prompt: select_account` 以及登录 scope 加 `aiScope` 调用 MSAL `acquireTokenInteractive`，因此在登录时即获得 AI 资源的同意。MSAL 在 `127.0.0.1` 的随机端口上监听，提供者先在 `signing-in` 视图中发布授权 URL，再通过 `open` 包打开它。取消、超时和释放会向该回环监听器提交 OAuth `access_denied` 响应，使 MSAL 结束并关闭监听器。登录后会按 `allowedDomains` 检查账号 UPN 的域名；被拒绝账号的令牌会被删除，状态变为带 `domain-not-allowed` 的 `error`。只保留新登录的账号。
 
 MSAL 缓存插件通过 `ctx.credentials` 读写一条 `grant` 记录 `coteccons-sso/token-cache`；其载荷写明 `clientId` 与 `authority`，属于其他注册的记录会被忽略。存储写入失败时记录日志，本进程继续使用内存缓存。无法读取的已存缓存会在启动时删除。`getAccessToken` 调用 `acquireTokenSilent`；Entra ID 要求交互时删除该记录，状态变为带 `session-expired` 的 `error`。退出登录会删除记录并重建 MSAL 客户端，不保留任何内存令牌。日志只包含错误名称和代码，从不包含令牌内容。提供者状态只有单一所有者，因此不发布不变量配套模块。
+
+每个已配置的 Microsoft 365 连接器（`mail`、`chat`、`files`）是其 Entra ID 企业应用的独立 MSAL 公共客户端，拥有自己的 `grant` 记录 `coteccons-sso/m365-<id>`。IT 通过把用户分配到该应用（"需要分配"）来授予或撤销某类数据；提供者不保存任何"允许"标志，只报告 Entra ID 的答复。`AADSTS50105` 变为带 `not-assigned` 的 `blocked`，`AADSTS7000111`/`AADSTS7000112` 变为 `disabled-by-admin`，`AADSTS65001`/`AADSTS650057`/`consent_required` 变为 `consent-required`，其他需要交互的刷新变为 `revoked`。拒绝只删除该连接器的记录；主登录和其他连接器不受影响。未限定的 scope 名称会加上 `https://graph.microsoft.com/` 前缀。[`scripts/azure/m365-connectors.sh`](../../../scripts/azure/m365-connectors.sh) 创建这三个应用、组、分配与管理员同意。
 
 <a id="further-exploration"></a>
 ## 深入探索
@@ -67,6 +70,7 @@ MSAL 缓存插件通过 `ctx.credentials` 读写一条 `grant` 记录 `coteccons
 
 - **浏览器必须运行在 Host 上** — 重定向到达 Host 上的回环监听器，因此其他机器上的浏览器无法完成登录。
 - **收到 401 时不按请求刷新** — Azure 拒绝的令牌不会在过期前刷新；该请求失败，之后的请求会获得新令牌。
+- **移除组分配在下一次令牌刷新时生效** — 已签发的 Graph 访问令牌在过期前（通常 60–90 分钟）仍然有效；IT 需同时对该用户执行"撤销会话"才能立即撤销。未声明 CAE 客户端能力。
 
 <a id="dev-note"></a>
 ### 开发备注

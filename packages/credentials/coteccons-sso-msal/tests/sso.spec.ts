@@ -86,6 +86,7 @@ describe('configuration', () => {
       allowedDomains: [],
       openBrowser: true,
       signInTimeoutMs: 300_000,
+      m365: {},
     })
     expect(resolveConfig({ ...CONFIGURED, authority: 'https://login.example.test/tenant' }).registration)
       .toMatchObject({ authority: 'https://login.example.test/tenant' })
