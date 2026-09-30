@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-coteccons-m365-connectors.zh.md)
-
 ## Problem
 
 CTD Core users want the assistant to read their Outlook mail, Teams chats, and OneDrive/SharePoint files. Access must follow each user's own Microsoft 365 permissions, and Coteccons IT must be able to grant or revoke each data kind per user or group in Azure without changing installations.

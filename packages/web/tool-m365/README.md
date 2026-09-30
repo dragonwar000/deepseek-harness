@@ -5,8 +5,6 @@ kind: "package-reference"
 
 # @deepseek-ai/dsh-tool-m365
 
-English | [中文](README.zh.md)
-
 ## Summary
 
 `dsh-tool-m365` lets the model search and read the signed-in user's Outlook mail, Teams chats, and OneDrive/SharePoint files. Every Microsoft Graph request carries the user's own delegated token from a Coteccons SSO Microsoft 365 connector, so Graph returns only items that user may read. IT grants or revokes each data kind in Microsoft Entra ID through the connector's enterprise app; the tools only report what Entra ID and Graph answer. All tools are read-only.
