@@ -136,6 +136,8 @@
             config:
               fetch: true
               searchTimeoutMs: 60000
+          - id: tool-m365
+            name: '@deepseek-ai/dsh-tool-m365'
           - id: tool-cordis
             name: '@deepseek-ai/dsh-tool-cordis'
           - id: skill-filesystem

@@ -157,6 +157,18 @@
       config:
         tenantId: afc21379-100b-463d-8325-cd1686ae94ca
         clientId: 149471d2-fb7e-4a8c-a4d0-a81b00e36a4b
+        # Microsoft 365 connectors: one Entra ID enterprise app per data kind,
+        # each with "Assignment required" and read-only Graph admin consent.
+        # IT grants or revokes a kind through the app's group assignment
+        # (SG-CTDCore-M365-Mail / -TeamsChat / -Files); see
+        # scripts/azure/m365-connectors.sh.
+        m365:
+          mail:
+            clientId: 413217b2-54b5-4400-8c08-2d3efeb0b0d6
+          chat:
+            clientId: 62549918-2243-445b-b247-017577289854
+          files:
+            clientId: 560a7adf-2eaf-4c94-b2a1-5411f91750ea
 
     - id: llm-coteccons-sso
       name: '@deepseek-ai/dsh-llm-coteccons-sso'

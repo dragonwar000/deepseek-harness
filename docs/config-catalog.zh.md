@@ -773,7 +773,8 @@ export interface Config {
 ## `@deepseek-ai/dsh-coteccons-sso-msal`
 
 - `inject`: `credentials`
-- `source`: [`packages/credentials/coteccons-sso-msal/src/index.ts:28`](../packages/credentials/coteccons-sso-msal/src/index.ts)
+- `refs`: [`M365ConnectorId`](../packages/credentials/coteccons-sso/src/index.ts)
+- `source`: [`packages/credentials/coteccons-sso-msal/src/index.ts:30`](../packages/credentials/coteccons-sso-msal/src/index.ts)
 
 ```ts config-catalog
 /** Deployment settings for the Entra ID app registration and the tokens it requests. */
@@ -794,6 +795,19 @@ export interface Config {
   openBrowser?: boolean
   /** Deadline for one interactive sign-in, including the time the user spends in the browser, in milliseconds. */
   signInTimeoutMs?: number
+  /**
+   * Microsoft 365 connectors, one Entra ID enterprise app per data kind. IT grants or revokes a kind by
+   * assigning users to that app; an omitted connector stays `not-configured`.
+   */
+  m365?: Partial<Record<M365ConnectorId, M365ConnectorConfig>>
+}
+
+/** One Microsoft 365 connector's enterprise app. */
+export interface M365ConnectorConfig {
+  /** Application (client) id of the connector's public-client app registration; unset leaves the connector `not-configured`. */
+  clientId?: string
+  /** Microsoft Graph delegated scopes; unset or empty uses the read-only scopes of the data kind. */
+  scopes?: string[]
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-coteccons-sso-msal -->
@@ -3399,7 +3413,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:247`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:248`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */
@@ -3715,6 +3729,33 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-lsp -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-m365 -->
+<a id="deepseek-aidsh-tool-m365"></a>
+
+## `@deepseek-ai/dsh-tool-m365`
+
+- `inject`: `tools` · `systemPrompt`
+- `source`: [`packages/web/tool-m365/src/index.ts:48`](../packages/web/tool-m365/src/index.ts)
+
+```ts config-catalog
+type ResolvedConfig = Required<Config>
+
+/** Plugin config: result and size caps, retry budget, and the cooperative timeout. */
+export interface Config {
+  /** Upper bound on results per source in one `m365_search` call. */
+  searchMaxResults?: number
+  /** Cap on characters of one read result. */
+  maxOutputChars?: number
+  /** Largest file downloaded by `m365_read_file`, in bytes. */
+  maxFileBytes?: number
+  /** Retries for Graph 429/503 responses. */
+  maxRetries?: number
+  /** Cooperative timeout budget (ms) for each tool. */
+  timeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-m365 -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-present -->
 <a id="deepseek-aidsh-tool-present"></a>

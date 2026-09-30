@@ -53,6 +53,10 @@ export const remoteDefaultResponses: RemoteTable = {
     'aiAccount/watch': openStream([{ accounts: [], signIn: null }]),
     // ui-settings-coteccons-sso renders the Coteccons SSO group from this stream.
     'cotecconsSso/watch': openStream([{ status: 'signed-out' }]),
+    // ui-settings-coteccons-sso renders the Microsoft 365 group from this stream.
+    'cotecconsSso/watchM365': openStream([[
+      { id: 'mail', status: 'disconnected' }, { id: 'chat', status: 'disconnected' }, { id: 'files', status: 'disconnected' },
+    ]]),
     // ui-settings-account shares the account snapshot across settings and the sidebar menu.
     'account/watch': openStream([{ status: 'signed-out', attempt: null, links: { usageUrl: 'https://platform.deepseek.com/usage', topUpUrl: 'https://platform.deepseek.com/top_up' } }]),
     // api-workspace-controller client `apply`: the follow stream's opening baseline, then open.
