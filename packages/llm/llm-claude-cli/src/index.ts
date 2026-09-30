@@ -108,7 +108,6 @@ export function apply(ctx: Context, config: ValidConfig): void {
   })
   const adapter = new ClaudeCliAdapter({
     catalog,
-    providerName: config.providerName,
     displayName: config.displayName,
     workingDirectory,
     requestTimeoutMs: config.requestTimeoutMs,

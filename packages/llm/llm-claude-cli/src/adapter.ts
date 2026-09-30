@@ -41,7 +41,11 @@ export const UNKNOWN_MODEL = 'UNKNOWN_MODEL'
 /** Everything the adapter needs; each value is a validated `Config` field upstream. */
 export interface ClaudeCliAdapterDeps {
   readonly catalog: ClaudeCliCatalog
-  readonly providerName: string
+  /**
+   * Route name reported by `providerInfo`. The route *id* is not carried here: `registerAdapter`
+   * passes it to every call, so one adapter instance can serve a route under any id the composition
+   * chose without holding a second copy that could disagree.
+   */
   readonly displayName: string
   readonly workingDirectory: string
   readonly requestTimeoutMs: number

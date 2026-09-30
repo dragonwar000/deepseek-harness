@@ -44,7 +44,6 @@ function build(script: FakeCliScript = {}, overrides: { readonly maxConcurrent?:
   const adapter = new ClaudeCliAdapter({
     ...shared,
     catalog,
-    providerName: 'claude-cli',
     displayName: 'Claude (Claude Code CLI)',
     requestTimeoutMs: 400,
     maxConcurrent: overrides.maxConcurrent ?? 2,

@@ -74,7 +74,6 @@ function adapterOf(ctx: Context) {
   })
   return new Route.ClaudeCliAdapter({
     catalog,
-    providerName: 'claude-cli',
     displayName: 'Claude (Claude Code CLI)',
     workingDirectory: join(root, 'cwd'),
     requestTimeoutMs: 300_000,
