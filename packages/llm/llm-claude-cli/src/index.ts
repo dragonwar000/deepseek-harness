@@ -271,9 +271,17 @@ export function apply(ctx: Context, config: ValidConfig): void {
   ctx.inject(['aiAccount'], (accounts) => {
     accounts.on('ai-account/default-changed', (kind) => {
       if (kind === 'claude') {
-        catalog.invalidate()
+        // The new default's status is not known yet; the catalog probe asks the CLI itself.
+        catalog.setAccountSignedOut(false)
         refresh()
       }
+    })
+    accounts.on('ai-account/status-changed', (change) => {
+      if (change.kind !== 'claude' || !change.isDefault) return
+      catalog.setAccountSignedOut(change.current.status === 'signedOut')
+      // Re-committing the same routes publishes `llm/adapters-updated`, which makes model pickers
+      // re-list this route and show the failure or the models again.
+      if (owned.length > 0) registration?.replace([...owned])
     })
     accounts.effect(() => () => {
       // The AI Account provider went away: the route has no account to run under.

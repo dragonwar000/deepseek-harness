@@ -89,6 +89,7 @@ export class ClaudeCliCatalog {
   private executablePath: string | undefined
   private version: string | undefined
   private workingDirectoryReady: Promise<void> | undefined
+  private accountSignedOut = false
 
   /**
    * @param deps - CLI path, extra args, working directory, deadlines, and the account resolver.
@@ -127,6 +128,10 @@ export class ClaudeCliCatalog {
    */
   async rows(signal?: AbortSignal): Promise<readonly ClaudeCliModelRow[]> {
     const launch = await this.launch(signal)
+    if (this.accountSignedOut) {
+      const failure = notAuthenticatedFailure(launch.accountHome)
+      throw new LlmError(failure.message, failure.code)
+    }
     const key = launch.accountHome ?? '<no account>'
     const cached = this.cache.get(key)
     const fingerprint = launchFingerprint(launch, await this.cliVersion(launch, signal))
@@ -139,6 +144,17 @@ export class ClaudeCliCatalog {
     const rows = await this.probeRows(launch, signal)
     this.cache.set(key, { fingerprint, rows })
     return rows
+  }
+
+  /**
+   * Record the default Claude account's latest sign-in status check. While it reports the account
+   * signed out, {@link rows} fails with `CLI_NOT_AUTHENTICATED` without spawning the CLI; either
+   * answer drops the cached catalog, so the first listing after sign-in re-asks the CLI.
+   * @param signedOut - whether the latest check answered `signedOut`.
+   */
+  setAccountSignedOut(signedOut: boolean): void {
+    this.accountSignedOut = signedOut
+    this.invalidate()
   }
 
   /** Drop every cached catalog, so the next listing re-asks the CLI. */

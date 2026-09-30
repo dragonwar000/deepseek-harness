@@ -9,6 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, LlmProviderInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import type { AiAccountId } from '@deepseek-ai/dsh-ai-account/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Route from '../src/index.ts'
 import { FakeAiAccount, FakeCli, FakeSubprocessRuntime, SIGNED_OUT_RUN, streamLines } from './harness.ts'
@@ -283,6 +284,49 @@ describe('llm-claude-cli model listing through the runtime', () => {
     expect(retried).not.toContain(finish.reason.failure.code)
     expect(retried).toEqual(expect.arrayContaining(['RATE_LIMIT', 'SERVER']))
     expect(cli.callsOf('inference')).toHaveLength(1)
+  })
+
+  it('shows the signed-out failure while the default Claude account is signed out, then the models again', async () => {
+    const { ctx, cli } = await mount({ account: { home: '/accounts/claude/one' } })
+    await ctx.llm.listModels('claude-cli')
+    const updates = vi.fn()
+    ctx.on('llm/adapters-updated', updates)
+    const change = (kind: 'claude' | 'chatgpt', isDefault: boolean, status: 'signedIn' | 'signedOut') => {
+      ctx.emit('ai-account/status-changed', {
+        id: 'c1' as AiAccountId, kind, isDefault, previous: 'unknown',
+        current: { status, checkedAt: 1, message: status === 'signedOut' ? 'Not logged in' : null },
+      })
+    }
+    change('claude', false, 'signedOut')
+    change('chatgpt', true, 'signedOut')
+    expect(updates).not.toHaveBeenCalled()
+    change('claude', true, 'signedOut')
+    expect(updates).toHaveBeenCalledOnce()
+    expect(routes(ctx)).toEqual(['claude-cli'])
+    const refused = ctx.llm.listModels('claude-cli')
+    await expect(refused).rejects.toMatchObject({ code: Route.CLI_NOT_AUTHENTICATED })
+    await expect(refused).rejects.toThrow(/Open Settings, AI Account, and sign in to Claude again/)
+    expect(cli.callsOf('catalog')).toHaveLength(1)
+    change('claude', true, 'signedIn')
+    expect(updates).toHaveBeenCalledTimes(2)
+    expect((await ctx.llm.listModels('claude-cli')).map(model => model.id)).toEqual(['opus', 'haiku'])
+    expect(cli.callsOf('catalog')).toHaveLength(2)
+    // A new default clears the signed-out answer; the catalog probe then asks the CLI itself.
+    change('claude', true, 'signedOut')
+    ctx.emit('ai-account/default-changed', 'claude')
+    expect((await ctx.llm.listModels('claude-cli')).map(model => model.id)).toEqual(['opus', 'haiku'])
+  })
+
+  it('records a status change while the route is dormant without publishing a route update', async () => {
+    const { ctx } = await mount({ account: { home: undefined } })
+    const updates = vi.fn()
+    ctx.on('llm/adapters-updated', updates)
+    ctx.emit('ai-account/status-changed', {
+      id: 'c1' as AiAccountId, kind: 'claude', isDefault: true, previous: 'signedIn',
+      current: { status: 'signedOut', checkedAt: 1, message: null },
+    })
+    expect(updates).not.toHaveBeenCalled()
+    expect(routes(ctx)).toEqual([])
   })
 
   it('re-probes the CLI after a configuration generation change', async () => {
