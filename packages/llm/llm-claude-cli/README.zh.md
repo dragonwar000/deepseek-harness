@@ -112,8 +112,8 @@ Base Bundle 带有 `llm-claude-cli` 行，且 `disabled: true`。用 profile pat
 - `@deepseek-ai/dsh-ai-account` 与 `@deepseek-ai/dsh-ai-account-platform` —— 本路由从中取得路径的、已注册的官方 CLI 配置目录。
 - `@deepseek-ai/dsh-subagent-claude-code` —— Claude 账号的另一种用法：把整个任务委派给 Claude Code，而不是把它当作模型传输层。
 - `@deepseek-ai/dsh-llm` —— 适配器 seam、`StreamChunk`，以及本适配器需要映射到的互不重叠的 `TokenUsage` 计数。
-- [用提示词模拟工具调用](../../../.agents/notes/implemented/feature/2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md) —— 为什么 CLI 传输层把工具定义当作提示词文本携带，以及代价是什么。
-- [Vendor CLI as a model transport](../../../.agents/notes/implemented/feature/2026-09-30-vendor-cli-as-model-transport.zh.md) —— 为什么用 CLI 作为传输层而不是把 OAuth 令牌取出来，以及为什么 Codex 与 DeepSeek 没有对应的路由。
+- [用提示词模拟工具调用](../../../.agents/notes/implemented/feature/2026-09-30-prompt-emulated-tool-calls-for-cli-transports.md) —— 为什么 CLI 传输层把工具定义当作提示词文本携带，以及代价是什么。
+- [Vendor CLI as a model transport](../../../.agents/notes/implemented/feature/2026-09-30-vendor-cli-as-model-transport.md) —— 为什么用 CLI 作为传输层而不是把 OAuth 令牌取出来，以及为什么 Codex 与 DeepSeek 没有对应的路由。
 
 <a id="model-experience"></a>
 ## 模型体验

@@ -100,7 +100,7 @@ kind: "package-reference"
 - [Graph 运行器包](../graph-runner/README.zh.md)——写入本投影折叠的 `graph/node` 与 `graph/run` 记录的 `graph_run` 工具。
 - [Loop graph 配置包](../loop-graph-profile/README.zh.md)——挂载这些 graph 包的可选包。
 - [实验性分组地图](../README.zh.md)——同组实验性包与发布策略。
-- [最终回答证据说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.zh.md)——为什么声明与叶子是对本轮次工具记录的启发式折叠.
+- [最终回答证据说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.md)——为什么声明与叶子是对本轮次工具记录的启发式折叠.
 
 -----
 

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-11-production-blame-approval-weight.zh.md)
-
 ## Problem
 
 A fixed one-point reviewer weight does not reflect authorship of the code a pull request changes. Directory-level ownership can reward unrelated code in the same folder and distort the contribution relevant to the review.

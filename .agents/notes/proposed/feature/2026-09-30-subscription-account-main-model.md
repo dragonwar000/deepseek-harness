@@ -2,8 +2,6 @@
 
 Status: proposed
 
-English | [中文](2026-09-30-subscription-account-main-model.zh.md)
-
 ## Problem
 
 The repository owner wants a signed-in consumer subscription account — Claude Pro or Max, ChatGPT or Codex — to drive the main chat model, not only delegated Claude Code and Codex runs. The [official-CLI AI Accounts decision](../../implemented/feature/2026-09-29-official-cli-ai-accounts.md) refused exactly that: it removed the token-to-main-model package from every composition and left each subscription reachable only by launching the vendor's own CLI against a registered configuration directory. None of the external facts behind that refusal have changed; the owner has changed the answer.

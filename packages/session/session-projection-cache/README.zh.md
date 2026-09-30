@@ -105,7 +105,7 @@ kind: "package-reference"
 - [会话投影注册表](../session-projection/README.zh.md)——本缓存持久化其检查点的 `ctx.sessionProjections` 服务。
 - [存储子系统](../../../docs/subsystems/storage.zh.md)——保存缓存记录的领域路由与后端行为。
 - [会话包映射](../README.zh.md)——相邻的持久化、标题与遥测包。
-- [会话投影 RFC](../../../.agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.zh.md)——持久投影缓存的设计理由。
+- [会话投影 RFC](../../../.agents/notes/proposed/architecture/2026-07-27-session-projection-and-command-log.md)——持久投影缓存的设计理由。
 
 -----
 

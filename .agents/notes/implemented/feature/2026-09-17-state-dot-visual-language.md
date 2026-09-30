@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-17-state-dot-visual-language.zh.md)
-
 ## Problem
 
 `StateDot` mixed two drawing languages: settled states used a translucent halo around a solid core, while `ongoing` used an eight-cell pixel chase.

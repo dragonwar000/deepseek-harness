@@ -100,7 +100,7 @@ kind: "package-reference"
 
 - [存储子系统](../../../docs/subsystems/storage.zh.md)——后端约定、领域语义、变更事件与生成的 API。
 - [存储包映射](../README.zh.md)——家族的各包及其在仓库中的位置。
-- [领域 KV 存储 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)——枢纽、领域数据形式与会话后端迁移背后的设计。
+- [领域 KV 存储 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)——枢纽、领域数据形式与会话后端迁移背后的设计。
 
 -----
 
@@ -128,7 +128,7 @@ kind: "package-reference"
 
 这些限制定义了枢纽不能做什么。它们是当前包约束，不是任务积压。
 
-- **`kv` 是唯一的数据形状**——后端只实现一个分面；面向会话事件日志的 `log` 分面被推迟到会话后端迁移（[Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)）。
+- **`kv` 是唯一的数据形状**——后端只实现一个分面；面向会话事件日志的 `log` 分面被推迟到会话后端迁移（[Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)）。
 - **数据形式按需解析**——在领域插件挂载前读取 `ctx.storage.domain` 会抛出 `form-not-mounted`；组装会按相应顺序排列插件，而不是静默推迟。
 
 <a id="dev-note"></a>

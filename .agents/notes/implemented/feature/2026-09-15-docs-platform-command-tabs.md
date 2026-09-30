@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-15-docs-platform-command-tabs.zh.md)
-
 ## Problem
 
 The [Python SDK guide](../../../../docs/user/guide/python-sdk.md) gives different commands for POSIX shells and Windows PowerShell. Showing both versions in sequence makes readers skip an alternative at each step and can make alternative commands look cumulative.

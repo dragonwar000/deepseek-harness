@@ -48,7 +48,7 @@ kind: "package-reference"
 - [ai-account-platform](../ai-account-platform/README.zh.md) — 官方 CLI 提供者。
 - [api-ai-account-controller](../../api/ai-account-controller/README.zh.md) — 向浏览器公开视图的 Remote 控制器。
 - [subagent-ai-account](../../subagent/subagent-ai-account/README.zh.md) — 为默认账号挂载 Claude Code 和 Codex 子代理提供者。
-- [官方 CLI AI 账号决策](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.zh.md) — 凭据为何保留在官方 CLI 中。
+- [官方 CLI AI 账号决策](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md) — 凭据为何保留在官方 CLI 中。
 
 <a id="model-experience"></a>
 ## 模型体验

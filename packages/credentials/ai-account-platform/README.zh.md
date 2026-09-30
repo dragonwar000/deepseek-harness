@@ -57,7 +57,7 @@ base Bundle 以 `ai-account` 行挂载此提供者。其配置：
 
 - [ai-account](../ai-account/README.zh.md) — 服务定义与视图。
 - [subagent-ai-account](../../subagent/subagent-ai-account/README.zh.md) — 以默认账号运行产品子代理提供者。
-- [官方 CLI AI 账号决策](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.zh.md) — 提供者为何从不接触令牌。
+- [官方 CLI AI 账号决策](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md) — 提供者为何从不接触令牌。
 - [生成的配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-ai-account-platform) — 所有可接受的字段。
 
 <a id="model-experience"></a>

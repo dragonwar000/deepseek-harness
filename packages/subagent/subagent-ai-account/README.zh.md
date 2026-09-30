@@ -48,7 +48,7 @@ dsh plugin --profile <name> add @deepseek-ai/dsh-subagent-ai-account
 - [ai-account](../../credentials/ai-account/README.zh.md) — 其默认账号决定目录的账号服务。
 - [subagent-claude-code](../subagent-claude-code/README.zh.md) 与 [subagent-codex](../subagent-codex/README.zh.md) — 被挂载的产品提供者。
 - [tool-subagent](../tool-subagent/README.zh.md) — 向模型公开提供者的委派工具。
-- [官方 CLI AI 账号决策](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.zh.md) — 为何只通过官方 CLI 使用账号。
+- [官方 CLI AI 账号决策](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md) — 为何只通过官方 CLI 使用账号。
 
 <a id="model-experience"></a>
 ## 模型体验

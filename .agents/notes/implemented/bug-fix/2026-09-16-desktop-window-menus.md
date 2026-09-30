@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-16-desktop-window-menus.zh.md)
-
 ## Problem
 
 The Desktop shell replaces Electron's default application menu with a custom template that listed only the application and Edit menus. Electron builds only the roles a template declares, so macOS lost the File and Window menus and the application hide commands the default template supplies, including Close Window (⌘W), Minimize (⌘M), and Hide (⌘H). None of those shortcuts did anything in the Desktop application while every comparable macOS application responds to them (issue #4374).

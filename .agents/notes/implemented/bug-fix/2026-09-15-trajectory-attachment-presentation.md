@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-15-trajectory-attachment-presentation.zh.md)
-
 ## Problem
 
 A user message can contain text, images, and ordinary files. Trajectory omitted image counts beside text, left ordinary files out of Preview, and mixed file JSON with rendered images in Raw. Readers could not identify the complete attachment set consistently across the ledger and inspector (Issue #4356).

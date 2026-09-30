@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-10-windows-native-installer-pages.zh.md)
-
 ## Problem
 
 The Windows installation interface needs branded light and dark pages without introducing another application runtime or replacing the release mechanisms that extract, register, upgrade, and uninstall Desktop.

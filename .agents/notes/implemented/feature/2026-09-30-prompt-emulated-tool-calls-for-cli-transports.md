@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md)
-
 ## Problem
 
 [Using a vendor CLI as the model transport](2026-09-30-vendor-cli-as-model-transport.md) gave a Claude subscription a model route inside the Harness without any token leaving the CLI. It could not serve a chat turn. Claude Code exposes no way to pass caller-supplied tool definitions and no mode that reports a tool call without executing it, so the route refused any request carrying `GenerateOptions.tools` — and nearly every real turn carries them, including compaction. The picker entry existed and could not answer the first message a user sent it.

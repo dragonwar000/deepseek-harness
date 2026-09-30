@@ -132,7 +132,7 @@ need 在它为 `executed`、带 `mayFail` 的 `failed`（此时绑定收到其 `
 - [Graph 投影包](../graph-projection/README.zh.md)——本运行器读取的任务图与 `graph_query`。
 - [子代理包](../../subagent/subagent/README.zh.md)——启动每个节点的 `ctx.subagents` 接缝。
 - [实验性分组地图](../README.zh.md)——同组实验性包与发布策略。
-- [循环边说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.zh.md)——运行器如何对循环边决策并重新打开其循环体.
+- [循环边说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.md)——运行器如何对循环边决策并重新打开其循环体.
 
 -----
 

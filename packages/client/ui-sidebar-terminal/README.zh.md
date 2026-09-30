@@ -56,7 +56,7 @@ kind: "package-reference"
 
 - [Subprocess](../../subprocess/subprocess/README.zh.md)
 - [Right Sidebar](../../client/ui-sidebar-right/README.zh.md)
-- [Web terminal decision](../../../.agents/notes/implemented/feature/2026-09-09-web-sidebar-terminal.zh.md)
+- [Web terminal decision](../../../.agents/notes/implemented/feature/2026-09-09-web-sidebar-terminal.md)
 
 <a id="model-experience"></a>
 ## 模型体验
