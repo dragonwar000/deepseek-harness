@@ -386,3 +386,23 @@ describe('observeStickyMenuGroups', () => {
     expect(dispose).not.toThrow()
   })
 })
+
+it('states a group note once for the section and names the section by it', () => {
+  render(
+    <MenuGroup label="Claude (Claude Code CLI)" note="Backed by your Claude subscription.">
+      <button type="button" role="menuitem">Opus 5.5</button>
+      <button type="button" role="menuitem">Haiku 4.5</button>
+    </MenuGroup>,
+  )
+  const group = screen.getByRole('group', { name: 'Claude (Claude Code CLI)' })
+  const note = screen.getByText('Backed by your Claude subscription.')
+  expect(group.getAttribute('aria-describedby')).toBe(note.id)
+  expect(screen.getAllByText('Backed by your Claude subscription.')).toHaveLength(1)
+  expect(within(group).getAllByRole('menuitem')).toHaveLength(2)
+})
+
+it('renders no note element for a group that states none', () => {
+  const { container } = render(<MenuGroup label="DeepSeek Account" />)
+  expect(container.querySelector('[data-menu-group-note]')).toBeNull()
+  expect(screen.getByRole('group', { name: 'DeepSeek Account' }).hasAttribute('aria-describedby')).toBe(false)
+})

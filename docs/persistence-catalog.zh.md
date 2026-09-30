@@ -51,6 +51,7 @@
 | `event:infra/snapshot` | event | `02c92aa7bc22aac70994b947cab626d33f76c287ecf3382a00b65d862eef14e2` | [`{ type: "infra/snapshot" }`](#persistence-type-sha256-02c92aa7bc22aac70994b947cab626d33f76c287ecf3382a00b65d862eef14e2) |
 | `event:knowledge/inject` | event | `e472cdd6eb69e2b1f370cf990d8b4863aac452735a27b7edf945eee79017156c` | [`{ type: "knowledge/inject" }`](#persistence-type-sha256-e472cdd6eb69e2b1f370cf990d8b4863aac452735a27b7edf945eee79017156c) |
 | `event:knowledge/write` | event | `2a3b113cb05f616fac21c4a8701fb388170f1f4ee3f85ca3c1dd802791ef3b41` | [`{ type: "knowledge/write" }`](#persistence-type-sha256-2a3b113cb05f616fac21c4a8701fb388170f1f4ee3f85ca3c1dd802791ef3b41) |
+| `event:llm/cli-tool-emulation` | event | `17a26effacb05125a5fafa61dd5963ca9cd4008c3ee11aff2170befef1d1846f` | [`{ type: "llm/cli-tool-emulation" }`](#persistence-type-sha256-17a26effacb05125a5fafa61dd5963ca9cd4008c3ee11aff2170befef1d1846f) |
 | `event:llm/retry` | event | `525254db03b1d1e6b74cf55aced52817568331ac1f96c0818728910b6692e336` | [`{ type: "llm/retry" }`](#persistence-type-sha256-525254db03b1d1e6b74cf55aced52817568331ac1f96c0818728910b6692e336) |
 | `event:llm/retry-started` | event | `48e5c9861f16ac07e78cb7b5ae9dabdf7bb85c58baed5a51b4ad275050ea58e3` | [`{ type: "llm/retry-started" }`](#persistence-type-sha256-48e5c9861f16ac07e78cb7b5ae9dabdf7bb85c58baed5a51b4ad275050ea58e3) |
 | `event:loop/budget` | event | `151e7acda0708d10be7e8396b570ac0ee707c213cc54f6493f22c613e5ccf380` | [`{ type: "loop/budget" }`](#persistence-type-sha256-151e7acda0708d10be7e8396b570ac0ee707c213cc54f6493f22c613e5ccf380) |
@@ -721,6 +722,20 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 来源：[`packages/experimental/knowledge/src/types.ts:225`](../packages/experimental/knowledge/src/types.ts)
 
 ### `llm/*`
+
+<a id="llmcli-tool-emulation--log-only"></a>
+
+#### `llm/cli-tool-emulation` — log-only
+
+```ts persistence-catalog
+/**
+ * One Claude Code CLI run whose tool declarations travelled in the prompt. Log-only; never
+ * derived history.
+ */
+'llm/cli-tool-emulation': CliToolEmulation
+```
+
+来源：[`packages/llm/llm-claude-cli/src/types.ts:120`](../packages/llm/llm-claude-cli/src/types.ts)
 
 <a id="llmretry--log-only"></a>
 
@@ -2857,6 +2872,14 @@ SHA-256: `ad3b56aa2fc1ad4250e7399295d34a8eae592e1907e85852e2291b2e498a30bc`
 
 `"legacy"`
 
+<a id="persistence-type-sha256-e6e4a0beb34012d8d08303e1f1b7faf733fccd82f1689fa61b0f79731ba655d7"></a>
+
+### `"llm/cli-tool-emulation"`
+
+SHA-256: `e6e4a0beb34012d8d08303e1f1b7faf733fccd82f1689fa61b0f79731ba655d7`
+
+`"llm/cli-tool-emulation"`
+
 <a id="persistence-type-sha256-611cae9a3539733aa0c42f66035a7d90f19dcbbdfb5d9e3b628b13705253942d"></a>
 
 ### `"llm/retry"`
@@ -4586,6 +4609,45 @@ SHA-256: `16bf4eae73c218f668290b992d0417b39605ac682954facd35006a5eea2800b2`
 
 - `"goal"`
 - `"turn"`
+
+<a id="persistence-type-sha256-757ad1dd02bdea94a475a5f38b9a35774b0609ff008f2ef3a3fb5f336539a9ea"></a>
+
+<a id="persistence-type-clitoolemulation"></a>
+
+<a id="persistence-type-packagesllmllm-claude-clisrctypestsclitoolemulation"></a>
+
+### `CliToolEmulation`
+
+SHA-256: `757ad1dd02bdea94a475a5f38b9a35774b0609ff008f2ef3a3fb5f336539a9ea`
+
+来源：[`packages/llm/llm-claude-cli/src/types.ts:97`](../packages/llm/llm-claude-cli/src/types.ts)
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `attempt` | 必需 | `number` |
+| `correction` | 可选 | [`CliToolEmulationCorrection`](#persistence-type-sha256-e1cb3cad05780d6c3b35e3f6d0d5d17d94050f6cd666d8bc9ba1fdb3d0d6add7) |
+| `model` | 必需 | `string` |
+| `preambleChars` | 必需 | `number` |
+| `provider` | 必需 | `string` |
+| `template` | 必需 | `string` |
+| `tools` | 必需 | [`string[]`](#persistence-type-sha256-93c33d9687613293f8c95d46c4d922fe9ceae83b84c384beff5c3315abe005f2) |
+
+<a id="persistence-type-sha256-e1cb3cad05780d6c3b35e3f6d0d5d17d94050f6cd666d8bc9ba1fdb3d0d6add7"></a>
+
+<a id="persistence-type-clitoolemulationcorrection"></a>
+
+<a id="persistence-type-packagesllmllm-claude-clisrctypestsclitoolemulationcorrection"></a>
+
+### `CliToolEmulationCorrection`
+
+SHA-256: `e1cb3cad05780d6c3b35e3f6d0d5d17d94050f6cd666d8bc9ba1fdb3d0d6add7`
+
+来源：[`packages/llm/llm-claude-cli/src/types.ts:82`](../packages/llm/llm-claude-cli/src/types.ts)
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `code` | 必需 | `string` |
+| `text` | 必需 | `string` |
 
 <a id="persistence-type-sha256-ada310bf0bdb8fed51f3b56ea63f6ea6b18bbd587f04fccb63a14ab0b2a24e05"></a>
 
@@ -11394,6 +11456,22 @@ SHA-256: `2a3b113cb05f616fac21c4a8701fb388170f1f4ee3f85ca3c1dd802791ef3b41`
 | `seq` | 必需 | `number` |
 | `time` | 必需 | `number` |
 | `type` | 必需 | `"knowledge/write"` |
+
+<a id="persistence-type-sha256-17a26effacb05125a5fafa61dd5963ca9cd4008c3ee11aff2170befef1d1846f"></a>
+
+<a id="persistence-type-eventllmcli-tool-emulation"></a>
+
+### `{ type: "llm/cli-tool-emulation" }`
+
+SHA-256: `17a26effacb05125a5fafa61dd5963ca9cd4008c3ee11aff2170befef1d1846f`
+
+| 属性 | 存在性 | 类型 |
+|---|---|---|
+| `data` | 必需 | [`CliToolEmulation`](#persistence-type-sha256-757ad1dd02bdea94a475a5f38b9a35774b0609ff008f2ef3a3fb5f336539a9ea) |
+| `ignorable` | 可选 | `true` |
+| `seq` | 必需 | `number` |
+| `time` | 必需 | `number` |
+| `type` | 必需 | `"llm/cli-tool-emulation"` |
 
 <a id="persistence-type-sha256-525254db03b1d1e6b74cf55aced52817568331ac1f96c0818728910b6692e336"></a>
 

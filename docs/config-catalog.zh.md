@@ -2135,6 +2135,58 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-jobs-local -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-claude-cli -->
+<a id="deepseek-aidsh-llm-claude-cli"></a>
+
+## `@deepseek-ai/dsh-llm-claude-cli`
+
+- `inject`: `llm` · `subprocess`
+- `source`: [`packages/llm/llm-claude-cli/src/index.ts:97`](../packages/llm/llm-claude-cli/src/index.ts)
+
+```ts config-catalog
+/** Config with every default applied. */
+type ValidConfig = Required<Config>
+
+/** Deployment choices for the route. */
+export interface Config {
+  /** Provider route registered on `ctx.llm`. */
+  providerName?: string
+  /** Route name shown wherever the picker does not localize it. */
+  displayName?: string
+  /** Executable name on `PATH`, or an absolute path. */
+  cliPath?: string
+  /** Arguments appended after the fixed ones; a flag that would break subscription auth is refused. */
+  extraArgs?: string[]
+  /** Working directory for every CLI child; a fixed empty directory keeps the run reproducible. */
+  workingDirectory?: string
+  /** Register the route when an AI Account of kind `claude` has a default. */
+  autoActivate?: boolean
+  /** Deadline for `claude auth status --json` and `claude --version`. */
+  authTimeoutMs?: number
+  /** Deadline for the one-shot `list_models` probe. */
+  catalogTimeoutMs?: number
+  /** Deadline for one inference run. */
+  requestTimeoutMs?: number
+  /** Concurrent CLI children this route may hold. */
+  maxConcurrent?: number
+  /** Grace before a terminated child is killed. */
+  graceMs?: number
+  /**
+   * How a request that declares tools is served. `prompt` declares the tools as system-prompt text
+   * and reads the model's fenced call back as a real tool call; `refuse` fails the request with
+   * `TOOL_CALLS_UNSUPPORTED`, which is what the route did before emulation existed.
+   */
+  toolCalls?: 'refuse' | 'prompt'
+  /** Tool-call blocks accepted from one emulated reply; the preamble states this number. */
+  toolCallMaxCalls?: number
+  /** Bytes accepted inside one tool-call block; the preamble states this number. */
+  toolCallMaxBytes?: number
+  /** Correction runs allowed after a rejected reply that produced no output yet. */
+  toolCallRetries?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-claude-cli -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-coteccons-sso -->
 <a id="deepseek-aidsh-llm-coteccons-sso"></a>
 

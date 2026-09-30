@@ -9,8 +9,8 @@
   en: e7c80d1de4d328b4
   zh: d9f368c27fd9f998
 /session-persistence-event-catalog/persistence-type-fingerprints:
-  en: 5299ceb8de5d97e2
-  zh: 62733c0d0b6ea0bf
+  en: e20a075f741bedd4
+  zh: 8912c81150d28df8
 /session-persistence-event-catalog/event-envelope:
   en: 7ebb1a2e0dd1f916
   zh: 8946f415dda5c1b8
@@ -150,8 +150,11 @@
   en: 55c0b6c798bf9ecd
   zh: fda79e4b919e9148
 /session-persistence-event-catalog/events/llm:
-  en: 8a5c09e48ec0a6ae
-  zh: 8a5c09e48ec0a6ae
+  en: 6f4bbe366a17e7f5
+  zh: 6f4bbe366a17e7f5
+/session-persistence-event-catalog/events/llm/llm-cli-tool-emulation-log-only:
+  en: 766ff336da23fa08
+  zh: 41a33226f5593c43
 /session-persistence-event-catalog/events/llm/llm-retry-log-only:
   en: a530fc0c1f664155
   zh: 227c8d6303e37c26
@@ -870,8 +873,11 @@
   en: 7791701530c16092
   zh: 7791701530c16092
 /session-persistence-event-catalog/resolved-persistence-types/legacy:
-  en: 1fc6c6420d6eb307
-  zh: 1fc6c6420d6eb307
+  en: 4dd770700df26353
+  zh: 4dd770700df26353
+/session-persistence-event-catalog/resolved-persistence-types/llm-cli-tool-emulation:
+  en: c786eb1a8f93bc91
+  zh: c786eb1a8f93bc91
 /session-persistence-event-catalog/resolved-persistence-types/llm-retry:
   en: 4a95312d3d196240
   zh: 4a95312d3d196240
@@ -1479,8 +1485,14 @@
   en: 7764271d15338eb9
   zh: 0aef3df6977cdc8c
 /session-persistence-event-catalog/resolved-persistence-types/budgetscope:
-  en: 554e679b133aaee4
-  zh: 188e3a3be81fe3c8
+  en: 5d61d641e5eddcc8
+  zh: ed891e86581b56aa
+/session-persistence-event-catalog/resolved-persistence-types/clitoolemulation:
+  en: e559433c823c31f1
+  zh: 08992801eb7178cf
+/session-persistence-event-catalog/resolved-persistence-types/clitoolemulationcorrection:
+  en: df6a94b97bf758a6
+  zh: eb10021bcb0e2683
 /session-persistence-event-catalog/resolved-persistence-types/commandsource:
   en: 86c7e2b4ae099661
   zh: 2ffe1bd3f25b96fd
@@ -2808,8 +2820,11 @@
   en: 96100815e0532fe5
   zh: 58517b215e07378f
 /session-persistence-event-catalog/resolved-persistence-types/type-knowledge-write:
-  en: 1af9c738fb800530
-  zh: 63408c80ba62cb48
+  en: d19103cd9045796f
+  zh: e92bf85f94784e1d
+/session-persistence-event-catalog/resolved-persistence-types/type-llm-cli-tool-emulation:
+  en: 33c162a79207f2b5
+  zh: 75446e6821b0a7e6
 /session-persistence-event-catalog/resolved-persistence-types/type-llm-retry:
   en: 6d026baeac30a0f1
   zh: 55131683e3d5ed27

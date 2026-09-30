@@ -35,3 +35,10 @@
 :global(html:not([data-platform='darwin'])) .heading {
   border-radius: var(--dsw-radius-md);
 }
+
+.note {
+  padding: 0 7px 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 15px;
+}
