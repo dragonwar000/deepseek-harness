@@ -1,5 +1,5 @@
 ---
-description: "Episode distillation of the experimental knowledge seam: after the verifier gate records verdict ok for a turn's final response, one episode page with the request, the filtered final response, and the changed files, citing the tool results that changed them, for users who want verified turns remembered across sessions."
+description: "Episode distillation of the experimental knowledge seam: after the verifier gate records verdict ok for a turn's final response, one episode page with the request, the filtered final response, and the changed files, citing the tool results that changed them, with optional archiving of older episodes, for users who want verified turns remembered across sessions."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package writes one `episode` page to the `ctx.knowledge` store for a turn that the verifier gate judged `ok` and that changed files. The page holds the human request, the final response without sentences marked temporary, the changed files, and the verdict, and cites the successful tool results that changed those files. The default `shadow` mode only records the `knowledge/write` it would make. No model is called. Mount it after the verifier gate. It is experimental and carries no stability promise.
+This package writes one `episode` page to the `ctx.knowledge` store for a turn that the verifier gate judged `ok` and that changed files. The page holds the human request, the final response without sentences marked temporary, the changed files, and the verdict, and cites the successful tool results that changed those files. With a positive `maxEpisodes`, older episode pages are archived, never deleted. The default `shadow` mode only records the `knowledge/write` records it would make. No model is called. Mount it after the verifier gate. It is experimental and carries no stability promise.
 
 ## Table of Contents
 
@@ -42,7 +42,7 @@ Mount the plugin after a knowledge store provider, the session projection servic
 | `assumption` | none | The assumption this mechanism encodes about the model; blank outside `off` is a load error |
 | `requireVerdict` | `true` | Distill only after a `loop/verdict` of `ok` for the turn's final response |
 | `dir` | `episodes` | Store directory for episode pages; must be a content directory of the store |
-| `maxEpisodes` | `0` | Episode pages kept: `0` writes each episode to its own dated page and replaces none; a positive value writes episodes to that many `<dir>/slot-<k>.md` pages and, once all exist, replaces the least recently updated one |
+| `maxEpisodes` | `0` | Active episode pages kept: `0` archives none; a positive value archives the oldest other episode pages after each written episode, so at most that many stay in the store index |
 | `changeTools` | `write`, `edit` | Tools whose successful calls change their `file_path` or `path` |
 | `maxRequestChars` | `1000` | Characters of the request kept |
 | `maxOutcomeChars` | `2000` | Characters of the final response kept |
@@ -74,8 +74,8 @@ The `memoryDistill` projection folds the open turn: the first `user/message` wit
 
 ### Design notes
 
-- **Page content.** `episodes/<YYYY-MM-DD>-<session>-t<turn>.md` (or `episodes/slot-<k>.md` with a positive `maxEpisodes`), type `episode`, with Request, Outcome, Files changed, and Verification sections; the provider adds frontmatter, the title heading, and the Origin section.
-- **Retention through the write path.** `resolveRetention` turns `maxEpisodes` into one dated page per episode (`0`) or a number of slots. With slots, the plugin reads the store index and writes the lowest slot without a readable page, otherwise the slot updated first (the lowest slot on a tie), through `ctx.knowledge.write`, so a replacement is checked by the store rules and logged as a `knowledge/write` with operation `update`. The knowledge seam has no removal, so no page is deleted.
+- **Page content.** `episodes/<YYYY-MM-DD>-<session>-t<turn>.md`, type `episode`, with Request, Outcome, Files changed, and Verification sections; the provider adds frontmatter, the title heading, and the Origin section.
+- **Retention by archiving.** `resolveRetention` turns `maxEpisodes` into no archiving (`0`) or the count of active episode pages kept. With a count, the plugin reads the store index before writing; after the episode is written, it archives every other `episode` page under `dir` beyond the newest `maxEpisodes - 1` (newer means a later `updated`, then a later id). Archiving reads the page and writes its title, body, and relations back with status `archived` through `ctx.knowledge.write`, citing the same tool results as the new episode, so the store rules check it and it is logged as a `knowledge/write` with operation `update`. An archived page leaves the index, query results, and neighbor levels but stays readable through `knowledge_read` and `knowledge_cite`; the plugin never deletes a page. A frontmatter status was chosen over a `supersedes` relation because a newer episode does not replace the facts of an older one, and a superseded page would stay in the index. In `shadow` mode the plugin records one `knowledge/write` per page it would archive.
 - **Citations from changes.** The page cites the successful `tool/result` of each changed file's latest change; a turn that changed no file is not distilled, because its page could cite nothing.
 - **Temporary statements dropped.** Sentences containing a configured marker, case-insensitively, are removed from the request and the outcome.
 - **Once per turn.** The fold marks a turn distilled at its first `knowledge/write` by this writer, so a steered continuation of the same turn is not distilled again.
@@ -89,7 +89,7 @@ The `memoryDistill` projection folds the open turn: the first `user/message` wit
 |---|---|
 | [`src/index.ts`](src/index.ts) | `Config`, the projection registration, the turn-stopping listener, and the order warning |
 | [`src/fold.ts`](src/fold.ts) | The `memoryDistill` projection fold and the verdict parser |
-| [`src/retention.ts`](src/retention.ts) | `maxEpisodes` resolution and slot selection |
+| [`src/retention.ts`](src/retention.ts) | `maxEpisodes` resolution and the choice of episode pages to archive |
 | [`src/episode.ts`](src/episode.ts) | Episode page id, marker filter, and page entry |
 
 </details>
@@ -120,7 +120,7 @@ Independent: nothing from this plugin enters a request directly.
 
 - **Layer order** — the gate must register its `agent/turn-stopping` listener first; the plugin warns instead of reordering.
 - **No summaries** — compaction summaries are not distilled.
-- **Episodes grow the store by default** — with `maxEpisodes: 0` episode pages are never removed; the provider's `maxPages` caps what one read loads. A positive `maxEpisodes` bounds only the slot pages: dated pages written before it was set stay until someone removes them, and a replaced slot page keeps its id, so a relation to it now names the newer episode.
+- **Episode files are never deleted** — archiving bounds the index, not the store: archived pages stay files, and the provider's `maxPages` caps what one read loads, archived pages included. An archival replaces the page's citation and Origin section with the tool results that triggered it; the page id keeps the original session and turn.
 
 <a id="dev-note"></a>
 ### Dev Note

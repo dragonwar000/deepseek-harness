@@ -11,6 +11,7 @@ import { isDeclaredRelation, knowledgePageId } from '@deepseek-ai/dsh-experiment
 import type {
   KnowledgeEntry,
   KnowledgeCitation,
+  KnowledgePageStatus,
   KnowledgeRelationDeclaration,
   KnowledgeWriter,
 } from '@deepseek-ai/dsh-experimental-knowledge'
@@ -22,6 +23,8 @@ const WIKILINK = /\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g
 const MDLINK = /\]\(([^)#\s]+\.md)(?:#[^)]*)?\)/g
 const CODE_PATH = /`([\w./-]+\.[A-Za-z0-9]+)`/g
 const ORIGIN = /^##\s+Origin\b/m
+const ORIGIN_SECTION = /^##\s+Origin\b[\s\S]*$/m
+const TITLE_HEADING = /^\s*#\s[^\n]*(?:\n|$)/
 
 const frontmatterSchema = z.looseObject({ type: z.string().trim().min(1) })
 const relationSchema = z.object({ rel: z.string(), to: z.string() })
@@ -52,6 +55,8 @@ export interface PageFront {
   title?: string
   /** Last provider write, when set. */
   updated?: string
+  /** `archived` when the frontmatter `status` is `archived`; other values are ignored. */
+  status?: KnowledgePageStatus
   /** Declared relations with a known relation name and a `to` target. */
   relations: KnowledgeRelationDeclaration[]
   /** Citation, when complete. */
@@ -122,6 +127,7 @@ export function parsePage(content: string): PageParse {
   const citation = citationSchema.safeParse(parsed.data['citation'])
   const title = text(parsed.data['title'])
   const updated = text(parsed.data['updated'])
+  const archived = text(parsed.data['status']) === 'archived'
   const body = content.slice(match[0].length)
   return {
     kind: 'page',
@@ -129,12 +135,24 @@ export function parsePage(content: string): PageParse {
       type: parsed.data.type.trim(),
       ...title === undefined ? {} : { title },
       ...updated === undefined ? {} : { updated },
+      ...archived ? { status: 'archived' as const } : {},
       relations,
       ...citation.success ? { citation: citation.data } : {},
     },
     body,
     origin: ORIGIN.test(body),
   }
+}
+
+/**
+ * The body a writer supplied: the text after the frontmatter without a leading
+ * `# ` title heading and without the Origin section, both of which
+ * {@link renderPage} adds.
+ * @param body - text after the frontmatter block.
+ * @returns the trimmed entry body.
+ */
+export function entryBody(body: string): string {
+  return body.replace(TITLE_HEADING, '').replace(ORIGIN_SECTION, '').trim()
 }
 
 /**
@@ -196,8 +214,8 @@ export function oneLine(value: string): string {
 }
 
 /**
- * Render one page: frontmatter with citation, a title heading, the body, and
- * an Origin section. Relations use the flow form overstack tools read.
+ * Render one page: frontmatter with citation and any status, a title heading,
+ * the body, and an Origin section. Relations use the flow form overstack tools read.
  * @param entry - page to render.
  * @param citation - the session events the page is based on.
  * @param updated - ISO time of this write.
@@ -206,6 +224,7 @@ export function oneLine(value: string): string {
 export function renderPage(entry: KnowledgeEntry, citation: KnowledgeCitation, updated: string): string {
   const title = oneLine(entry.title)
   const lines = ['---', `type: ${JSON.stringify(entry.type)}`, `title: ${JSON.stringify(title)}`, `updated: ${JSON.stringify(updated)}`]
+  if (entry.status !== undefined) lines.push(`status: ${entry.status}`)
   if (entry.relations.length > 0) {
     lines.push('relations:')
     for (const relation of entry.relations) lines.push(`  - {rel: ${relation.relation}, to: ${relation.to}}`)

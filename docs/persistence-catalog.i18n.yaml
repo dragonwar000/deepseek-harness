@@ -144,11 +144,11 @@
   en: 5ceb487312fca13e
   zh: 5ceb487312fca13e
 /session-persistence-event-catalog/events/knowledge/knowledge-inject-log-only:
-  en: e312616327b3fce5
-  zh: 022a836732911b17
+  en: 6b848d9b0f84d016
+  zh: 3346411ecfd0ddfe
 /session-persistence-event-catalog/events/knowledge/knowledge-write-log-only:
-  en: 95a3bc07114b23af
-  zh: ef2d880a1c7dbac2
+  en: 55c0b6c798bf9ecd
+  zh: fda79e4b919e9148
 /session-persistence-event-catalog/events/llm:
   en: 8a5c09e48ec0a6ae
   zh: 8a5c09e48ec0a6ae
@@ -1704,17 +1704,17 @@
   en: 1815ffc690b931b6
   zh: 867a758edd8faebe
 /session-persistence-event-catalog/resolved-persistence-types/knowledgeinjectrecord:
-  en: f3225d0eff66c851
-  zh: 0d76355f20ed2314
+  en: b55b6fdfb1a3fe52
+  zh: 5bd2e7667f8c4fcc
 /session-persistence-event-catalog/resolved-persistence-types/knowledgerule:
-  en: 5ed25f32e4294707
-  zh: 504349d228659194
+  en: e0185d3eaa8b7b0b
+  zh: 345c2c077c6d6bd3
 /session-persistence-event-catalog/resolved-persistence-types/knowledgewriterecord:
-  en: 220dc84408cf20fb
-  zh: 1b7e39d1a76c4065
+  en: 04ea9a1f3df46129
+  zh: 1b8500290470c04c
 /session-persistence-event-catalog/resolved-persistence-types/knowledgewriter:
-  en: 63567c46cae845a1
-  zh: 4deadab3267687a2
+  en: 4901a74c7b6ccad6
+  zh: d0f22604a06f25dd
 /session-persistence-event-catalog/resolved-persistence-types/legacyafterschedulerecord:
   en: 8a1ee52ff092bd30
   zh: 10db0a03ecc0ddfd
@@ -2679,8 +2679,8 @@
   en: d9610a0c70070731
   zh: fb85a09efac0735e
 /session-persistence-event-catalog/resolved-persistence-types/reason-rule:
-  en: ffecc05e0a8af8f4
-  zh: d3b541b7bae158bd
+  en: 2c0cb6c245465b06
+  zh: e53bdc1f57199baa
 /session-persistence-event-catalog/resolved-persistence-types/reason-turn:
   en: 168c2ac7db7371b4
   zh: f851223c95582eb9

@@ -707,7 +707,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'knowledge/inject': KnowledgeInjectRecord
 ```
 
-来源：[`packages/experimental/knowledge/src/types.ts:211`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:227`](../packages/experimental/knowledge/src/types.ts)
 
 <a id="knowledgewrite--log-only"></a>
 
@@ -718,7 +718,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 'knowledge/write': KnowledgeWriteRecord
 ```
 
-来源：[`packages/experimental/knowledge/src/types.ts:209`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:225`](../packages/experimental/knowledge/src/types.ts)
 
 ### `llm/*`
 
@@ -5951,7 +5951,7 @@ SHA-256: `72ec79127a9c0d0241b1106a74cc2b24c81ce467170f1c3c93f7b71a9496d227`
 
 SHA-256: `64301d98dfb6f8e16d8eabe8328d1b4ab2ca54d0a04fcf914a607b34f8e09040`
 
-来源：[`packages/experimental/knowledge/src/types.ts:191`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:207`](../packages/experimental/knowledge/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -5972,7 +5972,7 @@ SHA-256: `64301d98dfb6f8e16d8eabe8328d1b4ab2ca54d0a04fcf914a607b34f8e09040`
 
 SHA-256: `5e608e6312db176c4cde49e357f68496a774bfda3928798656050ec98339412d`
 
-来源：[`packages/experimental/knowledge/src/types.ts:140`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:156`](../packages/experimental/knowledge/src/types.ts)
 
 以下类型之一：
 
@@ -5994,7 +5994,7 @@ SHA-256: `5e608e6312db176c4cde49e357f68496a774bfda3928798656050ec98339412d`
 
 SHA-256: `d2f16bd8e5a78794203fb47c501ee83022c53cdb0d9c0109ba77fbbdd489b2fc`
 
-来源：[`packages/experimental/knowledge/src/types.ts:169`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:185`](../packages/experimental/knowledge/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|
@@ -6018,7 +6018,7 @@ SHA-256: `d2f16bd8e5a78794203fb47c501ee83022c53cdb0d9c0109ba77fbbdd489b2fc`
 
 SHA-256: `8f0d2eb1c35c35a097377d4e55a1c031142c1dd3395112253a9b67e3fb6f793e`
 
-来源：[`packages/experimental/knowledge/src/types.ts:125`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:141`](../packages/experimental/knowledge/src/types.ts)
 
 以下类型之一：
 
@@ -10734,7 +10734,7 @@ SHA-256: `8a9c990773f798eac10ca8878e6bcc531ee080bc589cac956730e462cc6a09ad`
 
 SHA-256: `767c7ce033436882994e000800349f53cfa1438ae7469ffb33dec18ec8ea4afe`
 
-来源：[`packages/experimental/knowledge/src/types.ts:187`](../packages/experimental/knowledge/src/types.ts)
+来源：[`packages/experimental/knowledge/src/types.ts:203`](../packages/experimental/knowledge/src/types.ts)
 
 | 属性 | 存在性 | 类型 |
 |---|---|---|

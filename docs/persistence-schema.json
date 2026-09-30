@@ -29188,7 +29188,7 @@
         "packages/experimental/knowledge/src/types.ts#KnowledgeRule"
       ],
       "sources": [
-        "packages/experimental/knowledge/src/types.ts:140"
+        "packages/experimental/knowledge/src/types.ts:156"
       ]
     },
     {
@@ -29318,7 +29318,7 @@
         "packages/experimental/knowledge/src/types.ts#KnowledgeInjectRecord"
       ],
       "sources": [
-        "packages/experimental/knowledge/src/types.ts:191"
+        "packages/experimental/knowledge/src/types.ts:207"
       ]
     },
     {
@@ -29715,7 +29715,7 @@
       "digest": "767c7ce033436882994e000800349f53cfa1438ae7469ffb33dec18ec8ea4afe",
       "names": [],
       "sources": [
-        "packages/experimental/knowledge/src/types.ts:187"
+        "packages/experimental/knowledge/src/types.ts:203"
       ]
     },
     {
@@ -30222,7 +30222,7 @@
         "packages/experimental/knowledge/src/types.ts#KnowledgeWriter"
       ],
       "sources": [
-        "packages/experimental/knowledge/src/types.ts:125"
+        "packages/experimental/knowledge/src/types.ts:141"
       ]
     },
     {
@@ -31625,7 +31625,7 @@
         "packages/experimental/knowledge/src/types.ts#KnowledgeWriteRecord"
       ],
       "sources": [
-        "packages/experimental/knowledge/src/types.ts:169"
+        "packages/experimental/knowledge/src/types.ts:185"
       ]
     },
     {

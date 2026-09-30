@@ -35,6 +35,7 @@ export type {
   KnowledgeNodeKind,
   KnowledgePage,
   KnowledgePageId,
+  KnowledgePageStatus,
   KnowledgeCitation,
   KnowledgeRelation,
   KnowledgeRelationDeclaration,
@@ -55,6 +56,8 @@ declare module '@deepseek-ai/cordis' {
  * Abstract knowledge store. Subclass it and load the subclass as a plugin; it
  * registers as `ctx.knowledge` (one provider per context: loading a second
  * throws). Every provider honors:
+ * - A page whose entry was written with status `archived` is left out of
+ *   `index`, `query`, and `neighbors`; `read` and `cite` still return it.
  * - Reads derive edges, staleness, and ranking from the stored pages on every
  *   call; nothing derivable is stored.
  * - `write` returns `refused` for an entry that breaks a store rule, including
@@ -74,14 +77,14 @@ export abstract class KnowledgeService extends Service {
   abstract get storeRoot(): string | undefined
 
   /**
-   * List the readable pages, newest first, and the quarantined ones.
+   * List the readable pages that are not archived, newest first, and the quarantined ones.
    * @param scope - session working directory and cancellation.
    * @returns the store listing.
    */
   abstract index(scope: KnowledgeScope): Promise<KnowledgeIndex>
 
   /**
-   * Rank pages by the query words they contain.
+   * Rank pages that are not archived by the query words they contain.
    * @param scope - session working directory and cancellation.
    * @param text - query text.
    * @param limit - maximum hits.
@@ -106,7 +109,8 @@ export abstract class KnowledgeService extends Service {
   abstract cite(scope: KnowledgeScope, ref: string): Promise<KnowledgeEdge[]>
 
   /**
-   * Pages within `depth` links of one page, in either direction.
+   * Pages that are not archived within `depth` links of one page, in either
+   * direction; links through an archived page are not followed.
    * @param scope - session working directory and cancellation.
    * @param ref - page reference.
    * @param depth - maximum link distance, at least 1.

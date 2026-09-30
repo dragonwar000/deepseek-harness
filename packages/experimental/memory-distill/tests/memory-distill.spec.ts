@@ -50,6 +50,8 @@ interface Options {
   exitCodes?: number[]
   responses?: StreamChunk[][]
   extra?: (ctx: Context) => void
+  /** Workspace files written before the plugins load, by path relative to the workspace. */
+  seed?: Record<string, string>
 }
 
 const dirs: string[] = []
@@ -74,6 +76,10 @@ async function run(options: Options = {}): Promise<Ran> {
   dirs.push(dir)
   mkdirSync(dirname(join(dir, 'knowledge/concepts/x.md')), { recursive: true })
   writeFileSync(join(dir, 'knowledge/concepts/x.md'), '---\ntype: concept\n---\n')
+  for (const [path, content] of Object.entries(options.seed ?? {})) {
+    mkdirSync(dirname(join(dir, path)), { recursive: true })
+    writeFileSync(join(dir, path), content)
+  }
   const ctx = new Context()
   const warnings: unknown[] = []
   vi.spyOn(ctx.logger, 'warn').mockImplementation((format: unknown) => {
@@ -112,6 +118,7 @@ function resultSeq(agent: Agent): number {
 }
 
 const PAGE = 'knowledge/episodes/2026-09-30-lead-t1.md'
+const OLD_EPISODE = '---\ntype: episode\ntitle: Old\nupdated: "2026-09-01T00:00:00.000Z"\n---\n\n# Old\n\nOld body.\n'
 
 describe('memory-distill', () => {
   it('writes an episode after the verifier gate records ok, citing the changing tool result', async () => {
@@ -176,30 +183,63 @@ describe('memory-distill', () => {
     expect(warnings.filter(format => format === ORDER_WARNING)).toHaveLength(1)
   })
 
-  it('keeps exactly maxEpisodes slot pages and replaces the least recently updated one', async () => {
+  it('keeps exactly maxEpisodes episode pages active and archives the oldest through the write path', async () => {
     const turn = (n: number): StreamChunk[][] => [
       toolCallResponse(`w${n}`, 'write', { file_path: 'src/retry.ts', content: `export const attempts = ${n}\n` }),
       textResponse(`Set attempts to ${n}.`),
     ]
-    const { agent, dir } = await run({ distill: { mode: 'enforce', assumption: ASSUMPTION, maxEpisodes: 2 }, responses: [...turn(1), ...turn(2), ...turn(3)] })
+    const { ctx, agent, dir } = await run({ distill: { mode: 'enforce', assumption: ASSUMPTION, maxEpisodes: 2 }, responses: [...turn(1), ...turn(2), ...turn(3)] })
     for (const [hour, text] of [[11, 'Second change'], [12, 'Third change']] as const) {
       vi.setSystemTime(new Date(`2026-09-30T${hour}:00:00.000Z`))
       agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
       await agent.whenIdle()
     }
-    expect(writes(agent).map(record => [record.id, record.operation])).toEqual([
-      ['episodes/slot-1.md', 'create'], ['episodes/slot-2.md', 'create'], ['episodes/slot-1.md', 'update'],
+    const records = writes(agent)
+    expect(records.map(record => [record.id, record.operation])).toEqual([
+      ['episodes/2026-09-30-lead-t1.md', 'create'],
+      ['episodes/2026-09-30-lead-t2.md', 'create'],
+      ['episodes/2026-09-30-lead-t3.md', 'create'],
+      ['episodes/2026-09-30-lead-t1.md', 'update'],
     ])
-    expect(readFileSync(join(dir, 'knowledge/episodes/slot-1.md'), 'utf8')).toContain('title: "Turn 3: Third change"')
-    expect(readFileSync(join(dir, 'knowledge/episodes/slot-2.md'), 'utf8')).toContain('title: "Turn 2: Second change"')
-    expect(existsSync(join(dir, 'knowledge/episodes/slot-3.md'))).toBe(false)
-    expect(existsSync(join(dir, PAGE))).toBe(false)
+    expect(records[3]?.sourceEventSeqs).toEqual(records[2]?.sourceEventSeqs)
+    const scope = { cwd: dir }
+    expect((await ctx.knowledge.index(scope)).entries.filter(entry => entry.type === 'episode').map(entry => entry.id))
+      .toEqual(['episodes/2026-09-30-lead-t3.md', 'episodes/2026-09-30-lead-t2.md'])
+    const archived = await ctx.knowledge.read(scope, 'episodes/2026-09-30-lead-t1.md')
+    expect(archived).toMatchObject({ status: 'archived', title: 'Turn 1: Add retry to the client' })
+    expect(archived?.body)
+      .toMatch(/^## Request\n\nAdd retry to the client\n[\s\S]*Set attempts to 1\.[\s\S]*verdict ok at session event \d+\.$/)
+    expect(readFileSync(join(dir, PAGE), 'utf8')).toContain('status: archived')
   })
 
-  it('names the slot it would write in shadow mode without writing', async () => {
-    const { agent, dir } = await run({ distill: { mode: 'shadow', assumption: ASSUMPTION, maxEpisodes: 1 } })
-    expect(writes(agent)).toEqual([expect.objectContaining({ id: 'episodes/slot-1.md', mode: 'shadow', applied: false })])
-    expect(existsSync(join(dir, 'knowledge/episodes/slot-1.md'))).toBe(false)
+  it('records the pages it would archive in shadow mode without writing', async () => {
+    const { agent, dir } = await run({
+      distill: { mode: 'shadow', assumption: ASSUMPTION, maxEpisodes: 1 },
+      seed: { 'knowledge/episodes/2026-09-01-old-t1.md': OLD_EPISODE },
+    })
+    expect(writes(agent)).toEqual([
+      expect.objectContaining({ id: 'episodes/2026-09-30-lead-t1.md', mode: 'shadow', applied: false }),
+      expect.objectContaining({ id: 'episodes/2026-09-01-old-t1.md', mode: 'shadow', applied: false }),
+    ])
+    expect(existsSync(join(dir, PAGE))).toBe(false)
+    expect(readFileSync(join(dir, 'knowledge/episodes/2026-09-01-old-t1.md'), 'utf8')).toBe(OLD_EPISODE)
+  })
+
+  it('records an archival the store refuses and skips a page that disappeared', async () => {
+    const refused = await run({
+      distill: { mode: 'enforce', assumption: ASSUMPTION, maxEpisodes: 1 },
+      seed: { 'knowledge/episodes/2026-09-01-old-t1.md': OLD_EPISODE.replace('type: episode', 'type: episode\nrelations:\n  - {rel: supports, to: concepts/ghost.md}') },
+    })
+    expect(writes(refused.agent).map(record => [record.id, record.applied, record.refusal?.rule])).toEqual([
+      ['episodes/2026-09-30-lead-t1.md', true, undefined],
+      ['episodes/2026-09-01-old-t1.md', false, 'dangling-relation'],
+    ])
+    const vanished = await run({
+      distill: { mode: 'enforce', assumption: ASSUMPTION, maxEpisodes: 1 },
+      seed: { 'knowledge/episodes/2026-09-01-old-t1.md': OLD_EPISODE },
+      extra: (ctx) => { vi.spyOn(ctx.knowledge, 'read').mockResolvedValue(undefined) },
+    })
+    expect(writes(vanished.agent).map(record => record.id)).toEqual(['episodes/2026-09-30-lead-t1.md'])
   })
 
   it('records a write the store refuses', async () => {

@@ -55,6 +55,12 @@ export interface KnowledgeRelationDeclaration {
   to: KnowledgePageId
 }
 
+/**
+ * Lifecycle status a page records. An `archived` page stays readable through
+ * `read` and `cite` but is left out of `index`, `query`, and `neighbors`.
+ */
+export type KnowledgePageStatus = 'archived'
+
 /** Where one request runs. */
 export interface KnowledgeScope {
   /** Session working directory the store root and code paths resolve against; absent uses the filesystem provider's default. */
@@ -97,6 +103,14 @@ export interface KnowledgePage extends KnowledgeIndexEntry {
   relations: KnowledgeRelationDeclaration[]
   /** The full Markdown file text, frontmatter included. */
   content: string
+  /**
+   * The Markdown body a writer supplied: `content` without the frontmatter, the
+   * title heading, and the Origin section the provider adds. Writing it back in
+   * a {@link KnowledgeEntry} reproduces the page text.
+   */
+  body: string
+  /** Present when the page records a status; absent for an active page. */
+  status?: KnowledgePageStatus
 }
 
 /** Pages within a link distance of one page. */
@@ -119,6 +133,8 @@ export interface KnowledgeEntry {
   body: string
   /** Relations to existing pages. */
   relations: readonly KnowledgeRelationDeclaration[]
+  /** Status to record; omit for an active page. */
+  status?: KnowledgePageStatus
 }
 
 /** Who asked for a write. */

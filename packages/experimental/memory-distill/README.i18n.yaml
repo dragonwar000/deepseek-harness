@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/memory-distill/README.md
 /:
-  en: 21cafdb31fd96ac1
-  zh: 53c70ed63d20f8b6
+  en: c5b0ec9605fdafcd
+  zh: 6cc368b4a4f5549b
 /deepseek-ai-dsh-experimental-memory-distill:
   en: 66fb18b4a0f34b57
   zh: ed069269bad5c1c9
 /deepseek-ai-dsh-experimental-memory-distill/summary:
-  en: 5bd1217940d75ca5
-  zh: 74c2d33990d892bd
+  en: 83636fa86661bd50
+  zh: 941c2a8f6b320ec3
 /deepseek-ai-dsh-experimental-memory-distill/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
@@ -18,8 +18,8 @@
   en: 321e0be21b62899e
   zh: dfde31a4d5aa4728
 /deepseek-ai-dsh-experimental-memory-distill/use-this-package/minimal-configuration:
-  en: cdf2ceed8b52e724
-  zh: 2c31d09bf20ff7d5
+  en: 75517db2dadf6bdd
+  zh: 23837ace07e1b510
 /deepseek-ai-dsh-experimental-memory-distill/use-this-package/order-with-the-verifier-gate:
   en: a2b3cf27df5f14ae
   zh: e858dfbce70a45cc
@@ -30,11 +30,11 @@
   en: 98aebf8992ddee72
   zh: 41766d48f0bf7414
 /deepseek-ai-dsh-experimental-memory-distill/understand-the-implementation/design-notes:
-  en: 941b94896be67397
-  zh: a42185cd87881be6
+  en: 243860e0df8af0a5
+  zh: 01c7133154d6e5ba
 /deepseek-ai-dsh-experimental-memory-distill/understand-the-implementation/source-map:
-  en: b315d2465897f512
-  zh: d300f84f51cae3c2
+  en: c04e3593e34415ca
+  zh: d0521b23258c84b7
 /deepseek-ai-dsh-experimental-memory-distill/further-exploration:
   en: 82ea532e84847afd
   zh: 5b2f0355de27dc44
@@ -45,8 +45,8 @@
   en: 951e16e0c497683b
   zh: 6fd302de56fba884
 /deepseek-ai-dsh-experimental-memory-distill/known-limitations-and-deferred-work:
-  en: 0b4aa8383f9cdd8d
-  zh: b4a070069dacf34a
+  en: 85c8944388cb7c29
+  zh: cb837ca065290c2d
 /deepseek-ai-dsh-experimental-memory-distill/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 975625e42085937f

@@ -67,15 +67,21 @@ describe('registration', () => {
 describe('reading tools', () => {
   it('searches, reads, and cites pages as compact JSON', async () => {
     const { agent } = await run({
-      files: STORE,
+      files: { ...STORE, 'knowledge/concepts/plain.md': '---\ntype: concept\nstatus: archived\n---\nPlain.\n' },
       calls: [
         { name: 'knowledge_query', args: { query: 'exponential retry' } },
         { name: 'knowledge_read', args: { ref: 'retry' } },
         { name: 'knowledge_cite', args: { ref: 'backoff', depth: 1 } },
         { name: 'knowledge_cite', args: { ref: 'e:00000000' } },
+        { name: 'knowledge_read', args: { ref: 'plain' } },
       ],
     })
-    const [query, read, cite, edge] = results(agent)
+    const [query, read, cite, edge, archived] = results(agent)
+    // The archived page's status reaches the model only inside `content`; `body` is never returned.
+    expect(JSON.parse(archived!.text)).toEqual({
+      page: { id: 'concepts/plain.md', title: 'plain', type: 'concept', stale: false, relations: [], content: '---\ntype: concept\nstatus: archived\n---\nPlain.\n', truncated: false },
+    })
+    expect(Object.keys((JSON.parse(read!.text) as { page: object }).page)).toEqual(['id', 'title', 'type', 'updated', 'stale', 'relations', 'content', 'truncated'])
     expect(JSON.parse(query!.text)).toEqual({
       hits: [
         { id: 'concepts/retry.md', title: 'Retry policy', type: 'concept', updated: '2026-09-20', stale: true, score: 1 },

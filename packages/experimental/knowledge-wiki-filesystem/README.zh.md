@@ -51,7 +51,7 @@ kind: "package-reference"
 
 ### 页面格式
 
-页面是 `<contentDir>/…/<name>.md`，其 frontmatter 含非空的 `type`，并可选地含 `title`、`updated`、`relations`（`- {rel: depends-on, to: concepts/backoff.md}`）与 `citation`。frontmatter 无法解析或没有 `type` 的页面会被隔离：它们不出现在任何结果中，只在索引中计数。`README.md` 与 `_template.md` 不是页面；位于知识库根目录以及 `contentDirs` 之外的文件会被忽略。
+页面是 `<contentDir>/…/<name>.md`，其 frontmatter 含非空的 `type`，并可选地含 `title`、`updated`、`status`、`relations`（`- {rel: depends-on, to: concepts/backoff.md}`）与 `citation`。`status: archived` 使页面不出现在索引、查询结果与邻居层级中，邻居遍历也不经过它；`read` 与 `cite` 仍返回它。其他 `status` 值会被忽略。frontmatter 无法解析或没有 `type` 的页面会被隔离：它们不出现在任何结果中，只在索引中计数。`README.md` 与 `_template.md` 不是页面；位于知识库根目录以及 `contentDirs` 之外的文件会被忽略。
 
 -----
 

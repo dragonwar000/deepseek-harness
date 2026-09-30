@@ -1364,17 +1364,17 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'knowledge',
     summary: 'Abstract knowledge store.',
-    description: 'Abstract knowledge store. Subclass it and load the subclass as a plugin; it registers as `ctx.knowledge` (one provider per context: loading a second throws). Every provider honors:\n\n- Reads derive edges, staleness, and ranking from the stored pages on every call; nothing derivable is stored.\n- `write` returns `refused` for an entry that breaks a store rule, including an empty `citation.sourceEventSeqs`, and throws only on I/O failure.\n- `includes` answers whether a workspace path lies inside the store, so a guard can refuse writes that bypass `write`.',
+    description: 'Abstract knowledge store. Subclass it and load the subclass as a plugin; it registers as `ctx.knowledge` (one provider per context: loading a second throws). Every provider honors:\n\n- A page whose entry was written with status `archived` is left out of `index`, `query`, and `neighbors`; `read` and `cite` still return it.\n- Reads derive edges, staleness, and ranking from the stored pages on every call; nothing derivable is stored.\n- `write` returns `refused` for an entry that breaks a store rule, including an empty `citation.sourceEventSeqs`, and throws only on I/O failure.\n- `includes` answers whether a workspace path lies inside the store, so a guard can refuse writes that bypass `write`.',
     methods: [
       {
         signature: 'abstract index(scope: KnowledgeScope): Promise<KnowledgeIndex>',
-        description: 'List the readable pages, newest first, and the quarantined ones.',
+        description: 'List the readable pages that are not archived, newest first, and the quarantined ones.',
         parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }],
         returns: 'the store listing.',
       },
       {
         signature: 'abstract query(scope: KnowledgeScope, text: string, limit: number): Promise<KnowledgeHit[]>',
-        description: 'Rank pages by the query words they contain.',
+        description: 'Rank pages that are not archived by the query words they contain.',
         parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'text', description: 'query text.' }, { name: 'limit', description: 'maximum hits.' }],
         returns: 'hits with a score above zero, best first.',
       },
@@ -1392,7 +1392,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'abstract neighbors(scope: KnowledgeScope, ref: string, depth: number): Promise<KnowledgeNeighbors | undefined>',
-        description: 'Pages within `depth` links of one page, in either direction.',
+        description: 'Pages that are not archived within `depth` links of one page, in either direction; links through an archived page are not followed.',
         parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference.' }, { name: 'depth', description: 'maximum link distance, at least 1.' }],
         returns: 'the pages by distance, or `undefined` when the reference names no readable page.',
       },
@@ -5624,7 +5624,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'KnowledgeEntry',
-    declaration: 'export interface KnowledgeEntry {\n    id: KnowledgePageId;\n    type: string;\n    title: string;\n    body: string;\n    relations: readonly KnowledgeRelationDeclaration[];\n}',
+    declaration: 'export interface KnowledgeEntry {\n    id: KnowledgePageId;\n    type: string;\n    title: string;\n    body: string;\n    relations: readonly KnowledgeRelationDeclaration[];\n    status?: KnowledgePageStatus;\n}',
   },
   {
     name: 'KnowledgeHit',
@@ -5648,11 +5648,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'KnowledgePage',
-    declaration: 'export interface KnowledgePage extends KnowledgeIndexEntry {\n    relations: KnowledgeRelationDeclaration[];\n    content: string;\n}',
+    declaration: 'export interface KnowledgePage extends KnowledgeIndexEntry {\n    relations: KnowledgeRelationDeclaration[];\n    content: string;\n    body: string;\n    status?: KnowledgePageStatus;\n}',
   },
   {
     name: 'KnowledgePageId',
     declaration: 'export type KnowledgePageId = Branded<\'KnowledgePageId\'>;',
+  },
+  {
+    name: 'KnowledgePageStatus',
+    declaration: 'export type KnowledgePageStatus = \'archived\';',
   },
   {
     name: 'KnowledgeRelation',

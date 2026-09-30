@@ -4,29 +4,29 @@
  * one `episode` page through `ctx.knowledge.write`: the human request, the
  * final response without statements marked temporary, the files the turn
  * changed, and the verdict, citing the changing tool results. With a positive
- * `maxEpisodes`, episodes go to that many slot pages and the least recently
- * updated slot is replaced once all are used. `shadow` records the
- * `knowledge/write` it would make without writing. No model is called.
+ * `maxEpisodes`, the oldest other episode pages are then archived through the
+ * same write path so at most that many stay active. `shadow` records the
+ * `knowledge/write` records it would make without writing. No model is called.
  * @module @deepseek-ai/dsh-experimental-memory-distill
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-agent'
-import type { KnowledgeWriteRecord } from '@deepseek-ai/dsh-experimental-knowledge'
+import type { KnowledgeCitation, KnowledgePageId, KnowledgeWriteRecord, KnowledgeWriteResult } from '@deepseek-ai/dsh-experimental-knowledge'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import { episodeEntry } from './episode.ts'
 import { applyDistill, distillStateSchema, emptyDistill, parseVerdict } from './fold.ts'
 import type { DistillState } from './fold.ts'
-import { nextSlot, resolveRetention } from './retention.ts'
+import { episodesToArchive, resolveRetention } from './retention.ts'
 
 export { episodeEntry, episodeId, filterTransient } from './episode.ts'
 export type { EpisodeInput } from './episode.ts'
 export { applyDistill, distillStateSchema, emptyDistill, parseVerdict } from './fold.ts'
 export type { DistillState } from './fold.ts'
-export { nextSlot, resolveRetention, slotId } from './retention.ts'
+export { episodesToArchive, resolveRetention } from './retention.ts'
 export type { EpisodeRetention } from './retention.ts'
 
 /** Cordis plugin name. */
@@ -48,8 +48,8 @@ export interface Config {
   /** Store directory for episode pages; must be a content directory of the store (default `episodes`). */
   dir?: string
   /**
-   * Episode pages kept. `0` writes every episode to its own dated page and replaces none (default `0`); a positive
-   * value writes episodes to that many `<dir>/slot-<k>.md` pages and replaces the least recently updated one.
+   * Active episode pages kept. `0` archives none (default `0`); a positive value archives the oldest other episode
+   * pages after each written episode, so at most that many stay in the store index.
    */
   maxEpisodes?: number
   /** Tools whose successful calls change their `file_path` or `path` (default `write`, `edit`). */
@@ -150,7 +150,7 @@ export function apply(ctx: Context, config: Config): void {
     }
     if ((verdict !== null && verdict.verdict !== 'ok') || state.changes.length === 0) return
     const scope = { cwd: agent.session.header.cwd, signal }
-    const dated = episodeEntry({
+    const entry = episodeEntry({
       dir,
       sessionId: agent.session.id,
       turn,
@@ -163,18 +163,26 @@ export function apply(ctx: Context, config: Config): void {
       maxRequestChars,
       maxOutcomeChars,
     })
-    const entry = retention.kind === 'every' ? dated : { ...dated, id: nextSlot(dir, retention.count, (await ctx.knowledge.index(scope)).entries) }
+    const archive = retention.kind === 'every' ? [] : episodesToArchive(dir, retention.count, (await ctx.knowledge.index(scope)).entries, entry.id)
     const sourceEventSeqs = state.changes.map(change => SessionSeq(change.seq))
     const sources = state.changes.map(change => change.path)
-    const base = { id: entry.id, writer: 'distill' as const, mode, sourceEventSeqs, sources }
+    const citation: KnowledgeCitation = { sessionId: agent.session.id, sourceEventSeqs, sources, writer: 'distill' }
+    const base = (id: KnowledgePageId) => ({ id, writer: 'distill' as const, mode, sourceEventSeqs, sources })
+    const record = (id: KnowledgePageId, result: KnowledgeWriteResult): KnowledgeWriteRecord => result.kind === 'written'
+      ? { ...base(id), applied: true, operation: result.operation, stale: result.stale }
+      : { ...base(id), applied: false, stale: [], refusal: { rule: result.rule, reason: result.reason } }
     if (mode === 'shadow') {
-      agent.session.append('knowledge/write', { ...base, applied: false, stale: [] })
+      for (const id of [entry.id, ...archive]) agent.session.append('knowledge/write', { ...base(id), applied: false, stale: [] })
       return
     }
-    const result = await ctx.knowledge.write(scope, entry, { sessionId: agent.session.id, sourceEventSeqs, sources, writer: 'distill' })
-    const record: KnowledgeWriteRecord = result.kind === 'written'
-      ? { ...base, applied: true, operation: result.operation, stale: result.stale }
-      : { ...base, applied: false, stale: [], refusal: { rule: result.rule, reason: result.reason } }
-    agent.session.append('knowledge/write', record)
+    const written = await ctx.knowledge.write(scope, entry, citation)
+    agent.session.append('knowledge/write', record(entry.id, written))
+    if (written.kind !== 'written') return
+    for (const id of archive) {
+      const page = await ctx.knowledge.read(scope, id)
+      if (page === undefined) continue
+      const archived = { id, type: page.type, title: page.title, body: page.body, relations: page.relations, status: 'archived' as const }
+      agent.session.append('knowledge/write', record(id, await ctx.knowledge.write(scope, archived, citation)))
+    }
   })
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { knowledgePageId } from '@deepseek-ai/dsh-experimental-knowledge'
 import { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
-import { codePathCandidates, mdlinkTargets, oneLine, parsePage, renderPage, stripCode, wikilinkTargets } from '../src/page.ts'
+import { codePathCandidates, entryBody, mdlinkTargets, oneLine, parsePage, renderPage, stripCode, wikilinkTargets } from '../src/page.ts'
 
 /** overstack wiki-graph.py `_REL_RE`, used to prove written relations stay readable by the Python tools. */
 const OVERSTACK_REL = /\{[ \t]*rel[ \t]*:[ \t]*([\w-]+)[ \t]*,[ \t]*to[ \t]*:[ \t]*([^}\s]+)[ \t]*\}/
@@ -126,5 +126,13 @@ describe('renderPage', () => {
     expect(content).not.toContain('relations:')
     expect(content).toContain('# X\n\n## Origin')
     expect(oneLine('  a \n b\t')).toBe('a b')
+  })
+})
+
+describe('entryBody', () => {
+  it('drops the title heading and the Origin section a rendered page adds', () => {
+    expect(entryBody('\n# Title\n\nBody line.\n\n## Notes\n\nMore.\n\n## Origin\n\n- Session: `s1`\n')).toBe('Body line.\n\n## Notes\n\nMore.')
+    expect(entryBody('Plain body without heading.\n')).toBe('Plain body without heading.')
+    expect(entryBody('# Only a title')).toBe('')
   })
 })

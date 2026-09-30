@@ -270,7 +270,10 @@ export function apply(ctx: Context, config: Config): void {
       const page = await ctx.knowledge.read(scopeOf(exec), args.ref)
       if (page === undefined) throw new Error(`knowledge_read: no readable knowledge page ${args.ref}; search with knowledge_query`)
       const truncated = page.content.length > maxPageChars
-      return { page: { ...page, content: truncated ? page.content.slice(0, maxPageChars) : page.content, truncated } }
+      // `content` already carries the frontmatter status; `body` would repeat the page text.
+      const { id, title, type, updated, stale, relations } = page
+      const content = truncated ? page.content.slice(0, maxPageChars) : page.content
+      return { page: { id, title, type, ...updated === undefined ? {} : { updated }, stale, relations, content, truncated } }
     },
   }))
 

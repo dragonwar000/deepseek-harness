@@ -51,7 +51,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md) lists eve
 
 ### Page format
 
-A page is `<contentDir>/…/<name>.md` with frontmatter holding a non-empty `type`, and optionally `title`, `updated`, `relations` (`- {rel: depends-on, to: concepts/backoff.md}`), and `citation`. Pages whose frontmatter does not parse or has no `type` are quarantined: left out of every result and counted in the index. `README.md` and `_template.md` are not pages; files at the store root and outside `contentDirs` are ignored.
+A page is `<contentDir>/…/<name>.md` with frontmatter holding a non-empty `type`, and optionally `title`, `updated`, `status`, `relations` (`- {rel: depends-on, to: concepts/backoff.md}`), and `citation`. `status: archived` leaves the page out of the index, query results, and neighbor levels, and neighbor walks do not pass through it; `read` and `cite` still return it. Other `status` values are ignored. Pages whose frontmatter does not parse or has no `type` are quarantined: left out of every result and counted in the index. `README.md` and `_template.md` are not pages; files at the store root and outside `contentDirs` are ignored.
 
 -----
 

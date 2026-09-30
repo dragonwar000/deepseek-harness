@@ -87,6 +87,37 @@ describe('reading the store', () => {
   })
 })
 
+describe('archived pages', () => {
+  it('leaves archived pages out of the index, ranking, and neighbors, and still reads and cites them', async () => {
+    const ws = await open({
+      'knowledge/concepts/retry.md': page(['type: concept', 'title: Retry policy', 'relations:', '  - {rel: depends-on, to: backoff}'], 'Retries use exponential delay.'),
+      'knowledge/concepts/backoff.md': page(['type: concept', 'title: Backoff', 'status: archived'], 'Exponential backoff; see [[jitter]].'),
+      'knowledge/concepts/jitter.md': page(['type: concept', 'title: Jitter', 'status: draft'], 'Random spread.'),
+    })
+    expect((await ws.ctx.knowledge.index({})).entries.map(item => item.id)).toEqual(['concepts/jitter.md', 'concepts/retry.md'])
+    expect((await ws.ctx.knowledge.query({}, 'exponential', 5)).map(hit => hit.id)).toEqual(['concepts/retry.md'])
+    expect(await ws.ctx.knowledge.neighbors({}, 'retry', 2)).toEqual({ id: 'concepts/retry.md', levels: [] })
+    expect(await ws.ctx.knowledge.neighbors({}, 'backoff', 1)).toEqual({ id: 'concepts/backoff.md', levels: [] })
+    expect(await ws.ctx.knowledge.read({}, 'backoff')).toMatchObject({ id: 'concepts/backoff.md', status: 'archived', body: 'Exponential backoff; see [[jitter]].' })
+    expect(await ws.ctx.knowledge.read({}, 'jitter')).not.toHaveProperty('status')
+    expect((await ws.ctx.knowledge.cite({}, 'backoff')).map(edge => edge.relation)).toEqual(['wikilink', 'depends-on'])
+  })
+
+  it('archives a page by writing its read body back with status archived', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-30T10:00:00.000Z'))
+    const ws = await open({})
+    await ws.ctx.knowledge.write({}, entry(), CITATION)
+    const before = await ws.ctx.knowledge.read({}, 'retry')
+    expect(before?.body).toBe('Retries back off; see [[backoff]].')
+    const archived = { id: id('concepts/retry.md'), type: 'concept', title: 'Retry policy', body: before?.body ?? '', relations: [], status: 'archived' as const }
+    expect(await ws.ctx.knowledge.write({}, archived, CITATION)).toMatchObject({ kind: 'written', operation: 'update' })
+    const text = readFileSync(join(ws.dir, 'knowledge/concepts/retry.md'), 'utf8')
+    expect(text).toBe((before?.content ?? '').replace('updated: "2026-09-30T10:00:00.000Z"\n', 'updated: "2026-09-30T10:00:00.000Z"\nstatus: archived\n'))
+    expect((await ws.ctx.knowledge.index({})).entries).toEqual([])
+  })
+})
+
 describe('writing pages', () => {
   it('writes frontmatter, citation, and an Origin section, then replaces the page', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })

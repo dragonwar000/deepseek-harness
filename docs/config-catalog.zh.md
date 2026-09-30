@@ -1264,7 +1264,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem`
 
 - `inject`: `fs`
-- `source`: [`packages/experimental/knowledge-wiki-filesystem/src/index.ts:34`](../packages/experimental/knowledge-wiki-filesystem/src/index.ts)
+- `source`: [`packages/experimental/knowledge-wiki-filesystem/src/index.ts:36`](../packages/experimental/knowledge-wiki-filesystem/src/index.ts)
 
 ```ts config-catalog
 /** Store location, layout, and limits. Invalid values fail plugin load. */
@@ -1371,8 +1371,8 @@ export interface Config {
   /** Store directory for episode pages; must be a content directory of the store (default `episodes`). */
   dir?: string
   /**
-   * Episode pages kept. `0` writes every episode to its own dated page and replaces none (default `0`); a positive
-   * value writes episodes to that many `<dir>/slot-<k>.md` pages and replaces the least recently updated one.
+   * Active episode pages kept. `0` archives none (default `0`); a positive value archives the oldest other episode
+   * pages after each written episode, so at most that many stay in the store index.
    */
   maxEpisodes?: number
   /** Tools whose successful calls change their `file_path` or `path` (default `write`, `edit`). */

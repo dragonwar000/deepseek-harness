@@ -33,7 +33,7 @@ Choose it when a plugin reads or writes durable knowledge that outlives a sessio
 
 ### Contract
 
-Every method takes a `KnowledgeScope` with the session working directory and a cancellation signal, because the store root resolves against the session workspace. Reads derive edges, staleness, and ranking from the stored pages on every call. `write` checks every store rule and returns `refused` with the broken rule, including a write whose citation names no session event; it throws only on I/O failure. `includes` tells a guard whether a workspace path lies inside the store.
+Every method takes a `KnowledgeScope` with the session working directory and a cancellation signal, because the store root resolves against the session workspace. Reads derive edges, staleness, and ranking from the stored pages on every call. `write` checks every store rule and returns `refused` with the broken rule, including a write whose citation names no session event; it throws only on I/O failure. `includes` tells a guard whether a workspace path lies inside the store. An entry written with status `archived` stays readable through `read` and `cite` but is left out of `index`, `query`, and `neighbors`; `read` returns the page's `body` as a writer supplied it, so writing it back with a new status reproduces the page.
 
 -----
 

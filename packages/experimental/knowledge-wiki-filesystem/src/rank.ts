@@ -5,7 +5,7 @@
  */
 
 import type { KnowledgeHit } from '@deepseek-ai/dsh-experimental-knowledge'
-import { compareText, entryOf, stalePages } from './graph.ts'
+import { compareText, entryOf, isArchived, stalePages } from './graph.ts'
 import type { StoreGraph } from './graph.ts'
 
 const WORD = /[\p{L}\p{N}]+/gu
@@ -20,7 +20,7 @@ export function words(text: string): Set<string> {
 }
 
 /**
- * Rank pages by the share of query words found in their id, type, title, and body.
+ * Rank pages that are not archived by the share of query words found in their id, type, title, and body.
  * @param graph - store snapshot.
  * @param text - query text.
  * @param limit - maximum hits.
@@ -32,6 +32,7 @@ export function rankPages(graph: StoreGraph, text: string, limit: number): Knowl
   const stale = stalePages(graph)
   const hits: KnowledgeHit[] = []
   for (const page of graph.pages.values()) {
+    if (isArchived(page)) continue
     const bag = words(`${page.id} ${page.front.type} ${page.front.title ?? ''} ${page.body}`)
     let found = 0
     for (const word of query) if (bag.has(word)) found += 1

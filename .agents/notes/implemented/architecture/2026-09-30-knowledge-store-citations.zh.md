@@ -12,7 +12,7 @@ Status: implemented
 
 `@deepseek-ai/dsh-experimental-knowledge` 定义 `ctx.knowledge` seam。每次写入都通过 `KnowledgeService.write` 并附带引用：页面所依据的本会话成功 `tool/result` 事件，以及这些事件读取或变更的工作区文件。wiki 文件系统提供方在每次写入时检查知识库规则——内容目录、只读目录、带类型的 frontmatter、Origin 一节、引用、已存在的关系目标，以及不对已被取代的页面新增依赖——违反时返回拒绝而不写入。`knowledge_write` 引用本会话对所列来源的成功读取，并且总是询问用户。`@deepseek-ai/dsh-experimental-knowledge-rules` 拒绝一切会直接改变知识库的文件工具写入、编辑与 shell 命令，因为这类改变无法引用会话事件。每条已应用的 `knowledge/write` 记录都会在追加时对照本会话的成功工具结果进行检查。
 
-边、过期状态与排序在每次读取时从存储的文件推导，从不存储：正文链接、声明的关系，以及指向已存在代码路径的 `touches` 边；当页面所关联的页面更新或被取代时，该页面在一层关系深度内过期。模型收到的是知识库的索引，从不是页面内容：在索引变化的 turn 的第一步，以一条有上限的 snapshot 消息加入，并记录为 `knowledge/inject`；内容只通过 `knowledge_read` 到达。episode 页面在不调用模型的情况下提炼，且只在校验门为 turn 的最终回复记录 verdict `ok` 之后进行，并引用改变该 turn 文件的工具结果。
+边、过期状态与排序在每次读取时从存储的文件推导，从不存储：正文链接、声明的关系，以及指向已存在代码路径的 `touches` 边；当页面所关联的页面更新或被取代时，该页面在一层关系深度内过期。模型收到的是知识库的索引，从不是页面内容：在索引变化的 turn 的第一步，以一条有上限的 snapshot 消息加入，并记录为 `knowledge/inject`；内容只通过 `knowledge_read` 到达。episode 页面在不调用模型的情况下提炼，且只在校验门为 turn 的最终回复记录 verdict `ok` 之后进行，并引用改变该 turn 文件的工具结果。正数的 `maxEpisodes` 通过归档最旧的页面来约束活跃的 episode 页面数：页面经由 `KnowledgeService.write` 以 frontmatter `status: archived` 写回，这使它不出现在索引、查询结果与邻居层级中，而 `read` 与 `cite` 仍返回它。
 
 ## 考虑过的替代方案
 
@@ -21,6 +21,8 @@ Status: implemented
 - **把索引放进系统提示。** 系统提示是一个渲染节点；每次知识库变化都修改它会重写可复用前缀。追加的 snapshot 消息只在索引变化时消耗 token。
 - **用模型抽取关系。** 抽取出的关系无法从日志重现，并且会让每个页面都依赖一次模型调用。关系来自链接、frontmatter 与已存在的路径。
 - **把记忆 MCP 服务器包装为第二个提供方。** 它们的工具只为模型注册，schema 不同，并且不带引用也能调用。第二个提供方要等到有可编程的 MCP 调用服务。
+- **删除旧的 episode 页面。** 经由 `ctx.fs` 的删除绕过知识库规则与 `knowledge/write` 日志，而被删除的页面会丢失后续会话可能引用的历史。归档经由受检查、有记录的写入路径进行，并保留文件。
+- **用 `supersedes` 关系归档。** 较新的 episode 并不取代较旧 episode 的事实，而且被取代的页面仍会留在索引中。
 - **从压缩摘要中提炼。** 摘要是模型输出而不是工具结果，因此由它构建的 episode 无从引用。
 
 ## 后果

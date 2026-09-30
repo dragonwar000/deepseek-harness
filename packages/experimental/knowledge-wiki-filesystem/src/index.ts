@@ -3,7 +3,9 @@
  * pages with YAML frontmatter inside the session workspace, read and written
  * through `ctx.fs`, so sandboxed and remote filesystem providers carry it.
  * Edges, staleness, and ranking are derived on every call; nothing derivable
- * is stored.
+ * is stored. A page whose frontmatter records `status: archived` stays in the
+ * graph for `read` and `cite` and is left out of the index, ranking, and
+ * neighbor levels.
  * @module @deepseek-ai/dsh-experimental-knowledge-wiki-filesystem
  */
 
@@ -25,7 +27,7 @@ import type {
 import type { FsTarget, FsWriteIntent } from '@deepseek-ai/dsh-fs'
 import { buildGraph, citeEdges, entryOf, indexEntries, neighborLevels, pageOf, staleAfterWrite, stalePages } from './graph.ts'
 import type { StoreGraph, StorePage } from './graph.ts'
-import { codePathCandidates, parsePage, renderPage } from './page.ts'
+import { codePathCandidates, entryBody, parsePage, renderPage } from './page.ts'
 import { rankPages } from './rank.ts'
 import { checkPageText, reviewWrite } from './rules.ts'
 import type { StoreLayout } from './rules.ts'
@@ -158,7 +160,13 @@ export class WikiFilesystemKnowledge extends KnowledgeService {
     const id = graph.resolve(ref)
     if (id === undefined) return undefined
     const page = pageOf(graph, id)
-    return { ...entryOf(page, stalePages(graph).has(id)), relations: [...page.front.relations], content: page.content }
+    return {
+      ...entryOf(page, stalePages(graph).has(id)),
+      relations: [...page.front.relations],
+      content: page.content,
+      body: entryBody(page.body),
+      ...page.front.status === undefined ? {} : { status: page.front.status },
+    }
   }
 
   /**

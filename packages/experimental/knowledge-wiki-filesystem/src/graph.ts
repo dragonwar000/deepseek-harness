@@ -216,13 +216,23 @@ export function entryOf(page: StorePage, stale: boolean): KnowledgeIndexEntry {
 }
 
 /**
- * Index entries, newest first, then by id; pages without `updated` last.
+ * Whether a page records status `archived`.
+ * @param page - readable page.
+ * @returns true for an archived page.
+ */
+export function isArchived(page: StorePage): boolean {
+  return page.front.status === 'archived'
+}
+
+/**
+ * Index entries of the pages that are not archived, newest first, then by id; pages without `updated` last.
  * @param graph - store snapshot.
  * @returns the entries.
  */
 export function indexEntries(graph: StoreGraph): KnowledgeIndexEntry[] {
   const stale = stalePages(graph)
   return [...graph.pages.values()]
+    .filter(page => !isArchived(page))
     .map(page => entryOf(page, stale.has(page.id)))
     .sort((left, right) => {
       const a = left.updated ?? ''
@@ -232,7 +242,8 @@ export function indexEntries(graph: StoreGraph): KnowledgeIndexEntry[] {
 }
 
 /**
- * Pages within `depth` links of one page over page-to-page edges in either direction.
+ * Pages within `depth` links of one page over page-to-page edges in either
+ * direction, never reaching or passing through an archived page.
  * @param graph - store snapshot.
  * @param id - start page.
  * @param depth - maximum distance.
@@ -246,7 +257,7 @@ export function neighborLevels(graph: StoreGraph, id: KnowledgePageId, depth: nu
     adjacent.set(from, set)
   }
   for (const edge of graph.edges) {
-    if (edge.toKind !== 'page') continue
+    if (edge.toKind !== 'page' || isArchived(pageOf(graph, edge.from)) || isArchived(pageOf(graph, knowledgePageId(edge.to)))) continue
     link(edge.from, knowledgePageId(edge.to))
     link(knowledgePageId(edge.to), edge.from)
   }
