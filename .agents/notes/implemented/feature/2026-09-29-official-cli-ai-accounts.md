@@ -4,6 +4,8 @@ Status: implemented
 
 English | [中文](2026-09-29-official-cli-ai-accounts.zh.md)
 
+Superseded in part by [Consumer Subscription Account for the Main Model](../../proposed/feature/2026-09-30-subscription-account-main-model.md), which reverses the main-model half of this decision; everything else below remains in force.
+
 ## Problem
 
 Users want to run delegated Claude Code and Codex work on their own Claude and ChatGPT subscriptions, keep several accounts of each kind, and pick which one is used. A subscription login is an OAuth grant issued to the official Claude Code or Codex client. Reading that grant out of the CLI's storage, refreshing it against the vendor's token endpoint, or sending it from another HTTP client impersonates the official client, couples the Harness to undocumented storage formats and client identifiers, and turns the Harness into a holder of long-lived subscription tokens. An earlier unreleased draft did exactly that: it ran `claude login`, read `~/.claude/.credentials.json`, refreshed the token itself, and used it as the API key of the main model.

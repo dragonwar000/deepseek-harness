@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-09-29-official-cli-ai-accounts.md) | 中文
 
+其中一部分已被[用消费者订阅账号驱动主模型](../../proposed/feature/2026-09-30-subscription-account-main-model.zh.md)取代，该决策推翻了本决策中关于主模型的那一半；以下其余内容继续有效。
+
 ## Problem
 
 用户希望用自己的 Claude 与 ChatGPT 订阅运行委派的 Claude Code 与 Codex 工作，每种账号保留多个账号，并选择使用哪一个。订阅登录是颁发给官方 Claude Code 或 Codex 客户端的 OAuth 授权。从 CLI 的存储中读出该授权、向厂商令牌端点刷新它，或从其他 HTTP 客户端发送它，都是在冒充官方客户端，会让 Harness 依赖未公开的存储格式与客户端标识，并使 Harness 持有长期有效的订阅令牌。更早的一个未发布草稿正是这样做的：它运行 `claude login`，读取 `~/.claude/.credentials.json`，自行刷新令牌，并把令牌用作主模型的 API key。

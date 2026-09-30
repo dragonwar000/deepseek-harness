@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for 2026-09-30-subscription-account-main-model.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/proposed/feature/2026-09-30-subscription-account-main-model.md
+/agent-note-consumer-subscription-account-for-the-main-model:
+  en: 1c885ee409f9a9ad
+  zh: 5fc3843c340572bb
+/agent-note-consumer-subscription-account-for-the-main-model/problem:
+  en: e7a07b5c1c8cb4c2
+  zh: c7b4d4904d8b80cd
+/agent-note-consumer-subscription-account-for-the-main-model/proposal:
+  en: 49ed063e29bb7648
+  zh: bbfab5a1dd990dbc
+/agent-note-consumer-subscription-account-for-the-main-model/unchanged-external-facts:
+  en: d969aaebfc4db0fe
+  zh: b9e6d830aeabccda
+/agent-note-consumer-subscription-account-for-the-main-model/alternatives-considered:
+  en: acbef8e71acc1ea2
+  zh: 25c613c3251c033e
+/agent-note-consumer-subscription-account-for-the-main-model/acceptance-criteria:
+  en: 23b1c0bc591a8246
+  zh: 1c7285c8af8e9721
+/agent-note-consumer-subscription-account-for-the-main-model/risks:
+  en: 3301b10967a99255
+  zh: 609c3a3cb92de21d
