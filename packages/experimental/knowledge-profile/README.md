@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-experimental-knowledge-profile` enables [`knowledge-wiki-filesystem`](../knowledge-wiki-filesystem/README.md), [`knowledge-rules`](../knowledge-rules/README.md), [`tool-knowledge`](../tool-knowledge/README.md), [`context-knowledge`](../context-knowledge/README.md), and [`memory-distill`](../memory-distill/README.md) with one bundle. The only changes to model requests are the three read tool definitions and, when the store has pages, the index message. `memory-distill` starts in `shadow` mode. The bundle ships switched off; enable it from the Plugins page or add it to an initialized profile.
+`dsh-experimental-knowledge-profile` enables [`knowledge-wiki-filesystem`](../knowledge-wiki-filesystem/README.md), [`knowledge-rules`](../knowledge-rules/README.md), [`tool-knowledge`](../tool-knowledge/README.md), [`context-knowledge`](../context-knowledge/README.md), and [`memory-distill`](../memory-distill/README.md) with one bundle. The only changes to model requests are the three read tool definitions and, when the store has pages, the index message. `memory-distill` starts in `shadow` mode. A sixth row, [`memory-zeromem`](../memory-zeromem/README.md), ships disabled: it needs a zeromem `zm` executable and stores conversation text on disk, so a profile patch switches it on. The bundle ships switched off; enable it from the Plugins page or add it to an initialized profile.
 
 ## Table of Contents
 
@@ -33,13 +33,13 @@ Add the package to an initialized profile:
 dsh plugin --profile headless add @deepseek-ai/dsh-experimental-knowledge-profile
 ```
 
-The profile must already contain `@deepseek-ai/dsh-base`, which supplies the filesystem, tool, and session projection services and the `agent/pre-step` and `agent/turn-stopping` events these rows use. Removing the package with `dsh plugin --profile <name> remove @deepseek-ai/dsh-experimental-knowledge-profile` removes all five rows from the profile's ordered layer list.
+The profile must already contain `@deepseek-ai/dsh-base`, which supplies the filesystem, tool, and session projection services and the `agent/pre-step` and `agent/turn-stopping` events these rows use. Removing the package with `dsh plugin --profile <name> remove @deepseek-ai/dsh-experimental-knowledge-profile` removes all six rows from the profile's ordered layer list.
 
-Enable Knowledge on the Web or Desktop Plugins page to switch on all five rows at once. The Plugins page reads the bundle's [icon](icon.svg) from its `package.json.icon` declaration, including while the bundle is disabled.
+Enable Knowledge on the Web or Desktop Plugins page to switch on the five enabled rows at once; `memory-zeromem` stays disabled until a profile patch enables it. The Plugins page reads the bundle's [icon](icon.svg) from its `package.json.icon` declaration, including while the bundle is disabled.
 
 ### What you get
 
-The layer inserts five rows and changes no `dsh-base` row. `knowledge-wiki-filesystem` keeps pages under `<session cwd>/knowledge`. `knowledge-rules` refuses file tool writes and shell commands that would change the store directly, so pages change only through `knowledge_write` or `memory-distill`. `tool-knowledge` starts `read-only` with `knowledge_query`, `knowledge_read`, and `knowledge_cite`. `context-knowledge` adds the store index, never page content, at the first step of a turn when it changed, capped at 200 lines and 25600 bytes. `memory-distill` starts in `shadow` mode: after the verifier gate records verdict `ok` it records the episode page it would write as a `knowledge/write` with `applied: false`.
+The layer inserts six rows and changes no `dsh-base` row. `knowledge-wiki-filesystem` keeps pages under `<session cwd>/knowledge`. `knowledge-rules` refuses file tool writes and shell commands that would change the store directly, so pages change only through `knowledge_write` or `memory-distill`. `tool-knowledge` starts `read-only` with `knowledge_query`, `knowledge_read`, and `knowledge_cite`. `context-knowledge` adds the store index, never page content, at the first step of a turn when it changed, capped at 200 lines and 25600 bytes. `memory-distill` starts in `shadow` mode: after the verifier gate records verdict `ok` it records the episode page it would write as a `knowledge/write` with `applied: false`. `memory-zeromem` is inserted with `disabled: true`.
 
 ### Order with the loop guards bundle
 
@@ -77,6 +77,31 @@ Patch the rows by id from your own profile patch. A config patch replaces the wh
 
 Every `knowledge_write` then asks the user and cites the session's reads of its sources. Disable one row with `disabled: true` on its id.
 
+### Turn on conversation memory
+
+`memory-zeromem` needs zeromem's `zm` executable; [its README](../memory-zeromem/README.md#use-this-package) shows how to build one. Once enabled, it stores the text of user messages and final assistant replies, never tool output, in a per-workspace store under `<harness home>/zeromem`, and offers `memory_recall` and `memory_stats`. Enable it from your profile patch, restating the row config:
+
+```yaml
+- id: memory-zeromem
+  disabled: false
+  config:
+    zmPath: zm
+    embedder: default
+    scope: workspace
+    excludeCurrentSession: true
+    ingestSubagentSessions: false
+    allowForget: false
+    defaultResults: 5
+    maxResults: 10
+    maxTurnChars: 2000
+    maxIngestChars: 16000
+    timeoutMs: 120000
+    graceMs: 2000
+    maxConcurrent: 1
+```
+
+Set `zmPath` to an absolute path when `zm` is not on `PATH`, and `embedder: hash` for a `zm` built without the fastembed feature.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -85,16 +110,16 @@ Every `knowledge_write` then asks the user and cites the session's reads of its 
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-Applied after `dsh-base`, the patch inserts five rows with stable ids and changes no `dsh-base` row. Row order is listener order: the store is loaded before its guard and consumers, and `memory-distill` comes last.
+Applied after `dsh-base`, the patch inserts six rows with stable ids and changes no `dsh-base` row. Row order is listener order: the store is loaded before its guard and consumers, and `memory-distill` comes after them; the disabled `memory-zeromem` row follows and depends on no other row.
 
 The patch carries no invariant rows: `dsh-base` deliberately does not mount `@deepseek-ai/dsh-invariants`. A composition that mounts the registry adds each companion itself — `knowledge/invariant` and `context-knowledge/invariant` — next to its other core companions.
 
 | File | Role |
 |---|---|
-| [`cordis.patch.yml`](cordis.patch.yml) | Ordered patch inserting five rows over `dsh-base` |
+| [`cordis.patch.yml`](cordis.patch.yml) | Ordered patch inserting six rows over `dsh-base`, one of them disabled |
 | [`src/index.ts`](src/index.ts) | Empty module entry; the patch is the runtime content |
-| [`tests/profile.spec.ts`](tests/profile.spec.ts) | Parses the patch, validates every row against its package `Config`, and checks independence from the loop guards bundle |
-| [`tests/composition.spec.ts`](tests/composition.spec.ts) | Boots the patch through the Loader and checks the request tools, the index message, and the store guard |
+| [`tests/profile.spec.ts`](tests/profile.spec.ts) | Parses the patch, validates every row against its package `Config`, checks that only `memory-zeromem` ships disabled, and checks independence from the loop guards bundle |
+| [`tests/composition.spec.ts`](tests/composition.spec.ts) | Boots the patch through the Loader and checks the request tools, the index message, and the store guard, and with `memory-zeromem` enabled by a patch, stores a turn and recalls it through a scripted `zm` |
 | — | No runtime invariant companion is published; the package carries only a static profile patch. Each row package owns its own invariant story. |
 
 </details>
@@ -114,7 +139,7 @@ The patch carries no invariant rows: `dsh-base` deliberately does not mount `@de
 <a id="model-experience"></a>
 ## Model Experience
 
-Indirectly, through tool-knowledge and context-knowledge, which own every tool definition and index message this bundle can produce; knowledge-wiki-filesystem, knowledge-rules, and memory-distill add no request content of their own.
+Indirectly, through tool-knowledge, context-knowledge, and memory-zeromem, which own every tool definition and index message this bundle can produce; knowledge-wiki-filesystem, knowledge-rules, and memory-distill add no request content of their own.
 
 #### KV Cache effect
 
@@ -126,7 +151,7 @@ The three read tool definitions join the stable tool prefix once, when the bundl
 
 - **Opt-in only** — the package ships with the installation switched off; no shipped CLI, Web, SDK, ACP, or Python profile enables it.
 - **Read-only and shadow by default** — `tool-knowledge` needs `mode: read-write` and `memory-distill` needs `mode: enforce` before the agent can change the store.
-- **Tools cost tokens in every request** — the three read tool definitions add about 430 tokens to each request while the bundle is enabled; `read-write` adds about 340 more for `knowledge_write`.
+- **Tools cost tokens in every request** — the three read tool definitions add about 430 tokens to each request while the bundle is enabled; `read-write` adds about 340 more for `knowledge_write`, and an enabled `memory-zeromem` adds about 220 for `memory_recall` and `memory_stats`.
 - **Base profile required** — the patch depends on `dsh-base`; it is not a standalone profile.
 - **Layer order** — `memory-distill` distills only when the loop guards bundle comes first in the layer list.
 - **No invariant row** — a composition that mounts `@deepseek-ai/dsh-invariants` must add the `knowledge/invariant` and `context-knowledge/invariant` companions itself; this bundle does not, matching `dsh-base`.

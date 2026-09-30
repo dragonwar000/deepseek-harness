@@ -362,6 +362,7 @@
       "@deepseek-ai/dsh-experimental-context-knowledge": ["./packages/experimental/context-knowledge/src"],
       "@deepseek-ai/dsh-experimental-context-knowledge/invariant": ["./packages/experimental/context-knowledge/src/invariant.ts"],
       "@deepseek-ai/dsh-experimental-memory-distill": ["./packages/experimental/memory-distill/src"],
+      "@deepseek-ai/dsh-experimental-memory-zeromem": ["./packages/experimental/memory-zeromem/src"],
       "@deepseek-ai/dsh-experimental-knowledge-profile": ["./packages/experimental/knowledge-profile/src"],
       "@deepseek-ai/dsh-experimental-webworker-runtime": ["./packages/experimental/webworker-runtime/src"],
       "@deepseek-ai/dsh-experimental-webworker-packer": ["./packages/experimental/webworker-packer/src"],

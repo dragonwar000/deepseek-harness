@@ -1454,6 +1454,57 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-distill -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-zeromem -->
+<a id="deepseek-aidsh-experimental-memory-zeromem"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-zeromem`
+
+- `inject`: `tools` · `subprocess` · `sessionProjections`
+- `source`: [`packages/experimental/memory-zeromem/src/index.ts:80`](../packages/experimental/memory-zeromem/src/index.ts)
+
+```ts config-catalog
+/** Config with every default applied. */
+type ValidConfig = Required<Config>
+
+/** Deployment settings. Invalid values fail plugin load. */
+export interface Config {
+  /** `zm` executable: a name on `PATH` or an absolute path (default `zm`). */
+  zmPath?: string
+  /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
+  zmArgs?: string[]
+  /** `default` lets `zm` pick its embedder (fastembed when compiled in); `hash` passes `--no-model` (default `default`). */
+  embedder?: 'default' | 'hash'
+  /** `workspace` keeps one store per session working directory; `global` shares one store (default `workspace`). */
+  scope?: StoreScope
+  /** Absolute directory holding the stores; empty selects `<harness home>/zeromem` (default empty). */
+  storeRoot?: string
+  /** Leave the calling session's turns out of `memory_recall` results (default true). */
+  excludeCurrentSession?: boolean
+  /** Store turns of subagent child sessions too (default false). */
+  ingestSubagentSessions?: boolean
+  /** Register the approval-gated `memory_forget_session` tool (default false). */
+  allowForget?: boolean
+  /** Turns `memory_recall` returns when the call names no `limit` (default 5). */
+  defaultResults?: number
+  /** Largest `limit` of `memory_recall` (default 10). */
+  maxResults?: number
+  /** Characters of text per recalled turn (default 2000). */
+  maxTurnChars?: number
+  /** Characters stored per message (default 16000). */
+  maxIngestChars?: number
+  /** Deadline of one `zm` operation, including the ingestion of pending turns (default 120000). */
+  timeoutMs?: number
+  /** Grace before a terminated `zm` is killed (default 2000). */
+  graceMs?: number
+  /** Concurrent `zm` processes this plugin runs (default 1). */
+  maxConcurrent?: number
+}
+
+/** Which conversations share one store. */
+export type StoreScope = 'workspace' | 'global'
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-zeromem -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
 

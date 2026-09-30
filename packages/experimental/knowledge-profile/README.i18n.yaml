@@ -9,8 +9,8 @@
   en: f4258d02ba2eafb2
   zh: 26e7f63832a208af
 /deepseek-ai-dsh-experimental-knowledge-profile/summary:
-  en: 2070b458cb8c4b78
-  zh: 8ec79650b75f1dd1
+  en: 4756be43253687ea
+  zh: 7159ca28b41c85bf
 /deepseek-ai-dsh-experimental-knowledge-profile/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
@@ -18,32 +18,35 @@
   en: bbff250eba0f1b89
   zh: 0a618f05cc88ee2b
 /deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/install-into-a-profile:
-  en: f7cc077b2ea37174
-  zh: 0568d873ae102201
+  en: b57408b0ae499e44
+  zh: ded9a2b84f9eb99a
 /deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/what-you-get:
-  en: 4b99424c13109636
-  zh: 916dd9e0a3ecc08f
+  en: 29258646f8b32fe3
+  zh: b53f00562733341b
 /deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/order-with-the-loop-guards-bundle:
   en: 8e97f17c9be000b6
   zh: a497931ce0b67b7a
 /deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/turn-on-writes:
-  en: f9405ca3e9c79f7d
-  zh: e50f7785156b4d51
+  en: 24fedc43424dc753
+  zh: b9d4c67f3d6ad795
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/turn-on-conversation-memory:
+  en: b62690af8a3804be
+  zh: 1c05e44abd8c4104
 /deepseek-ai-dsh-experimental-knowledge-profile/understand-the-implementation:
-  en: 6d87ba6763b1a355
-  zh: 1319483baa300aac
+  en: 48fba0b4a858b504
+  zh: efb5b82b907dc337
 /deepseek-ai-dsh-experimental-knowledge-profile/further-exploration:
   en: 122dbd1a8d289e7d
   zh: 360be141eb67e88c
 /deepseek-ai-dsh-experimental-knowledge-profile/model-experience:
-  en: b554fea1e07e4683
-  zh: c5bdcb0883eea4b9
+  en: c60a83b20916550f
+  zh: 61b67209813baa95
 /deepseek-ai-dsh-experimental-knowledge-profile/model-experience/kv-cache-effect:
   en: 83c73ed86e648dd3
   zh: 74aefb4d7caa5d00
 /deepseek-ai-dsh-experimental-knowledge-profile/known-limitations-and-deferred-work:
-  en: c1e1e5eb18bd5ddb
-  zh: 180e00779fe4a29f
+  en: 7e29d4b262e613a6
+  zh: 0341f3c6c5520950
 /deepseek-ai-dsh-experimental-knowledge-profile/known-limitations-and-deferred-work/dev-note:
   en: e67f633dc6fe7773
   zh: 3bb0c20c93f16f98

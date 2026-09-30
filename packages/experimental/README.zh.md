@@ -60,6 +60,7 @@ kind: "package-group"
 | [`tool-knowledge`](tool-knowledge/README.zh.md) | `knowledge_query`、`knowledge_read`、`knowledge_cite` 与需审批、带出处的 `knowledge_write` | 在 `ctx.tools` 上注册四个工具 |
 | [`context-knowledge`](context-knowledge/README.zh.md) | 知识库变化时，在 turn 第一步加入有上限的知识索引消息 | 在 `agent/pre-step` 注册监听器与 `knowledgeContext` 投影 |
 | [`memory-distill`](memory-distill/README.zh.md) | 校验门记录 ok 后写入引用变更工具结果的 episode 页面（shadow 或 enforce） | 在 `agent/turn-stopping` 与 `session/event` 注册监听器及 `memoryDistill` 投影 |
+| [`memory-zeromem`](memory-zeromem/README.zh.md) | 通过 zeromem `zm` 命令行的对话记忆：已完成轮次按工作区存储、不调用模型，用 `memory_recall` 检索 | 在 `ctx.tools` 注册 `memory_recall`、`memory_stats` 与可选的 `memory_forget_session`，注册 `session/event` 监听器及 `zeromemTurn` 投影 |
 | [`knowledge-profile`](knowledge-profile/README.zh.md) | 从插件页开启的知识库组合包 | — |
 
 -----

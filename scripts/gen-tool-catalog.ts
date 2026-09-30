@@ -68,6 +68,7 @@ import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection
 import * as GraphRunner from '@deepseek-ai/dsh-experimental-graph-runner'
 import WikiFilesystemKnowledge from '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
 import * as ToolKnowledge from '@deepseek-ai/dsh-experimental-tool-knowledge'
+import * as MemoryZeromem from '@deepseek-ai/dsh-experimental-memory-zeromem'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import type PluginManager from '@deepseek-ai/dsh-plugin-manager'
 import * as PluginManagerTools from '@deepseek-ai/dsh-plugin-manager/tools'
@@ -676,6 +677,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
       await ctx.plugin(ToolKnowledge, { mode: 'read-write' })
     },
     note: 'Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-memory-zeromem',
+    dir: 'memory-zeromem',
+    source: 'packages/experimental/memory-zeromem/src/index.ts',
+    requires: ['ctx.tools', 'ctx.subprocess', 'ctx.sessionProjections', 'a zeromem zm executable', 'owning Agent session for the working directory and the excluded session'],
+    writes: ['tool/call', 'approval/asked', 'approval/decided', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(LocalSubprocessRuntime)
+      // Schema harvest never runs zm; any resolvable executable satisfies the load-time lookup.
+      await ctx.plugin(MemoryZeromem, { zmPath: process.execPath, allowForget: true })
+    },
+    note: 'Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`).',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-todo',

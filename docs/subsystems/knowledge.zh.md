@@ -38,6 +38,8 @@
 | 消费方 | [dsh-experimental-context-knowledge](../../packages/experimental/context-knowledge/README.zh.md) — 索引消息与 `knowledge/inject` |
 | 消费方 | [dsh-experimental-memory-distill](../../packages/experimental/memory-distill/README.zh.md) — 校验通过的 turn 之后的 episode 页面 |
 
+知识组合包还以关闭状态携带 [dsh-experimental-memory-zeromem](../../packages/experimental/memory-zeromem/README.zh.md)。它不属于这个 seam：它把对话轮次存入 zeromem 存储，并通过自己的 `memory_recall` 工具提供，从不作为知识页面。
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>

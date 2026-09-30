@@ -1,6 +1,7 @@
 /**
- * The knowledge bundle carries one parseable layer of five rows with valid
- * configs, starts the tools read-only and distillation in shadow mode, and
+ * The knowledge bundle carries one parseable layer of six rows with valid
+ * configs, starts the tools read-only and distillation in shadow mode, ships
+ * conversation memory disabled, and
  * stays independent of the loop guards bundle in both directions: neither
  * side depends on or injects the other, and graph-projection reads the
  * knowledge store only as an optional peer through `ctx.get`.
@@ -16,11 +17,13 @@ import { Config as ContextKnowledgeConfig } from '@deepseek-ai/dsh-experimental-
 import { Config as KnowledgeRulesConfig } from '@deepseek-ai/dsh-experimental-knowledge-rules'
 import WikiFilesystemKnowledge from '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
 import { Config as MemoryDistillConfig } from '@deepseek-ai/dsh-experimental-memory-distill'
+import { Config as MemoryZeromemConfig } from '@deepseek-ai/dsh-experimental-memory-zeromem'
 import { Config as ToolKnowledgeConfig } from '@deepseek-ai/dsh-experimental-tool-knowledge'
 
 interface PatchRow {
   id?: string
   name?: string
+  disabled?: boolean
   config?: Record<string, unknown>
   insert?: PatchRow[]
 }
@@ -38,6 +41,7 @@ const SCHEMAS: Record<string, (config: Record<string, unknown> | undefined) => u
   'tool-knowledge': config => ToolKnowledgeConfig(config),
   'context-knowledge': config => ContextKnowledgeConfig(config),
   'memory-distill': config => MemoryDistillConfig(config),
+  'memory-zeromem': config => MemoryZeromemConfig(config),
 }
 
 const experimental = fileURLToPath(new URL('../..', import.meta.url))
@@ -65,7 +69,7 @@ describe('knowledge bundle', () => {
   })
 
   it('inserts the rows in listener order with the store before its guard and consumers', () => {
-    expect(inserted.map(row => row.id)).toEqual(['knowledge-wiki-filesystem', 'knowledge-rules', 'tool-knowledge', 'context-knowledge', 'memory-distill'])
+    expect(inserted.map(row => row.id)).toEqual(['knowledge-wiki-filesystem', 'knowledge-rules', 'tool-knowledge', 'context-knowledge', 'memory-distill', 'memory-zeromem'])
     for (const row of inserted) expect(row.name).toBe(`@deepseek-ai/dsh-experimental-${row.id}`)
   })
 
@@ -82,10 +86,16 @@ describe('knowledge bundle', () => {
     expect(inserted.find(row => row.id === 'knowledge-wiki-filesystem')?.config?.['contentDirs']).toContain('episodes')
   })
 
+  it('ships conversation memory disabled, per workspace, with the current session left out of recall and no forget tool', () => {
+    const rows = inserted.filter(row => row.disabled === true).map(row => row.id)
+    expect(rows).toEqual(['memory-zeromem'])
+    expect(inserted.find(row => row.id === 'memory-zeromem')?.config).toMatchObject({ scope: 'workspace', excludeCurrentSession: true, ingestSubagentSessions: false, allowForget: false })
+  })
+
   it('stays independent of the loop guards bundle in both directions, apart from optional peers read with ctx.get', () => {
     const loop = /dsh-experimental-(verifier-gate|stationarity-guard|denial-budget|loop-budget|infra-snapshot|graph-|loop-graph-profile)/
-    const knowledge = /dsh-experimental-(knowledge|tool-knowledge|context-knowledge|memory-distill)/
-    for (const dir of ['knowledge', 'knowledge-wiki-filesystem', 'knowledge-rules', 'tool-knowledge', 'context-knowledge', 'memory-distill', 'knowledge-profile']) {
+    const knowledge = /dsh-experimental-(knowledge|tool-knowledge|context-knowledge|memory-distill|memory-zeromem)/
+    for (const dir of ['knowledge', 'knowledge-wiki-filesystem', 'knowledge-rules', 'tool-knowledge', 'context-knowledge', 'memory-distill', 'memory-zeromem', 'knowledge-profile']) {
       expect(runtimeNames(manifestOf(dir)).filter(name => loop.test(name))).toEqual([])
     }
     for (const dir of ['loop-graph-profile', 'verifier-gate', 'stationarity-guard', 'denial-budget', 'loop-budget', 'infra-snapshot', 'graph-contract', 'graph-projection', 'graph-runner']) {

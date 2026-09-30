@@ -74,6 +74,7 @@ describe('release families', () => {
       '@deepseek-ai/dsh-experimental-loop-budget',
       '@deepseek-ai/dsh-experimental-loop-graph-profile',
       '@deepseek-ai/dsh-experimental-memory-distill',
+      '@deepseek-ai/dsh-experimental-memory-zeromem',
       '@deepseek-ai/dsh-experimental-ptc-runtime-python',
       '@deepseek-ai/dsh-experimental-schedule-bundle',
       '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice',

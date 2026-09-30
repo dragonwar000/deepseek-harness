@@ -13,6 +13,7 @@
     { "path": "../knowledge-rules" },
     { "path": "../tool-knowledge" },
     { "path": "../context-knowledge" },
-    { "path": "../memory-distill" }
+    { "path": "../memory-distill" },
+    { "path": "../memory-zeromem" }
   ]
 }

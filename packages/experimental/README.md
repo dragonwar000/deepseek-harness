@@ -60,6 +60,7 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`tool-knowledge`](tool-knowledge/README.md) | `knowledge_query`, `knowledge_read`, `knowledge_cite`, and approval-gated `knowledge_write` that cites session reads | registers four tools on `ctx.tools` |
 | [`context-knowledge`](context-knowledge/README.md) | Capped knowledge index message at the first step of a turn when the store changed | registers a listener on `agent/pre-step` and the `knowledgeContext` projection |
 | [`memory-distill`](memory-distill/README.md) | Episode page after the verifier gate records ok, citing the changing tool results, shadow or enforce | registers listeners on `agent/turn-stopping` and `session/event` and the `memoryDistill` projection |
+| [`memory-zeromem`](memory-zeromem/README.md) | Conversation memory through the zeromem `zm` CLI: completed turns stored per workspace without model calls, searched with `memory_recall` | registers `memory_recall`, `memory_stats`, and optional `memory_forget_session` on `ctx.tools`, a `session/event` listener, and the `zeromemTurn` projection |
 | [`knowledge-profile`](knowledge-profile/README.md) | Knowledge bundle switched on from the Plugins page | — |
 
 -----

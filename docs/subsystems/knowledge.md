@@ -38,6 +38,8 @@ Both are log-only and required-on-read; the injected index itself is an ordinary
 | Consumer | [dsh-experimental-context-knowledge](../../packages/experimental/context-knowledge/README.md) — index message and `knowledge/inject` |
 | Consumer | [dsh-experimental-memory-distill](../../packages/experimental/memory-distill/README.md) — episode pages after a verified turn |
 
+The knowledge bundle also carries [dsh-experimental-memory-zeromem](../../packages/experimental/memory-zeromem/README.md), switched off. It is not part of this seam: it stores conversation turns in a zeromem store and serves them through its own `memory_recall` tool, never as knowledge pages.
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>

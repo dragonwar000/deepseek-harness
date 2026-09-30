@@ -45,6 +45,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`, `graph_query`, `history_read` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.sessionQuery for history_read` | `tool/call`, `tool/result` | - | Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn's tool records, and compaction spans, and writes no session event of its own. |
 | `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`, `ctx.sessionProjections`, `ctx.subagents`, `graph-contract and graph-projection mounted`, `owning Agent session` | `tool/call`, `graph/run`, `graph/node`, `graph/edge`, `subagent/catalog`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema. |
 | `@deepseek-ai/dsh-experimental-tool-knowledge` | `knowledge_cite`, `knowledge_query`, `knowledge_read`, `knowledge_write` | `ctx.tools`, `ctx.sessionProjections`, `ctx.fs`, `a ctx.knowledge provider`, `owning Agent session for knowledge_write` | `tool/call`, `approval/asked`, `approval/decided`, `knowledge/write`, `tool/result` | - | Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval. |
+| `@deepseek-ai/dsh-experimental-memory-zeromem` | `memory_forget_session`, `memory_recall`, `memory_stats` | `ctx.tools`, `ctx.subprocess`, `ctx.sessionProjections`, `a zeromem zm executable`, `owning Agent session for the working directory and the excluded session` | `tool/call`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`). |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2823,6 +2824,71 @@ Create or replace one knowledge page. id is a path such as concepts/retry.md ins
 Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
 
 Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval.
+
+<a id="deepseek-aidsh-experimental-memory-zeromem"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-zeromem`
+
+### `memory_forget_session`
+
+Permanently delete every stored turn of one earlier session, named by the session id memory_recall returned. Use only when the user asks to forget that session; the user approves every deletion. The current session cannot be deleted, and later turns of a deleted session are not stored.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "string",
+      "description": "Session id from a memory_recall result."
+    }
+  },
+  "required": [
+    "session"
+  ]
+}
+```
+
+Source: [`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_recall`
+
+Search what the user and you said in earlier sessions in this workspace. Returns the most relevant stored turns, each with its session id, time, speaker (user or assistant), text, and kind: match answers the query, context is linked to a match. Only user messages and final assistant replies are stored, never tool calls or tool output; the current session is left out. Recalled text records what was said then: verify it against the current files before relying on it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words or a question about the earlier conversation."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most turns to return, 1 to 10 (default 5)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_stats`
+
+Count the stored turns and sessions that memory_recall searches.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`).
 
 <a id="deepseek-aidsh-tool-todo"></a>
 

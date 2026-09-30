@@ -1,0 +1,9 @@
+version: 1
+scenario: memory-recall
+profile: headless
+composition: memory-recall
+recording: authored
+header:
+  class: memory-recall
+  pin: true
+  systemPromptSource: text-turn

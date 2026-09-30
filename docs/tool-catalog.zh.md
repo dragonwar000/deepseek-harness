@@ -49,6 +49,7 @@
 | `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`、`graph_query`、`history_read` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.sessionQuery for history_read` | `tool/call`、`tool/result` | - | 实验性且只读：它折叠 graph/plan、graph/node、graph/run 与 graph/edge 事件、当前轮次的工具记录以及压缩片段，自身不写入任何会话事件。 |
 | `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`、`ctx.sessionProjections`、`ctx.subagents`、`graph-contract and graph-projection mounted`、`owning Agent session` | `tool/call`、`graph/run`、`graph/node`、`graph/edge`、`subagent/catalog`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。 |
 | `@deepseek-ai/dsh-experimental-tool-knowledge` | `knowledge_cite`、`knowledge_query`、`knowledge_read`、`knowledge_write` | `ctx.tools`、`ctx.sessionProjections`、`ctx.fs`、`a ctx.knowledge provider`、`owning Agent session for knowledge_write` | `tool/call`、`approval/asked`、`approval/decided`、`knowledge/write`、`tool/result` | - | 实验性。`read-only`（默认）注册 knowledge_query、knowledge_read 与 knowledge_cite；`read-write` 另加 knowledge_write，其描述会写出所配置的证据工具，并且总是请求批准。 |
+| `@deepseek-ai/dsh-experimental-memory-zeromem` | `memory_forget_session`、`memory_recall`、`memory_stats` | `ctx.tools`、`ctx.subprocess`、`ctx.sessionProjections`、`a zeromem zm executable`、`owning Agent session for the working directory and the excluded session` | `tool/call`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。memory_recall 与 memory_stats 始终注册；`allowForget: true` 另加 memory_forget_session，它总是请求批准。memory_recall 的描述会写出存储范围，以及是否排除当前会话（此处展示默认值 `workspace` 与 `true`）。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2834,6 +2835,71 @@ status、basis 与 version 属于 harness，出现在计划中会被拒绝。
 来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
 
 实验性。`read-only`（默认）注册 knowledge_query、knowledge_read 与 knowledge_cite；`read-write` 另加 knowledge_write，其描述会写出所配置的证据工具，并且总是请求批准。
+
+<a id="deepseek-aidsh-experimental-memory-zeromem"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-zeromem`
+
+### `memory_forget_session`
+
+永久删除一个更早会话的全部已存储轮次，会话由 memory_recall 返回的会话 id 指定。仅在用户要求遗忘该会话时使用；每次删除都由用户批准。当前会话不能删除，被删除会话之后的轮次也不会再存储。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "string",
+      "description": "Session id from a memory_recall result."
+    }
+  },
+  "required": [
+    "session"
+  ]
+}
+```
+
+来源：[`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_recall`
+
+检索用户与你在此工作区更早的会话中说过的内容。返回最相关的已存储轮次，每个轮次带其会话 id、时间、说话方（user 或 assistant）、文本以及类型：match 直接回答查询，context 与某个 match 相关联。只存储用户消息与最终助手回复，从不存储工具调用或工具输出；当前会话被排除。召回的文本记录的是当时说过的话：依赖它之前请对照当前文件核实。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words or a question about the earlier conversation."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most turns to return, 1 to 10 (default 5)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_stats`
+
+统计 memory_recall 所检索的已存储轮次数与会话数。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+实验性。memory_recall 与 memory_stats 始终注册；`allowForget: true` 另加 memory_forget_session，它总是请求批准。memory_recall 的描述会写出存储范围，以及是否排除当前会话（此处展示默认值 `workspace` 与 `true`）。
 
 <a id="deepseek-aidsh-tool-todo"></a>
 

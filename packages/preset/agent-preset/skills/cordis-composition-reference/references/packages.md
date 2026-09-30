@@ -205,6 +205,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem` | yes | Wiki filesystem provider of the knowledge seam: Markdown pages with YAML frontmatter in the session workspace, derived links, relations, touches edges and staleness, and rule-checked writes that cite session events |
 | `@deepseek-ai/dsh-experimental-loop-budget` | yes | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor; pauses the goal on a trip; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-memory-distill` | yes | Episode distillation into the knowledge store: after the verifier gate records verdict ok, one episode page with the request, the filtered final response, and the changed files, citing their tool results; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-memory-zeromem` | yes | Conversation memory backed by the zeromem zm CLI: each completed turn's user messages and final assistant text are spooled into a per-workspace zeromem store with no model call, and memory_recall and memory_stats search it; tool output is never stored |
 | `@deepseek-ai/dsh-experimental-ptc-runtime-python` | yes | CPython subprocess implementation of the DeepSeek Harness PTC execution seam |
 | `@deepseek-ai/dsh-experimental-speech-to-text` | yes | Experimental speech recognition with independently selectable providers |
 | `@deepseek-ai/dsh-experimental-speech-to-text-sensevoice` | yes | Local SenseVoice ONNX transcription with a managed sherpa-onnx process |

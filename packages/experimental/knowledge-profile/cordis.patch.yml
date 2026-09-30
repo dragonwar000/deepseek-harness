@@ -13,6 +13,10 @@
 # ok it records the episode page it would write (knowledge/write, applied false).
 # Without the loop guards bundle, or with a gate that has no verify commands, it
 # records nothing.
+# memory-zeromem ships disabled: it needs a zeromem zm executable and stores the
+# raw text of user messages and final replies (never tool output) on disk under
+# <harness home>/zeromem, one store per session working directory. Enable it with
+# a row patch `- id: memory-zeromem` / `disabled: false`.
 
 - insert:
     - id: knowledge-wiki-filesystem
@@ -55,3 +59,21 @@
         maxRequestChars: 1000
         maxOutcomeChars: 2000
         transientMarkers: [this session, for now, today only, temporarily, for this turn]
+
+    - id: memory-zeromem
+      name: '@deepseek-ai/dsh-experimental-memory-zeromem'
+      disabled: true
+      config:
+        zmPath: zm
+        embedder: default
+        scope: workspace
+        excludeCurrentSession: true
+        ingestSubagentSessions: false
+        allowForget: false
+        defaultResults: 5
+        maxResults: 10
+        maxTurnChars: 2000
+        maxIngestChars: 16000
+        timeoutMs: 120000
+        graceMs: 2000
+        maxConcurrent: 1

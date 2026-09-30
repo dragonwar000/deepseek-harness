@@ -223,6 +223,7 @@
     { "path": "./packages/experimental/tool-knowledge" },
     { "path": "./packages/experimental/context-knowledge" },
     { "path": "./packages/experimental/memory-distill" },
+    { "path": "./packages/experimental/memory-zeromem" },
     { "path": "./packages/experimental/knowledge-profile" },
     { "path": "./packages/client/locale/tsconfig.host.json" },
     { "path": "./packages/client/ui-theme/tsconfig.host.json" },

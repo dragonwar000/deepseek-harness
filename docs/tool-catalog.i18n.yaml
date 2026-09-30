@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: a76cb80e7bebfeef
-  zh: 54b1e6d48cb9e28b
+  en: b1fa2dfac4a16cb7
+  zh: ac505d28308aea4b
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -324,8 +324,20 @@
   en: f9b3fdd43287d544
   zh: 2a91e9d23e3e048a
 /tool-schema-catalog/deepseek-ai-dsh-experimental-tool-knowledge/knowledge-write:
-  en: d091b563e89224a6
-  zh: edf5f836e1c71678
+  en: b52e69fb0b25b4f3
+  zh: a9d50e140c1cc85e
+/tool-schema-catalog/deepseek-ai-dsh-experimental-memory-zeromem:
+  en: 42ae4792e406cc8a
+  zh: 42ae4792e406cc8a
+/tool-schema-catalog/deepseek-ai-dsh-experimental-memory-zeromem/memory-forget-session:
+  en: 60752837c4371532
+  zh: ce8eba2a9217ba09
+/tool-schema-catalog/deepseek-ai-dsh-experimental-memory-zeromem/memory-recall:
+  en: 5eb2ab34b1348439
+  zh: 234a65c8acf5c907
+/tool-schema-catalog/deepseek-ai-dsh-experimental-memory-zeromem/memory-stats:
+  en: 6277fc7692ebff00
+  zh: 26881b00792fd9ac
 /tool-schema-catalog/deepseek-ai-dsh-tool-todo:
   en: dea62d26fb18ff68
   zh: dea62d26fb18ff68
