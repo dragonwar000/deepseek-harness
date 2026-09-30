@@ -14,6 +14,7 @@ import { pathToFileURL } from 'node:url'
 import { Context, FiberState } from '@deepseek-ai/cordis'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
+import type { ModuleLoaderV2 } from '@deepseek-ai/cordis-plugin-loader'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import type { StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
@@ -56,13 +57,18 @@ async function loadYaml(
     ['@deepseek-ai/dsh-session', SessionStore],
     ['@deepseek-ai/dsh-llm-claude-cli', ClaudeCliRoute],
   ])
-  ctx.loader.internal = {
+  // Only `import` is reached: the Loader resolves a row's package name through this one method, so
+  // the stub declares the two members it uses and asserts to the loader shape rather than to
+  // `unknown`.
+  const internal: Pick<ModuleLoaderV2, 'version' | 'import'> = {
     version: 'v2',
-    async import(specifier: string) {
-      if (!modules.has(specifier)) throw new Error(`unexpected Loader import: ${specifier}`)
-      return modules.get(specifier)
+    import: (specifier: string) => {
+      const module = modules.get(specifier)
+      if (module === undefined) throw new Error(`unexpected Loader import: ${specifier}`)
+      return Promise.resolve(module)
     },
-  } as unknown as NonNullable<typeof ctx.loader.internal>
+  }
+  ctx.loader.internal = internal as ModuleLoaderV2
   await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(configPath).href } })
   await ctx.loader.await()
   return { ctx, cli }

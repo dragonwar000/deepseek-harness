@@ -71,7 +71,8 @@ const resultMessage = z.object({
 function parseLine(line: string): unknown {
   if (line.trim().length === 0) return undefined
   try {
-    return JSON.parse(line) as unknown
+    const parsed: unknown = JSON.parse(line)
+    return parsed
   }
   catch {
     // Not JSON: the CLI also writes human-readable notices on stdout, and a run must survive one.

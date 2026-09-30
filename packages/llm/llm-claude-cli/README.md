@@ -73,6 +73,8 @@ Every CLI invocation is planned by one pure module, `src/launch.ts`, so the exac
 
 **Nothing fails quietly.** `listModels()` throws rather than returning an empty list, because `buildModelCatalog` turns a throw into a `ModelCatalogFailure` the picker shows with its message, while an empty list would drop the provider group without a word. The named codes are `CLI_MISSING`, `CLI_NOT_AUTHENTICATED`, `CLI_CATALOG_UNAVAILABLE`, `UNKNOWN_MODEL`, `TOOL_CALLS_UNSUPPORTED`, `EMULATION_NOT_LOGGABLE`, and the `TOOL_CALL_*` rejections below.
 
+**Runtime invariants.** No runtime invariant companion is published: every relationship this package owns has exactly one observer, the catalog cache is read only through `ClaudeCliCatalog`, and an emulated reply is read only by the decoder that produced it, so no two independent observations can diverge. Behavior tests cover the probes, the parser, and the session record.
+
 **Credentials.** The only environment entry this package sets is `CLAUDE_CONFIG_DIR`. Conflicting inherited variables — `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` — are removed by the subprocess seam's own `SENSITIVE_ENV_PATTERN` scrub, not by a list maintained here.
 
 **Attribution headers.** `LlmAdapter` requires every provider HTTP request to carry `attributionHeaders()`. This adapter sends no HTTP request: the CLI owns the connection. There is therefore nothing to attribute, and adding a first-party client identifier to a vendor endpoint is exactly what this design exists to avoid.

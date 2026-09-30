@@ -73,6 +73,8 @@ Base Bundle 带有 `llm-claude-cli` 行，且 `disabled: true`。用 profile pat
 
 **没有任何失败是静默的。** `listModels()` 会抛错而不是返回空列表，因为 `buildModelCatalog` 会把抛错转成选择器会连同消息一起展示的 `ModelCatalogFailure`，而空列表只会让这个 provider 分组一声不响地消失。具名的错误码是 `CLI_MISSING`、`CLI_NOT_AUTHENTICATED`、`CLI_CATALOG_UNAVAILABLE`、`UNKNOWN_MODEL`、`TOOL_CALLS_UNSUPPORTED`、`EMULATION_NOT_LOGGABLE`，以及下文列出的 `TOOL_CALL_*` 拒绝码。
 
+**运行时 invariant。** 本包不发布运行时 invariant 伴生模块：它拥有的每一组关系都只有一个观察者——目录缓存只经 `ClaudeCliCatalog` 读取，被模拟的回复只由产生它的解码器读取，因此不存在两处独立观察可能分歧。探测、解析器与会话记录都由行为测试覆盖。
+
 **凭据。** 本包设置的环境变量只有 `CLAUDE_CONFIG_DIR` 一项。继承下来的冲突变量——`ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`CLAUDE_CODE_OAUTH_TOKEN`——由 subprocess seam 自己的 `SENSITIVE_ENV_PATTERN` 清洗掉，而不是由这里维护的一份名单。
 
 **Attribution headers。** `LlmAdapter` 要求每个 provider 的 HTTP 请求都带上 `attributionHeaders()`。本适配器不发出任何 HTTP 请求：连接由 CLI 持有。因此没有什么需要标注，而把第一方客户端标识送到厂商端点，恰恰是这个设计要避免的事。
