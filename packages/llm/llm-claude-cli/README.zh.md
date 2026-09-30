@@ -87,7 +87,9 @@ Base Bundle 带有 `llm-claude-cli` 行，且 `disabled: true`。用 profile pat
 <a id="tool-calls-in-the-prompt"></a>
 ## 用提示词承载工具调用
 
-声明了工具的请求会在系统提示词后面追加一段内容：上报一次调用的约定，以及每个已声明工具连同它的 `description` 与 `parameters` schema。这段措辞是固定的，由一个测试逐字钉住，并由 `PREAMBLE_TEMPLATE` 标识；它不是可配置项，因为正是它让回复可被解析。
+声明了工具的请求会在系统提示词后面追加一段内容：上报一次调用的约定，以及每个已声明工具连同它的 `description` 与它的 `arguments` 的类型。这段措辞是固定的，由一个测试逐字钉住，并由 `PREAMBLE_TEMPLATE` 标识，当前为 `dsh-tool-call/2`；它不是可配置项，因为正是它让回复可被解析。
+
+工具的 `arguments` 的类型由 `src/arguments-type.ts` 从它的 `parameters` JSON Schema 渲染而来，每个成员一行：名字、可省略时的 `?`、类型，以及 `//` 之后的说明。这套记法只表达 `type`、`properties`、`required`、`items`、`enum` 和单行的属性说明，别无其他。用到其他任何关键字、以 `additionalProperties: false` 封闭对象、或描述了没有成员行可依附之物的 schema，会原样列出它的 JSON Schema，因此没有任何近似。前言里除了 `dsh-tool-call` 示例之外不含任何围栏代码块，所以模型看到的唯一围栏就是它必须写出的那一个。
 
 要调用工具，模型发出一个 info string 为 `dsh-tool-call` 的围栏代码块，里面是含 `name` 与 `arguments` 的一个 JSON 对象。回复是边到达边扫描的：一段文本只要既不可能成为围栏的开头、也不可能成为工具调用对象的开头就立刻放行，所以普通回答依然是流式的。只有当闭合围栏之前的文本能解析成一个 JSON 对象时，它才算真正的闭合围栏，因此出现在字符串参数里的围栏——比如某个工具要写 Markdown——不会提前结束这个块。
 
@@ -120,7 +122,7 @@ Base Bundle 带有 `llm-claude-cli` 行，且 `disabled: true`。用 profile pat
 - `@deepseek-ai/dsh-ai-account` 与 `@deepseek-ai/dsh-ai-account-platform` —— 本路由从中取得路径的、已注册的官方 CLI 配置目录。
 - `@deepseek-ai/dsh-subagent-claude-code` —— Claude 账号的另一种用法：把整个任务委派给 Claude Code，而不是把它当作模型传输层。
 - `@deepseek-ai/dsh-llm` —— 适配器 seam、`StreamChunk`，以及本适配器需要映射到的互不重叠的 `TokenUsage` 计数。
-- [用提示词模拟工具调用](../../../.agents/notes/implemented/feature/2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md) —— 为什么 CLI 传输层把工具定义当作提示词文本携带，以及代价是什么。
+- [用提示词模拟工具调用](../../../.agents/notes/implemented/feature/2026-09-30-prompt-emulated-tool-calls-for-cli-transports.md) —— 为什么 CLI 传输层把工具定义当作提示词文本携带，以及代价是什么。
 - [Vendor CLI as a model transport](../../../.agents/notes/implemented/feature/2026-09-30-vendor-cli-as-model-transport.zh.md) —— 为什么用 CLI 作为传输层而不是把 OAuth 令牌取出来，以及为什么 Codex 与 DeepSeek 没有对应的路由。
 
 <a id="model-experience"></a>
@@ -144,20 +146,23 @@ Harness 自己的系统提示词（通过 `--system-prompt` 顶替 Claude Code �
 
 #### 模型看到什么
 
-上面的一切，再加上追加到系统提示词后面的一段 `## Tool calls`：上报一次调用的固定约定、两个明示的上限，以及每个已声明工具一条记录，携带它的 `description` 和以 JSON 呈现的 `parameters` schema。模型被告知：工具由 harness 执行并把真实结果送回来；被拒的回复会连同原因退回给它；在块之后写的任何内容都会被丢弃。在纠正性重跑上，它还会在用户回合末尾读到一段 `Harness:` 段落，指明上一次回复错在哪里。
+上面的一切，再加上追加到系统提示词后面的一段 `## Tool calls`：上报一次调用的固定约定、两个明示的上限，以及每个已声明工具一条记录，携带它的 `description` 和它的 `arguments` 的类型；类型记法无法表达时，则携带它的 `parameters` JSON Schema。模型被告知：工具由 harness 执行并把真实结果送回来；被拒的回复会连同原因退回给它；在块之后写的任何内容都会被丢弃。在纠正性重跑上，它还会在用户回合末尾读到一段 `Harness:` 段落，指明上一次回复错在哪里。
 
 #### Token 影响
 
-以 Claude Code 2.1.285 配 `haiku` 实测，按计费 prompt token 计：固定的约定文本占 289 个，五个现实工具声明平均各占 82 个（一个带说明的三属性工具约 100 个；一个不带说明的两属性工具约 67 个）。因此一次五工具请求为它的工具声明付出约 700 个 prompt token，其中只有 289 个约定文本是接受 `tools` 字段的 provider 不会收费的额外开销。每一次纠正性重跑都会把整个请求重发一遍；被放弃的那次运行自身的用量不会上报，因为回复一旦被拒，它的子进程就立刻被终止。
+以 Claude Code 2.1.285 配 `haiku` 实测，按计费 prompt token 计：固定的约定文本占 385 个，五个各有两三个标量属性的工具声明平均各占 42 个。因此一次五工具请求为它的工具声明付出约 595 个 prompt token，其中只有 385 个约定文本是接受 `tools` 字段的 provider 不会收费的额外开销。
+
+真实会话的工具集要大得多，而且其中大部分是工具自己的文本。一次实录的 Desktop 会话声明的 36 个工具占 6,362 个 prompt token（26,275 个字符），其中光是工具的 `description` 字符串就有 13,185 个字符，这条路由无法缩短它们。`dsh-tool-call/1` 把每个 `parameters` schema 以 JSON 列在 `json` 围栏里，同样这 36 个工具占 7,397 个 token（30,430 个字符），约定文本占 289 个，同样那五个小工具各占 72 个；同一会话早先声明的 27 个工具则从 5,377 个 token（22,258 个字符）降到 4,524 个（18,786 个字符）。每一次纠正性重跑都会把整个请求重发一遍；被放弃的那次运行自身的用量不会上报，因为回复一旦被拒，它的子进程就立刻被终止。
 
 #### KV Cache 影响
 
-相比纯文本情形既没有新增收益也没有新增损失：前言属于被顶替的系统提示词，而 CLI 并不缓存它。由于前言是已声明工具的纯函数，工具集不变的对话每一轮发送的提示词文本逐字节相同，所以确实生效的 provider 侧前缀缓存不会被这套模拟本身破坏。
+上面那些小的文本请求报告的 cache read 与 cache write 都是 0，但系统提示词达到真实工具集的规模时就不同了：27 工具与 36 工具的实测把整个 prompt 报告为 `cache_creation_input_tokens`，而那次实录会话在后续回合报告了 cache read。由于前言是已声明工具的纯函数，工具集不变的对话每一轮发送的提示词文本逐字节相同，所以这种前缀缓存不会被这套模拟本身破坏。工具集或 `PREAMBLE_TEMPLATE` 发生变化时，前缀随之改变，缓存会落空一次。
 
 ## 已知限制与后续工作
 
 <a id="known-limitations-and-deferred-work"></a>
 
+- **前言随工具集增长，而且主要由工具说明构成。** 一次 36 工具的会话每个请求为它的工具声明付出约 6,400 个 prompt token。这条路由没有限定声明哪些工具的白名单：部署方通过往会话里组合更少的工具来缩短前言。
 - **工具调用依赖模型遵守散文约定。** 没有任何东西约束回复：围栏代码块是一条指令，不是解码约束，所以无视格式的模型会先花掉一次纠正性重跑、然后毁掉这一回合。以 Claude Code 2.1.285 实测，`sonnet` 每次都给出干净的单个块，而 `haiku` 有时会把块包在多余的 `<function-calls>` 标签里——解析仍然正确，但那些多余文本会被当作 assistant 文本保留。这条路由请优先选择强模型。
 - **不保证并行工具调用。** `toolCallMaxCalls` 限制一次回复能携带多少个块，但没有任何东西像原生 `tools` 字段那样促使模型把互不依赖的调用打成一批。
 - **围栏处和可能的调用对象处流式会停顿。** 一段文本只要不可能开启围栏就立刻放行，所以普通回答是流式的；一旦回复开启了围栏，在该块闭合之前就不再有新内容显示。以 `"name"` 或 `"arguments"` 开头的 JSON 对象会让流式停顿，直到它的 `name` 写完且未被声明，或直到对象闭合。

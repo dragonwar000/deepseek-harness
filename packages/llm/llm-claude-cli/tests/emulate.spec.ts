@@ -134,7 +134,13 @@ describe('buildToolPreamble', () => {
   it('renders the pinned wording the model reads, verbatim', () => {
     // Pinned on purpose: this is model-visible text, and the wording is what makes an emulated call
     // parseable. Changing it changes what the model sees, so it changes PREAMBLE_TEMPLATE too.
-    expect(buildToolPreamble([READ_FILE], LIMITS)).toBe([
+    const report: ToolSchema = {
+      name: 'write_report',
+      description: 'Write a report.',
+      // `minItems` is a keyword the type notation cannot state, so this schema is listed verbatim.
+      parameters: { type: 'object', properties: { rows: { type: 'array', minItems: 1 } } },
+    }
+    expect(buildToolPreamble([READ_FILE, report], LIMITS)).toBe([
       '## Tool calls',
       '',
       'The harness running this conversation executes tools for you, and reads your calls out of your reply text. Only the tools listed below exist.',
@@ -147,8 +153,9 @@ describe('buildToolPreamble', () => {
       '',
       'The harness rejects a reply that breaks any of these, names which one, and asks you again:',
       '',
+      '- The block opens with the line ```dsh-tool-call and closes with the line ```. It is the only way to call a tool: a JSON object outside such a block is not a call, and neither are XML tags such as `<invoke>` or `<function_calls>`.',
       '- `name` is spelled exactly as listed below. No other tool exists.',
-      '- `arguments` is a JSON object. The harness passes it to the tool, which checks it against the `parameters` schema below and reports a violation to you.',
+      '- `arguments` is a JSON object. The harness passes it to the tool, which checks it against the type listed below and reports a violation to you.',
       '- Each block holds that one JSON object and nothing else, under 32768 bytes.',
       '- At most 4 blocks in one reply.',
       '- A reply that calls a tool contains no text outside its blocks, and ends at the closing fence of its last block.',
@@ -158,17 +165,23 @@ describe('buildToolPreamble', () => {
       '',
       '### Tools',
       '',
+      'Each tool lists the type of its `arguments`: `?` marks a member that may be left out, and the text after `//` describes the member.',
+      '',
       '#### read_file',
       '',
       'Read a file from the workspace.',
       '',
-      '`parameters`:',
+      'arguments: {',
+      '  path: string',
+      '}',
       '',
-      '```json',
-      '{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}',
-      '```',
+      '#### write_report',
+      '',
+      'Write a report.',
+      '',
+      'arguments, as JSON Schema: {"type":"object","properties":{"rows":{"type":"array","minItems":1}}}',
     ].join('\n'))
-    expect(PREAMBLE_TEMPLATE).toBe('dsh-tool-call/1')
+    expect(PREAMBLE_TEMPLATE).toBe('dsh-tool-call/2')
     expect(TOOL_CALL_FENCE).toBe('dsh-tool-call')
   })
 
@@ -176,6 +189,11 @@ describe('buildToolPreamble', () => {
     const text = buildToolPreamble([READ_FILE], { maxCalls: 2, maxBytes: 4_096 })
     expect(text).toContain('under 4096 bytes')
     expect(text).toContain('At most 2 blocks')
+  })
+
+  it('shows the model no fenced block except the one it must write', () => {
+    const text = buildToolPreamble([READ_FILE, BASH], LIMITS)
+    expect(text.match(/^```.*$/gmu)).toEqual(['```dsh-tool-call', '```'])
   })
 
   it('lists every declared tool in request order', () => {

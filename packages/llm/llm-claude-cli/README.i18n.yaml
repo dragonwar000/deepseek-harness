@@ -21,11 +21,11 @@
   en: b0c93d44e3459c27
   zh: 88c62d0cbe23c25d
 /deepseek-ai-dsh-llm-claude-cli/tool-calls-in-the-prompt:
-  en: 70f9a066c6511d65
-  zh: 596680561cf14f12
+  en: 8fc3473a0d8aaef3
+  zh: 4244a93d0d4a5d4d
 /deepseek-ai-dsh-llm-claude-cli/further-exploration:
-  en: 0701c93f5b9e38cf
-  zh: b47fa3859ad1af70
+  en: 16feb29b07aad160
+  zh: 7a9fb2a017bed23b
 /deepseek-ai-dsh-llm-claude-cli/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -45,17 +45,17 @@
   en: 02e61a18ce911205
   zh: f6e795de60939ede
 /deepseek-ai-dsh-llm-claude-cli/model-experience/tool-bearing-requests-over-the-cli-transport/what-the-model-sees:
-  en: bf53b0add7a6ef7c
-  zh: 5a9f80a29d05e488
+  en: ed253264784e78d7
+  zh: 7fa78ed7900be220
 /deepseek-ai-dsh-llm-claude-cli/model-experience/tool-bearing-requests-over-the-cli-transport/token-effect:
-  en: 12b72a32b6c680f4
-  zh: 67a48ccee3b6d7c8
+  en: 93f17ec2fff4360a
+  zh: 8045c958046be4a9
 /deepseek-ai-dsh-llm-claude-cli/model-experience/tool-bearing-requests-over-the-cli-transport/kv-cache-effect:
-  en: 76d42b726c2ac318
-  zh: a7f793aa78d7bfe7
+  en: 45ad700dc4d25bf8
+  zh: 142e1b903808a766
 /deepseek-ai-dsh-llm-claude-cli/known-limitations-and-deferred-work:
-  en: aa352094a0d1f72c
-  zh: 0f9ad11658db883c
+  en: 37242d2c46375b7f
+  zh: 1077ae2e7b31b703
 /deepseek-ai-dsh-llm-claude-cli/known-limitations-and-deferred-work/dev-note:
   en: a6f984339ede9df6
   zh: e26493d080f6eb8b

@@ -18,14 +18,21 @@
 
 import type { StreamChunk, ToolSchema } from '@deepseek-ai/dsh-llm'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { renderArgumentsType } from './arguments-type.ts'
 
 /**
  * Identity of the pinned preamble wording, recorded in the session event.
  *
  * Model-visible text: a change to {@link buildToolPreamble} changes what the model reads, so it
  * changes this tag too and a session log stays reconstructable.
+ *
+ * `/1` listed each tool's `parameters` as JSON Schema inside a `json` fence. `/2` lists the type of
+ * its `arguments` in the notation of `./arguments-type.ts`, states as a rule of its own that the
+ * block is the only way to call a tool and that neither a bare JSON object nor XML tags are one,
+ * and uses no fence but the `dsh-tool-call` one. The reply format is the same in
+ * both.
  */
-export const PREAMBLE_TEMPLATE = 'dsh-tool-call/1'
+export const PREAMBLE_TEMPLATE = 'dsh-tool-call/2'
 
 /** Info string of the fenced block that carries one emulated tool call. */
 export const TOOL_CALL_FENCE = 'dsh-tool-call'
@@ -137,7 +144,8 @@ export function resolveToolPlan(
  * Render the preamble the model reads.
  *
  * Pinned verbatim by a test: this is model-visible text, and its wording is what makes the emulated
- * call parseable, so it is not a tunable.
+ * call parseable, so it is not a tunable. It carries no fence except the `dsh-tool-call` one, so
+ * the only fenced block the model is shown is the one it must write.
  * @param tools - the request's declared tool schemas, in request order.
  * @param limits - the bounds stated to the model, so a rejection is never a surprise.
  * @returns the preamble text, without a trailing newline.
@@ -156,8 +164,9 @@ export function buildToolPreamble(tools: readonly ToolSchema[], limits: Emulatio
     '',
     'The harness rejects a reply that breaks any of these, names which one, and asks you again:',
     '',
+    `- The block opens with the line ${FENCE_OPEN} and closes with the line ${FENCE_CLOSE}. It is the only way to call a tool: a JSON object outside such a block is not a call, and neither are XML tags such as \`<invoke>\` or \`<function_calls>\`.`,
     '- `name` is spelled exactly as listed below. No other tool exists.',
-    '- `arguments` is a JSON object. The harness passes it to the tool, which checks it against the `parameters` schema below and reports a violation to you.',
+    '- `arguments` is a JSON object. The harness passes it to the tool, which checks it against the type listed below and reports a violation to you.',
     `- Each block holds that one JSON object and nothing else, under ${limits.maxBytes} bytes.`,
     `- At most ${limits.maxCalls} blocks in one reply.`,
     '- A reply that calls a tool contains no text outside its blocks, and ends at the closing fence of its last block.',
@@ -166,19 +175,19 @@ export function buildToolPreamble(tools: readonly ToolSchema[], limits: Emulatio
     'When no tool is needed, reply with ordinary text and no such block.',
     '',
     '### Tools',
+    '',
+    'Each tool lists the type of its `arguments`: `?` marks a member that may be left out, and the text after `//` describes the member.',
   ]
   for (const tool of tools) {
+    const type = renderArgumentsType(tool.parameters)
     lines.push(
       '',
       `#### ${tool.name}`,
       '',
       tool.description,
       '',
-      '`parameters`:',
-      '',
-      '```json',
-      JSON.stringify(tool.parameters),
-      FENCE_CLOSE,
+      // A schema the type notation cannot state exactly is listed as it is, never approximated.
+      type === undefined ? `arguments, as JSON Schema: ${JSON.stringify(tool.parameters)}` : `arguments: ${type}`,
     )
   }
   return lines.join('\n')
