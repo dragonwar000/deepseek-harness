@@ -172,7 +172,7 @@ export class PlatformAiAccount extends AiAccount {
     this.ctx.effect(() => {
       void this.check()
       const timer = setInterval(() => { void this.check() }, interval)
-      return () => clearInterval(timer)
+      return () => { clearInterval(timer) }
     }, 'ai-account: periodic sign-in status checks')
   }
 

@@ -485,14 +485,16 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     const status = (view: AiAccountsView) => view.accounts[0]!.status
     const started = await until(fixture.service, view => status(view).status === 'signedIn')
     await settle()
-    expect(status(started)).toEqual({ status: 'signedIn', checkedAt: expect.any(Number), message: null })
+    expect(status(started)).toMatchObject({ status: 'signedIn', message: null })
+    expect(status(started).checkedAt).toBeTypeOf('number')
     expect(fixture.transitions).toEqual([{ id, kind: 'claude', isDefault: true, previous: 'unknown', current: status(started) }])
 
     rmSync(signedIn)
     vi.advanceTimersByTime(30_000)
     // A caller during the interval's check joins it instead of starting another.
     const out = await fixture.service.checkStatus()
-    expect(status(out)).toEqual({ status: 'signedOut', checkedAt: expect.any(Number), message: '{"loggedIn":false,"authMethod":"none"}' })
+    expect(status(out)).toMatchObject({ status: 'signedOut', message: '{"loggedIn":false,"authMethod":"none"}' })
+    expect(status(out).checkedAt).toBeGreaterThanOrEqual(status(started).checkedAt!)
     vi.advanceTimersByTime(30_000)
     expect(status(await fixture.service.checkStatus()).status).toBe('signedOut')
     writeFileSync(signedIn, 'yes')
