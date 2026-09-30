@@ -6,7 +6,7 @@ import { createSystemMessage, LlmError } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { GenerateOptions, RequestMessage, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { ClaudeCliAdapter, TOOL_CALLS_UNSUPPORTED, UNKNOWN_MODEL } from '../src/adapter.ts'
-import { ClaudeCliCatalog } from '../src/catalog.ts'
+import { CLI_NOT_AUTHENTICATED, ClaudeCliCatalog } from '../src/catalog.ts'
 import {
   PREAMBLE_TEMPLATE,
   TOOL_CALL_MALFORMED,
@@ -15,7 +15,7 @@ import {
   TOOL_CALL_UNKNOWN_TOOL,
 } from '../src/emulate.ts'
 import type { CliToolEmulation, CliToolEmulationReply } from '../src/types.ts'
-import { FakeCli, streamLines } from './harness.ts'
+import { FakeCli, SIGNED_OUT_RUN, streamLines } from './harness.ts'
 import type { FakeCliScript } from './harness.ts'
 
 let root: string
@@ -42,6 +42,8 @@ function build(
     readonly toolCallRetries?: number
     readonly toolCallMaxCalls?: number
     readonly toolCallLenient?: boolean
+    /** `null` builds a route with no registered Claude account. */
+    readonly accountHome?: null
   } = {},
 ) {
   const cli = new FakeCli(script)
@@ -59,7 +61,7 @@ function build(
     extraArgs: [],
     authTimeoutMs: 400,
     catalogTimeoutMs: 400,
-    accountHome: () => '/accounts/claude/one',
+    accountHome: () => overrides.accountHome === null ? undefined : '/accounts/claude/one',
   })
   const adapter = new ClaudeCliAdapter({
     ...shared,
@@ -352,6 +354,62 @@ describe('ClaudeCliAdapter.stream', () => {
     expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.message)
       .toMatch(/error_max_turns/)
     expect(cli.callsOf('inference')[0]?.terminateCalls).toBe(1)
+  })
+})
+
+describe('ClaudeCliAdapter failed runs', () => {
+  /** The terminal failure of one streamed request. */
+  async function failureOf(chunks: Promise<StreamChunk[]>) {
+    const finish = (await chunks).at(-1)
+    if (finish?.type !== 'finish' || finish.reason.kind !== 'error') throw new Error('expected an error finish')
+    return finish.reason.failure
+  }
+
+  it('names the signed-out account when the login lapsed after the catalog was cached', async () => {
+    const { cli, adapter } = build({ inference: () => SIGNED_OUT_RUN })
+    const chunks = collect(adapter.stream(request()))
+    expect(await failureOf(chunks)).toEqual({
+      message: 'The registered Claude account is signed out. Open Settings, AI Account, and sign in to Claude again; the Claude Code CLI performs the sign-in and keeps the credential. The CLI reported: Not logged in · Please run /login',
+      code: CLI_NOT_AUTHENTICATED,
+    })
+    expect((await chunks).some(chunk => chunk.type === 'text-delta')).toBe(false)
+    expect(cli.callsOf('inference')).toHaveLength(1)
+  })
+
+  it('says no account is registered when the route runs against no account directory', async () => {
+    const { adapter } = build({ inference: () => SIGNED_OUT_RUN }, { accountHome: null })
+    const failure = await failureOf(collect(adapter.stream(request())))
+    expect(failure.code).toBe(CLI_NOT_AUTHENTICATED)
+    expect(failure.message).toMatch(/^No Claude account is registered\. Open Settings, AI Account, and sign in to Claude;/)
+  })
+
+  it('reports a signed-out run of a tool-declaring request once, with no correction run', async () => {
+    const { cli, adapter, replies } = build({ inference: () => SIGNED_OUT_RUN })
+    const failure = await failureOf(collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION }))))
+    expect(failure.code).toBe(CLI_NOT_AUTHENTICATED)
+    expect(cli.callsOf('inference')).toHaveLength(1)
+    expect(replies).toEqual([{
+      provider: 'claude-cli',
+      model: 'opus',
+      attempt: 1,
+      calls: 0,
+      lenientCalls: 0,
+      discardedChars: 0,
+    }])
+  })
+
+  it('reports a rate-limited run with the code the retry policy repeats', async () => {
+    const { adapter } = build({
+      inference: () => [
+        '{"type":"assistant","message":{"content":[]},"error":"rate_limit","is_api_error_message":true}',
+        '{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"API Error: Request rejected (429) · This request would exceed your rate limit."}',
+      ],
+    })
+    expect(await failureOf(collect(adapter.stream(request())))).toEqual({
+      message: 'Claude Code CLI: API Error: Request rejected (429) · This request would exceed your rate limit.',
+      code: 'RATE_LIMIT',
+      status: 429,
+    })
   })
 })
 

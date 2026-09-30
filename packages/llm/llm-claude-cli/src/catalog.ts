@@ -12,6 +12,7 @@
 
 import { mkdir } from 'node:fs/promises'
 import { LlmError } from '@deepseek-ai/dsh-llm'
+import type { LlmFailure } from '@deepseek-ai/dsh-llm'
 import { SubprocessExecutableNotFoundError } from '@deepseek-ai/dsh-subprocess'
 import {
   assertAllowedExtraArgs,
@@ -31,6 +32,24 @@ export const CLI_MISSING = 'CLI_MISSING'
 export const CLI_NOT_AUTHENTICATED = 'CLI_NOT_AUTHENTICATED'
 /** The CLI is installed and signed in but did not answer with a catalog. */
 export const CLI_CATALOG_UNAVAILABLE = 'CLI_CATALOG_UNAVAILABLE'
+
+/**
+ * The failure for a configuration directory with no signed-in account.
+ *
+ * `claude auth status --json` and an inference run whose login lapsed after the catalog was cached
+ * both report this state, and both name the same place to sign in.
+ * @param accountHome - the registered account's configuration directory, or `undefined` when no
+ *   Claude account is registered.
+ * @returns the `CLI_NOT_AUTHENTICATED` failure naming where to sign in.
+ */
+export function notAuthenticatedFailure(accountHome: string | undefined): LlmFailure {
+  return {
+    message: accountHome === undefined
+      ? 'No Claude account is registered. Open Settings, AI Account, and sign in to Claude; the Claude Code CLI performs the sign-in and keeps the credential.'
+      : 'The registered Claude account is signed out. Open Settings, AI Account, and sign in to Claude again; the Claude Code CLI performs the sign-in and keeps the credential.',
+    code: CLI_NOT_AUTHENTICATED,
+  }
+}
 
 /** Everything the probe needs; every timeout and path is a validated `Config` field upstream. */
 export interface ClaudeCliCatalogDeps {
@@ -164,12 +183,8 @@ export class ClaudeCliCatalog {
       )
     }
     if (!status.loggedIn) {
-      throw new LlmError(
-        launch.accountHome === undefined
-          ? 'No Claude account is registered. Open Settings, AI Account, and sign in to Claude; the Claude Code CLI performs the sign-in and keeps the credential.'
-          : 'The registered Claude account is signed out. Open Settings, AI Account, and sign in to Claude again; the Claude Code CLI performs the sign-in and keeps the credential.',
-        CLI_NOT_AUTHENTICATED,
-      )
+      const failure = notAuthenticatedFailure(launch.accountHome)
+      throw new LlmError(failure.message, failure.code)
     }
   }
 

@@ -26,6 +26,7 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
+import { notAuthenticatedFailure } from './catalog.ts'
 import type { ClaudeCliCatalog } from './catalog.ts'
 import {
   correctionNotice,
@@ -291,7 +292,7 @@ export class ClaudeCliAdapter extends LlmAdapter {
       deadline(this.deps.requestTimeoutMs, options.signal),
     )
     try {
-      const decoder = new ClaudeCliStreamDecoder()
+      const decoder = new ClaudeCliStreamDecoder(notAuthenticatedFailure(launch.accountHome))
       const emulator = prompt === undefined ? undefined : new ToolCallEmulator(prompt)
       const pending: StreamChunk[] = []
       const take = (chunks: readonly StreamChunk[]): void => {

@@ -1,6 +1,8 @@
 /**
- * Runs the real Claude Code CLI. Self-skips when the CLI is absent or reports no signed-in account,
- * so it is inert in CI and on a machine whose `claude` is signed out.
+ * Runs the real Claude Code CLI. The signed-in suite self-skips when the CLI is absent or reports
+ * no signed-in account, so it is inert in CI and on a machine whose `claude` is signed out. The
+ * signed-out suite needs only the executable: it points the CLI at an empty configuration directory
+ * it creates, so it never reads or changes a real account.
  *
  * It proves the facts the unit tests can only assert against a script: the CLI answers this
  * package's `list_models` control request, a run with `--tools ""` returns text without a single
@@ -8,7 +10,7 @@
  * `dsh-tool-call` block that this package turns into a real tool call.
  */
 import { execFile } from 'node:child_process'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -24,10 +26,29 @@ import type { GenerateOptions, StreamChunk, ToolSchema } from '@deepseek-ai/dsh-
 import SessionStore from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import LocalSubprocess from '@deepseek-ai/dsh-subprocess-local'
+import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { notAuthenticatedFailure } from '../src/catalog.ts'
 import * as Route from '../src/index.ts'
+import { resolveInferenceSpec } from '../src/launch.ts'
+import { startCliRun } from '../src/run.ts'
+import { projectRequest } from '../src/serialize.ts'
+import { claudeCliModelId } from '../src/types.ts'
+import { ClaudeCliStreamDecoder } from '../src/wire.ts'
 
 const run = promisify(execFile)
+
+/** Whether the host has a `claude` executable at all, signed in or not. */
+async function cliInstalled(): Promise<boolean> {
+  try {
+    await run('claude', ['--version'], { timeout: 30_000 })
+    return true
+  }
+  catch {
+    // Absent or not executable: the signed-out suite has nothing to run.
+    return false
+  }
+}
 
 /** Whether the host `claude` exists and reports a signed-in account. */
 async function signedIn(): Promise<boolean> {
@@ -43,6 +64,7 @@ async function signedIn(): Promise<boolean> {
 }
 
 const available = await signedIn()
+const installed = await cliInstalled()
 const contexts: Context[] = []
 let root: string
 
@@ -246,4 +268,76 @@ describe.skipIf(!available)('llm-claude-cli against the installed Claude Code CL
     expect(text).toContain('DSH-E2E-MARKER')
     expect(chunks.some(chunk => chunk.type === 'tool-call-delta')).toBe(false)
   }, 300_000)
+})
+
+describe.skipIf(!installed)('llm-claude-cli against a signed-out configuration directory', () => {
+  /** An empty directory the CLI has never signed in to. */
+  async function emptyAccountHome(): Promise<string> {
+    const home = join(root, 'signed-out-home')
+    await mkdir(home, { recursive: true })
+    return home
+  }
+
+  it('refuses to list models with the named error that says where to sign in', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LocalSubprocess)
+    const accountHome = await emptyAccountHome()
+    const catalog = new Route.ClaudeCliCatalog({
+      spawn: spec => ctx.subprocess.spawn(spec),
+      resolveExecutable: (command, env, signal) => ctx.subprocess.resolveExecutable(command, env, signal),
+      cliPath: 'claude',
+      extraArgs: [],
+      workingDirectory: join(root, 'cwd'),
+      authTimeoutMs: 30_000,
+      catalogTimeoutMs: 60_000,
+      graceMs: 2_000,
+      accountHome: () => accountHome,
+    })
+    await expect(catalog.rows()).rejects.toMatchObject(notAuthenticatedFailure(accountHome))
+  }, 120_000)
+
+  it('names the signed-out account when an inference run itself reports the missing login', async () => {
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(LocalSubprocess)
+    const accountHome = await emptyAccountHome()
+    const cwd = join(root, 'cwd')
+    await mkdir(cwd, { recursive: true })
+    const projected = projectRequest(
+      [{ role: 'user', content: [{ type: 'text', text: 'Reply with exactly: PONG' }] }],
+      'Answer with exactly the word asked for and nothing else.',
+      undefined,
+      undefined,
+    )
+    // The catalog probe is skipped on purpose: it asks `auth status` first and would refuse before
+    // a run starts. This is the run a route makes once its catalog is cached and the login lapses.
+    const spec = resolveInferenceSpec(
+      { executable: 'claude', extraArgs: [], accountHome },
+      { model: claudeCliModelId('haiku'), system: projected.system, sessionId: randomUUID() },
+    )
+    const cli = startCliRun(
+      { spawn: child => ctx.subprocess.spawn(child), cwd, graceMs: 2_000 },
+      { ...spec, stdinPayload: projected.stdinPayload },
+      AbortSignal.timeout(90_000),
+    )
+    const chunks: StreamChunk[] = []
+    try {
+      const decoder = new ClaudeCliStreamDecoder(notAuthenticatedFailure(accountHome))
+      for await (const line of cli.lines()) {
+        chunks.push(...decoder.push(line))
+        if (decoder.resultSeen) break
+      }
+    }
+    finally {
+      await cli.dispose()
+    }
+    expect(chunks.some(chunk => chunk.type === 'text-delta')).toBe(false)
+    const finish = chunks.at(-1)
+    if (finish?.type !== 'finish' || finish.reason.kind !== 'error') throw new Error('expected an error finish')
+    expect(finish.reason.failure.code).toBe(Route.CLI_NOT_AUTHENTICATED)
+    expect(finish.reason.failure.message).toBe(
+      `${notAuthenticatedFailure(accountHome).message} The CLI reported: Not logged in · Please run /login`,
+    )
+  }, 120_000)
 })

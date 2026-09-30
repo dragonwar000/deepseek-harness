@@ -74,6 +74,17 @@ Every CLI invocation is planned by one pure module, `src/launch.ts`, so the exac
 
 **Nothing fails quietly.** `listModels()` throws rather than returning an empty list, because `buildModelCatalog` turns a throw into a `ModelCatalogFailure` the picker shows with its message, while an empty list would drop the provider group without a word. The named codes are `CLI_MISSING`, `CLI_NOT_AUTHENTICATED`, `CLI_CATALOG_UNAVAILABLE`, `UNKNOWN_MODEL`, `TOOL_CALLS_UNSUPPORTED`, `EMULATION_NOT_LOGGABLE`, and the `TOOL_CALL_*` rejections below.
 
+**A failed run reports the CLI's own words.** The CLI ends a failed run with a `result` message whose `is_error` is set. When the run ended on an API error the message's `subtype` is still `success`, its `result` holds the CLI's text, its `api_error_status` holds the HTTP status when one exists, and the preceding synthetic `assistant` message carries an `error` kind. The terminal failure quotes that text as one line of at most 500 characters with terminal control sequences removed, and its code comes from the first matching row:
+
+| The CLI reported | Code | Message |
+|---|---|---|
+| `error` kind `authentication_failed`, or `api_error_status` 401, or text containing `Not logged in` or `Please run /login` | `CLI_NOT_AUTHENTICATED` | The sign-in instruction `claude auth status` failures use, then `The CLI reported: <text>` |
+| `error` kind `rate_limit`, or `api_error_status` 429 | `RATE_LIMIT` | `Claude Code CLI: <text>` |
+| `error` kind `server_error` or `overloaded`, or `api_error_status` 500 or above | `SERVER` | `Claude Code CLI: <text>` |
+| anything else, including `billing_error`, `model_not_found`, `invalid_request`, and the `error_*` subtypes | `PROVIDER` | `Claude Code CLI: <text>`, where an `error_*` subtype's text is its `errors` list |
+
+A failed `result` with no text is named by its subtype, or as a failed run with no stated reason when the subtype is `success`. The default retry policy repeats `RATE_LIMIT` and `SERVER` and never repeats `CLI_NOT_AUTHENTICATED` or `PROVIDER`, because a signed-out account fails identically on every attempt. A run that ends with no `result` at all is `TRANSPORT`, with the CLI's stderr tail.
+
 **Runtime invariants.** No runtime invariant companion is published: every relationship this package owns has exactly one observer, the catalog cache is read only through `ClaudeCliCatalog`, and an emulated reply is read only by the decoder that produced it, so no two independent observations can diverge. Behavior tests cover the probes, the parser, and the session record.
 
 **Credentials.** The only environment entry this package sets is `CLAUDE_CONFIG_DIR`. Conflicting inherited variables — `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` — are removed by the subprocess seam's own `SENSITIVE_ENV_PATTERN` scrub, not by a list maintained here.
@@ -179,6 +190,7 @@ The small text requests above report no cache read or write, but a system prompt
 - **A rejected call after prose ends the turn with an error.** A correction run can only replace a reply no answer text was handed over from. When prose was already streamed, a call in another syntax that lenient reading does not accept, or that the reply ended inside, is a terminal failure: the raw JSON or XML is withheld, and no tool runs.
 - **Tool calls appear when the reply ends.** A reply's calls are held until the reply ends so that a rejected reply runs none of them, which means a call card appears after the model has finished writing all of that reply's calls rather than as each one closes.
 - **`list_models` is undocumented.** The control request this catalog probe uses is not in Claude Code's published CLI reference. It is answered by 2.1.285 and may change without notice; an unreadable answer produces `CLI_CATALOG_UNAVAILABLE` rather than a crash, and `tests/real-cli.e2e.ts` detects a change on any machine with a signed-in CLI.
+- **Failure classification reads fields the CLI does not document.** `api_error_status` is marked internal in the CLI's own message schema, and the `error` kinds were read from Claude Code 2.1.285. A CLI that renames them leaves a failed run as `PROVIDER` with the CLI's text, except a signed-out run, which the text `Not logged in` still identifies. A subscription usage limit is reported as `rate_limit`, so the default retry policy repeats it although it cannot clear within the policy's delays.
 - **No image or file input.** The route advertises `text` only. Attachments reach it as the handle text request assembly already substituted.
 - **No prompt caching.** See the KV Cache note above.
 - **One process per request.** Each request spawns and tears down a CLI child, which costs process startup on every turn; `maxConcurrent` bounds how many run at once.
@@ -187,7 +199,7 @@ The small text requests above report no cache read or write, but a system prompt
 <a id="dev-note"></a>
 ### Dev Note
 
-`tests/real-cli.e2e.ts` runs the installed `claude` and self-skips when it is absent or signed out, so it is inert in CI. It is the only check that would notice the undocumented `list_models` control request changing, or a model stopping to follow the tool-call format; run it on a machine with a signed-in CLI after a Claude Code upgrade.
+`tests/real-cli.e2e.ts` runs the installed `claude`. Its signed-in suite self-skips when the CLI is absent or signed out, so it is inert in CI; its signed-out suite needs only the executable and points it at an empty configuration directory it creates, so it reproduces the `CLI_NOT_AUTHENTICATED` failure without reading a real account. The signed-in suite is the only check that would notice the undocumented `list_models` control request changing, or a model stopping to follow the tool-call format; run it on a machine with a signed-in CLI after a Claude Code upgrade.
 
 `tests/loader-composition.spec.ts` boots the package through the real Loader under the package name the Base Bundle row names, so a row that would not load in a shipped profile fails there rather than in a profile.
 

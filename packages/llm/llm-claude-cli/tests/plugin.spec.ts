@@ -11,7 +11,7 @@ import type { GenerateOptions, LlmProviderInfo, StreamChunk } from '@deepseek-ai
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Route from '../src/index.ts'
-import { FakeAiAccount, FakeCli, FakeSubprocessRuntime, streamLines } from './harness.ts'
+import { FakeAiAccount, FakeCli, FakeSubprocessRuntime, SIGNED_OUT_RUN, streamLines } from './harness.ts'
 import type { FakeAccountState, FakeCliScript } from './harness.ts'
 
 const contexts: Context[] = []
@@ -259,6 +259,30 @@ describe('llm-claude-cli model listing through the runtime', () => {
     expect(finish?.type === 'finish' && finish.reason.kind).toBe('error')
     expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
       .toBe('TOOL_CALLS_UNSUPPORTED')
+  })
+
+  it('reports a signed-out run with a code the route retry policy never repeats', async () => {
+    const { ctx, cli } = await mount({
+      account: { home: '/accounts/claude/one' },
+      script: { inference: () => SIGNED_OUT_RUN },
+    })
+    const chunks = []
+    for await (const chunk of ctx.llm.stream({
+      provider: 'claude-cli',
+      model: 'opus',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }],
+    })) chunks.push(chunk)
+    const finish = chunks.at(-1)
+    if (finish?.type !== 'finish' || finish.reason.kind !== 'error') throw new Error('expected an error finish')
+    expect(finish.reason.failure.code).toBe(Route.CLI_NOT_AUTHENTICATED)
+    expect(finish.reason.failure.message).toMatch(/Open Settings, AI Account, and sign in to Claude again/)
+    // `dsh-llm-retry` repeats a failed request only when the route's policy lists its code.
+    const policy = ctx.llm.providerRetryPolicy('claude-cli')
+    expect(policy.mode).toBe('normal')
+    const retried = policy.mode === 'normal' ? policy.retryableCodes : []
+    expect(retried).not.toContain(finish.reason.failure.code)
+    expect(retried).toEqual(expect.arrayContaining(['RATE_LIMIT', 'SERVER']))
+    expect(cli.callsOf('inference')).toHaveLength(1)
   })
 
   it('re-probes the CLI after a configuration generation change', async () => {

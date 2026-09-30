@@ -158,6 +158,17 @@ export const AUTH_SIGNED_IN = '{"loggedIn":true,"authMethod":"claude.ai","apiPro
 export const AUTH_SIGNED_OUT = '{"loggedIn":false,"authMethod":"none","apiProvider":"firstParty"}'
 
 /**
+ * One inference run against a configuration directory with no login, as Claude Code 2.1.285 writes
+ * it: a synthetic assistant message carrying the error kind, then a result whose subtype is
+ * `success` with `is_error` set. The result line is verbatim from a failed Desktop turn.
+ */
+export const SIGNED_OUT_RUN: readonly string[] = [
+  '{"type":"system","subtype":"init","session_id":"c9"}',
+  '{"type":"assistant","message":{"model":"<synthetic>","role":"assistant","stop_reason":"stop_sequence","content":[{"type":"text","text":"Not logged in · Please run /login"}]},"error":"authentication_failed","is_api_error_message":true}',
+  '{"type":"result","subtype":"success","is_error":true,"result":"Not logged in · Please run /login","duration_ms":59}',
+]
+
+/**
  * Build one `list_models` control response line.
  * @param models - rows to report.
  * @returns the JSON line the CLI would write.
