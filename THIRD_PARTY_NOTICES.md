@@ -285,6 +285,14 @@ The [shared runtime lock](scripts/primary-runtime/lock.json) records each distri
 | [`tzdata`](https://github.com/python/tzdata) | 2025.2 | Apache-2.0 |
 | [`xlsxwriter`](https://github.com/jmcnamara/XlsxWriter) | 3.2.9 | BSD-2-Clause |
 
+## Bundled executables
+
+CTD Core Desktop compiles zeromem's `zm` from source during packaging and carries it with its license text under `resources/runtime/zeromem/`. The [Desktop zeromem lock](apps/desktop/scripts/zeromem-lock.json) pins the source revision; cargo builds it with the revision's own `Cargo.lock` and without default features. The crates it links are recorded in that `Cargo.lock`.
+
+| Executable | Source | Pinned revision | License |
+| --- | --- | --- | --- |
+| `zm` (`zeromem` 0.3.0) | [ptaranat/zeromem](https://github.com/ptaranat/zeromem) | `eda212665a35cd01c188121e759de282728238d5` | MIT |
+
 ## First-party native packages
 
 `@deepseek-ai/node-addon-system` (and its platform packages) is built and released from this repository under BSD 3-Clause. It is listed here for completeness; it is first-party, not third-party.

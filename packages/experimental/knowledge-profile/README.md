@@ -79,14 +79,14 @@ Every `knowledge_write` then asks the user and cites the session's reads of its 
 
 ### Turn on conversation memory
 
-`memory-zeromem` needs zeromem's `zm` executable; [its README](../memory-zeromem/README.md#use-this-package) shows how to build one. Once enabled, it stores the text of user messages and final assistant replies, never tool output, in a per-workspace store under `<harness home>/zeromem`, and offers `memory_recall` and `memory_stats`. Enable it from your profile patch, restating the row config:
+`memory-zeromem` runs zeromem's `zm` executable. CTD Core Desktop carries one on macOS and Windows; other hosts need a `zm` on `PATH`, and [its README](../memory-zeromem/README.md#use-this-package) shows how to build one. Once enabled, it stores the text of user messages and final assistant replies, never tool output, in a per-workspace store under `<harness home>/zeromem`, and offers `memory_recall` and `memory_stats`. Enable it from your profile patch, restating the row config:
 
 ```yaml
 - id: memory-zeromem
   disabled: false
   config:
-    zmPath: zm
-    embedder: default
+    zmPath: ''
+    embedder: hash
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -100,7 +100,7 @@ Every `knowledge_write` then asks the user and cites the session's reads of its 
     maxConcurrent: 1
 ```
 
-Set `zmPath` to an absolute path when `zm` is not on `PATH`, and `embedder: hash` for a `zm` built without the fastembed feature.
+Empty `zmPath` runs the `zm` named by `DSH_ZEROMEM_ZM`, which Desktop sets to the `zm` it carries, and otherwise `zm` on `PATH`; set an absolute path to run another build. `embedder: hash` matches Desktop's `zm`, which is built without the fastembed feature; use `embedder: default` with a `zm` that has it.
 
 -----
 

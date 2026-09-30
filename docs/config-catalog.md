@@ -1458,7 +1458,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-memory-zeromem`
 
 - `inject`: `tools` · `subprocess` · `sessionProjections`
-- `source`: [`packages/experimental/memory-zeromem/src/index.ts:80`](../packages/experimental/memory-zeromem/src/index.ts)
+- `source`: [`packages/experimental/memory-zeromem/src/index.ts:81`](../packages/experimental/memory-zeromem/src/index.ts)
 
 ```ts config-catalog
 /** Config with every default applied. */
@@ -1466,7 +1466,7 @@ type ValidConfig = Required<Config>
 
 /** Deployment settings. Invalid values fail plugin load. */
 export interface Config {
-  /** `zm` executable: a name on `PATH` or an absolute path (default `zm`). */
+  /** `zm` executable: a name on `PATH` or an absolute path; empty selects `DSH_ZEROMEM_ZM`, then `zm` on `PATH` (default empty). */
   zmPath?: string
   /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
   zmArgs?: string[]

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import * as MemoryZeromem from '../src/index.ts'
-import { FALLBACK_EMBEDDER_WARNING, MEMORY_FORGET_SESSION_DESCRIPTION, MEMORY_STATS_DESCRIPTION, memoryRecallDescription, resolveStore, ZeromemExecutableError } from '../src/index.ts'
+import { FALLBACK_EMBEDDER_WARNING, MEMORY_FORGET_SESSION_DESCRIPTION, MEMORY_STATS_DESCRIPTION, memoryRecallDescription, resolveStore, resolveZm, ZeromemExecutableError, ZM_PATH_ENV } from '../src/index.ts'
 import { boot, cleanup, FAKE_ZM, flush, results, spooled, tempRoot, turn, workspaceHome, zmCalls } from './harness.ts'
 import type { Booted } from './harness.ts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
@@ -346,14 +346,58 @@ describe('memory-zeromem load', () => {
     }
   }
 
-  it('fails with a named error when zm cannot be found', async () => {
+  it('fails with a named error naming zmPath when the configured zm cannot be found', async () => {
     const error = await load({ zmPath: 'zm-that-does-not-exist-anywhere' })
     expect(error).toBeInstanceOf(ZeromemExecutableError)
-    expect(String(error)).toContain('the zm executable zm-that-does-not-exist-anywhere was not found; install zeromem')
+    expect(String(error)).toContain('the zm executable zm-that-does-not-exist-anywhere set by zmPath was not found; build zeromem')
+  })
+
+  it('fails with a named error naming DSH_ZEROMEM_ZM when its zm is missing', async () => {
+    const { root } = tempRoot()
+    vi.stubEnv(ZM_PATH_ENV, join(root, 'missing', 'zm'))
+    const error = await load({})
+    expect(error).toBeInstanceOf(ZeromemExecutableError)
+    expect(String(error)).toContain(`the zm executable ${join(root, 'missing', 'zm')} named by DSH_ZEROMEM_ZM is not an absolute path to an existing file`)
+  })
+
+  it('fails with a named error when neither setting is present and PATH has no zm', async () => {
+    vi.stubEnv(ZM_PATH_ENV, '')
+    vi.stubEnv('PATH', tempRoot().root)
+    const error = await load({})
+    expect(error).toBeInstanceOf(ZeromemExecutableError)
+    expect(String(error)).toContain('no zm executable is on PATH, and neither zmPath nor DSH_ZEROMEM_ZM is set')
+  })
+
+  it('runs the zm that DSH_ZEROMEM_ZM names when zmPath is empty', async () => {
+    vi.stubEnv(ZM_PATH_ENV, process.execPath)
+    const booted = await boot({ config: { zmPath: '' } })
+    const agent = await callTool(booted, 'env', 'memory_stats', {})
+    expect(firstValue(agent)).toEqual({ turns: 0, sessions: 0 })
+    expect(zmCalls(workspaceHome(booted))).toHaveLength(1)
   })
 
   it('fails on a relative store root and a default above the largest limit', async () => {
     expect(String(await load({ zmPath: process.execPath, storeRoot: 'relative/stores' }))).toContain('storeRoot must be an absolute path')
     expect(String(await load({ zmPath: process.execPath, defaultResults: 11 }))).toContain('defaultResults must not exceed maxResults')
+  })
+})
+
+describe('resolveZm', () => {
+  it('prefers a configured zmPath over DSH_ZEROMEM_ZM and PATH', () => {
+    expect(resolveZm({ zmPath: '/opt/zm', environment: '/bundle/zm' })).toEqual({ zmPath: '/opt/zm', source: 'config' })
+    expect(resolveZm({ zmPath: 'zm-custom', environment: undefined })).toEqual({ zmPath: 'zm-custom', source: 'config' })
+  })
+
+  it('selects DSH_ZEROMEM_ZM when zmPath is empty', () => {
+    expect(resolveZm({ zmPath: '', environment: '/bundle/zm' })).toEqual({ zmPath: '/bundle/zm', source: 'environment' })
+  })
+
+  it('falls back to zm on PATH when neither is set', () => {
+    expect(resolveZm({ zmPath: '', environment: undefined })).toEqual({ zmPath: 'zm', source: 'path' })
+    expect(resolveZm({ zmPath: '', environment: '' })).toEqual({ zmPath: 'zm', source: 'path' })
+  })
+
+  it('refuses a relative DSH_ZEROMEM_ZM', () => {
+    expect(() => resolveZm({ zmPath: '', environment: 'bin/zm' })).toThrow(ZeromemExecutableError)
   })
 })

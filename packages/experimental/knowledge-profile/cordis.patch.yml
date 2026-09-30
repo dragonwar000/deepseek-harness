@@ -13,10 +13,12 @@
 # ok it records the episode page it would write (knowledge/write, applied false).
 # Without the loop guards bundle, or with a gate that has no verify commands, it
 # records nothing.
-# memory-zeromem ships disabled: it needs a zeromem zm executable and stores the
-# raw text of user messages and final replies (never tool output) on disk under
-# <harness home>/zeromem, one store per session working directory. Enable it with
-# a row patch `- id: memory-zeromem` / `disabled: false`.
+# memory-zeromem ships disabled: it stores the raw text of user messages and
+# final replies (never tool output) on disk under <harness home>/zeromem, one
+# store per session working directory. Empty zmPath runs the zm named by
+# DSH_ZEROMEM_ZM, which Desktop sets to the zm it carries, then zm on PATH;
+# embedder: hash matches that zm, built without fastembed. Enable it with a row
+# patch `- id: memory-zeromem` / `disabled: false`.
 
 - insert:
     - id: knowledge-wiki-filesystem
@@ -64,8 +66,8 @@
       name: '@deepseek-ai/dsh-experimental-memory-zeromem'
       disabled: true
       config:
-        zmPath: zm
-        embedder: default
+        zmPath: ''
+        embedder: hash
         scope: workspace
         excludeCurrentSession: true
         ingestSubagentSessions: false
