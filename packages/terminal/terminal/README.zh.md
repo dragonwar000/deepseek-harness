@@ -104,7 +104,7 @@ kind: "package-reference"
 - [terminal/ 包映射](../README.zh.md)——三包家族及其组合方式。
 - [terminal-bash 后端](../terminal-bash/README.zh.md)——提供 `shell` 类型的随附 shell 后端。
 - [tool-terminal 工具](../tool-terminal/README.zh.md)——操作会话的 6 个面向模型工具。
-- [持久 PTY Agent Note](../../../.agents/notes/implemented/feature/2026-07-16-persistent-pty-sessions.zh.md)——设计理由、备选方案与暂缓边界。
+- [持久 PTY Agent Note](../../../.agents/notes/implemented/feature/2026-07-16-persistent-pty-sessions.md)——设计理由、备选方案与暂缓边界。
 
 -----
 

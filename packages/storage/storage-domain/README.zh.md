@@ -119,7 +119,7 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 
 - [存储子系统](../../../docs/subsystems/storage.zh.md)——领域约定、后端约定、变更事件与生成的 API。
 - [存储包映射](../README.zh.md)——家族的各包及其在仓库中的位置。
-- [领域 KV 存储 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)——领域为何存在、workspace 消费方，以及跨进程变更推送等延期工作。
+- [领域 KV 存储 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)——领域为何存在、workspace 消费方，以及跨进程变更推送等延期工作。
 - [Workspace 子系统](../../../docs/subsystems/workspace.zh.md)——领域数据形式的第一个消费方。
 
 -----
@@ -148,7 +148,7 @@ domain.table('workspaces').update(id, (r) => ({ ...r, path: newPath }))
 
 这些限制说明领域层何时不合适，或何时需要特别的运维注意。它们是当前包约束，不是任务积压。
 
-- **变更只在单进程内可见**——`domain/changed` 是进程内事件；在跨进程修订模式落地前，第二个主机进程或重新连接的 GUI 无法观察变更（[Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)）。
+- **变更只在单进程内可见**——`domain/changed` 是进程内事件；在跨进程修订模式落地前，第二个主机进程或重新连接的 GUI 无法观察变更（[Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)）。
 - **没有跨表事务、二级索引或多段键**——每次写入只触碰一条记录；这些扩展列在 Agent Note 的范围外清单中。
 - **没有数据迁移**——领域的已存版本与 spec 不同时，打开操作会被拒绝（`version-mismatch`）；修改 schema 需要手工迁移已存数据。
 

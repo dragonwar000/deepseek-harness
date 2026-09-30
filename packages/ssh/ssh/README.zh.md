@@ -74,7 +74,7 @@ OpenSSH 主连接承载私有管理 RPC。每条程序流使用独立转发的 U
 ## 进一步探索
 
 - [SSH 子系统](../../../docs/subsystems/ssh.zh.md) — 执行坐标、传输语义及生命周期归属。
-- [POSIX SSH 决策](../../../.agents/notes/implemented/architecture/2026-09-11-posix-ssh-runtime.zh.md) — 理由、替代方案及必要验证。
+- [POSIX SSH 决策](../../../.agents/notes/implemented/architecture/2026-09-11-posix-ssh-runtime.md) — 理由、替代方案及必要验证。
 
 -----
 

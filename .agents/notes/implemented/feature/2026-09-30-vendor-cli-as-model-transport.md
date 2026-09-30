@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-vendor-cli-as-model-transport.zh.md)
-
 ## Problem
 
 The repository owner wants a consumer subscription to drive a chat model inside the Harness. The [official-CLI AI Accounts decision](2026-09-29-official-cli-ai-accounts.md) refused that and left each subscription reachable only by launching the vendor's own CLI for a delegated task. A later proposal reversed the answer but kept the earlier note's assumption about the mechanism: that serving the main model from a subscription means reading the vendor CLI's OAuth grant out of its private storage, refreshing it, and presenting that CLI's client identity on every HTTP request. Every risk that note accepts — asserting falsely to be the vendor's first-party client, conflicting with the subscription terms, depending on undocumented storage and client identifiers, and becoming the second holder of a long-lived grant — follows from that one assumption.

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-27-plugin-install-interceptor-lifetime.zh.md)
-
 ## Problem
 
 The [plugin-install scenario](../../../../apps/web/tests/plugin-install-cancel.e2e.ts) can leave a directory read pending after cancelling an installation. The Host emits invalidations that trigger background reads while the scenario removes its Playwright routes between installation phases. A stalled read keeps the installed package out of the list, so enabling it closes the dialog but never exposes the highlighted card.

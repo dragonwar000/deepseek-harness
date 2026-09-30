@@ -11,6 +11,7 @@ import type { Nodes } from 'mdast'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { cleanDocSiteOutput, docSiteBuildOptions } from '../website/build.ts'
 import { docsPages, landingLink, routeLink, sectionSpec, type DocsPage } from '../website/docs.ts'
+import { TRANSLATION_COUNTERPART_POLICY } from './translation-counterpart.ts'
 import {
   addProjectionFrontmatter, emitRawMarkdownPages, llmsTxt, projectedPageContent, publishableImage,
   rawMarkdownFiles, rawMarkdownPageContent, rawMarkdownRoute, resolveRepositoryRef, rewriteMarkdown,
@@ -419,13 +420,14 @@ describe('docsPages locale routes', () => {
     }
   })
 
-  it('indexes every subsystem page in both sides of the folder README', () => {
+  // The Chinese README must index a page only under the `required` counterpart policy.
+  it('indexes every subsystem page in the folder README', () => {
     const pages = globSync(join(repositoryRoot, 'docs/subsystems/*.md'))
       .map(page => basename(page))
       .filter(page => !page.endsWith('.zh.md') && page !== 'README.md')
       .sort()
     expect(pages.length).toBeGreaterThan(0)
-    for (const readme of ['README.md', 'README.zh.md']) {
+    for (const readme of TRANSLATION_COUNTERPART_POLICY === 'required' ? ['README.md', 'README.zh.md'] : ['README.md']) {
       const rows = readFileSync(join(repositoryRoot, 'docs/subsystems', readme), 'utf8')
       const missing = pages.filter((page) => {
         const target = readme.endsWith('.zh.md') ? page.replace(/\.md$/, '.zh.md') : page

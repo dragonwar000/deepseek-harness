@@ -129,7 +129,7 @@ kind: "package-reference"
 - [Shell 包](../../shell/shell/README.zh.md)——运行 verify 命令的执行器契约。
 - [实验性分组地图](../README.zh.md)——同组实验性包与发布策略。
 - [Subagent 包](../../subagent/subagent/README.zh.md)——评估者使用的 `ctx.subagents` 启动契约。
-- [最终回答证据说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.zh.md)——为什么证据检查从 `graphEvidence` 读取启发式声明.
+- [最终回答证据说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-evidence-heuristic-claims.md)——为什么证据检查从 `graphEvidence` 读取启发式声明.
 
 -----
 

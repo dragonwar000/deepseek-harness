@@ -2,8 +2,6 @@
 
 Status: rejected — closed as a proposal: the shipped ui-settings, locale, and ui-theme packages and their READMEs own the design
 
-English | [中文](2026-07-25-client-settings-locale-theme.zh.md)
-
 ## Problem
 
 The browser client's existing Settings is written directly inside the Sidebar, and language and theme are applied by component-local state mutating the DOM directly. As a result Settings cannot be extended by independent plugins, preference state has no stable cross-plugin service contract, and the theme registry carries both state and presentation responsibilities.

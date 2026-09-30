@@ -108,7 +108,7 @@ kind: "package-reference"
 - [terminal 服务](../terminal/README.zh.md)——会话操作、所有者限制与清理语义。
 - [terminal-bash 后端](../terminal-bash/README.zh.md)——提供会话的随附 shell 后端。
 - [jobs 包映射](../../jobs/README.zh.md)——收集与停止后台发送的后台任务接口面。
-- [持久 PTY Agent Note](../../../.agents/notes/implemented/feature/2026-07-16-persistent-pty-sessions.zh.md)——能力设计与暂缓边界。
+- [持久 PTY Agent Note](../../../.agents/notes/implemented/feature/2026-07-16-persistent-pty-sessions.md)——能力设计与暂缓边界。
 
 -----
 

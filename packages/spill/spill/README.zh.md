@@ -113,7 +113,7 @@ const ref = await ctx.spillStore.saveText({
 - [dsh-spill-local](../spill-local/README.zh.md)——已交付的本地文件系统后端。
 - [dsh-spill-policy](../spill-policy/README.zh.md)——决定最终结果何时过大的策略。
 - [dsh-output-retention](../../util/output-retention/README.zh.md)——策略背后的预览机制。
-- [工具输出 spill 决策](../../../.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.zh.md)——能力边界与设计依据。
+- [工具输出 spill 决策](../../../.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.md)——能力边界与设计依据。
 
 -----
 
@@ -146,7 +146,7 @@ spill 消费方将后端的定位信息与取回指引渲染给模型，从而�
 
 #### 未来：执行器 spill 文件集成
 
-该 seam 只有 `saveText`；为既有执行器 spill 文件提供保存文件或链接/复制路径（例如规范化 bash 临时文件），以及为 subagent 展开提供工具自有 spill，仍然延期，见[工具输出 spill 决策](../../../.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.zh.md)。
+该 seam 只有 `saveText`；为既有执行器 spill 文件提供保存文件或链接/复制路径（例如规范化 bash 临时文件），以及为 subagent 展开提供工具自有 spill，仍然延期，见[工具输出 spill 决策](../../../.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.md)。
 
 #### 未来：非本地后端与清理
 

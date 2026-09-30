@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-16-performance-usage-preference.zh.md)
-
 ## Problem
 
 Always-visible counts and accounting controls add density to Chat even when readers only need output speed and cache effectiveness.

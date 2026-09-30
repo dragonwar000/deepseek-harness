@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-17-thinking-markdown.zh.md)
-
 ## Problem
 
 Chat Thinking contains model-authored Markdown, but literal rendering exposes headings, emphasis markers, and code fences. The shared answer typography makes headings larger and more prominent than the secondary reasoning text. Trajectory applies that answer typography to the same reasoning.

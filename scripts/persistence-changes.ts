@@ -82,7 +82,7 @@ export interface PersistenceChangeProse {
   readonly verification: string
 }
 
-/** Explicit bilingual prose; the CLI supplies no compatibility or validation claims. */
+/** Explicit prose for both record documents; the CLI supplies no compatibility or validation claims. */
 export interface PersistenceChangeProsePair {
   readonly en: PersistenceChangeProse
   readonly zh: PersistenceChangeProse
@@ -770,13 +770,16 @@ function scaffold(change: PersistenceChangeRecord, chinese: boolean, prose?: Per
 }
 
 /** Parse explicit authored prose without supplying compatibility or validation claims.
+ * `zh` is optional: English is the only required documentation language, so an
+ * input without it fills the Chinese record document with the English text.
  * @param value - decoded JSON supplied through --prose.
  * @returns complete English and Chinese section text.
  */
 export function parsePersistenceProse(value: unknown): PersistenceChangeProsePair {
   const pair = record(value, 'persistence prose')
-  keys(pair, ['en', 'zh'], 'persistence prose')
-  for (const locale of ['en', 'zh']) {
+  keys(pair, ['en'], 'persistence prose', ['zh'])
+  const locales = Object.hasOwn(pair, 'zh') ? ['en', 'zh'] : ['en']
+  for (const locale of locales) {
     const sections = record(pair[locale], `persistence prose ${locale}`)
     keys(sections, ['summary', 'compatibility', 'verification'], `persistence prose ${locale}`)
     for (const [name, value] of Object.entries(sections)) {
@@ -786,7 +789,8 @@ export function parsePersistenceProse(value: unknown): PersistenceChangeProsePai
       }
     }
   }
-  return pair as unknown as PersistenceChangeProsePair
+  const parsed = pair as unknown as { en: PersistenceChangeProse; zh?: PersistenceChangeProse }
+  return { en: parsed.en, zh: parsed.zh ?? parsed.en }
 }
 
 function updateDocument(source: string, change: PersistenceChangeRecord, chinese: boolean, prose?: PersistenceChangeProse): string {

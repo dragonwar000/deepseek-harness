@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-sanctioned-sign-in-model-routes.zh.md)
-
 ## Problem
 
 Signing in to a provider produced no model. `registerPiAiFlows` offers one authorization flow per installed pi-ai provider and the flow commits a credential record at `llm-pi-ai/<provider id>`, but the route set came only from the `providers` settings dict, so the chat model picker stayed empty until the user also hand-wrote a profile naming the provider they had just signed into. Nothing on the AI Account page explained which accounts could drive the main model at all, so a Claude or ChatGPT sign-in that is deliberately delegated-only looked identical to a sign-in that had simply failed to take effect.

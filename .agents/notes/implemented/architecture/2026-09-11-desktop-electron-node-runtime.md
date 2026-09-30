@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-11-desktop-electron-node-runtime.zh.md)
-
 ## Problem
 
 Shipping an upstream Node executable alongside Electron duplicates the JavaScript runtime. Desktop needs one runtime for its Host and package scripts without requiring users to install Node.

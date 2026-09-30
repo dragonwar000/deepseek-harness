@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-29-graph-contract-admission.zh.md)
-
 ## Problem
 
 Multi-unit work (parallel executions, a separate verifier, a synthesis step) needs a declared structure that can be checked before any of it runs. A plan written as prose cannot be checked, and a plan held in a store outside the session log cannot be replayed, resumed, or trusted after a crash. Community plugins either audit a file on disk without recording versions (`whale4rain/dsh-graph-engineering`) or keep a separate project store (`octie-dsh-plugin`).

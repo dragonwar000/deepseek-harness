@@ -1,52 +1,54 @@
-# Agent Note: English-only Agent Notes
+# Agent Note: English-only documentation
 
 Status: implemented
 
 ## Problem
 
-Every Agent Note had to merge as a triplet: the English `.md`, a Chinese `.zh.md`, and an `.i18n.yaml` consistency record pairing them. The corpus-wide check in `verify-translation-pairing` enforced it, so a note could not land without a counterpart.
+Every in-scope document had to merge as a triplet: the English `.md`, a Chinese `.zh.md`, and an `.i18n.yaml` consistency record. `verify-translation-pairing` rejected a missing counterpart and any edit to one side that was not carried to the other, so each documentation change cost a second edit in Chinese and a re-record. Agent Notes paid that cost most often, because a note is corrected whenever the code it describes moves.
 
-Agent Notes are the repository's internal decision record, written by agents and read by the people and agents working in this tree. Unlike `docs/`, they are not a published surface for readers outside the company. The counterpart was translated in the same change that wrote the note, and every later correction to a note — a moved file, a renamed package, a changed default — cost a second edit and a re-record. The repository owner decided on 2026-09-30 that the translation overhead on this one tree buys less than it costs, and that notes are written in English from now on.
+The repository owner decided on 2026-09-30 that this fork writes documentation in English only. A first step made the counterpart optional for new Agent Notes, but it left three obligations: an existing note pair still had to be updated together, archiving a note still required a complete triplet, and every other document class still had to merge bilingual.
 
-The rule had to shrink without loosening anything adjacent. `docs/` pages, package READMEs, upgrade guides, and the root paired documents are read outside the company and stay bilingual. The frozen archive under `.agents/notes/archived/` is sealed content that no longer changes, so its completeness rules stay exactly as strict. The several hundred existing note pairs are consistent today, and nothing about this decision makes them worth deleting.
+The Chinese documents outside the note tree are owned upstream. Deleting several hundred of them would make every upstream merge conflict.
 
 ## Decision
 
-An active Agent Note — a dated file at `.agents/notes/{proposed,implemented,rejected}/{class}/yyyy-mm-dd-topic-title.md` — merges with its English `.md` alone. This note is the first one written under that rule, and it is English-only.
+English is the only required documentation language. No change creates or updates a `*.zh.md` file or an `.i18n.yaml` record unless the user explicitly asks.
 
-[scripts/translation-counterpart.ts](../../../../scripts/translation-counterpart.ts) is the one home of the rule. It exports the predicate over source paths and the verdict the gate prints when a counterpart is required and absent, and it reads the Agent Note path grammar from [scripts/agent-note-tree.ts](../../../../scripts/agent-note-tree.ts) rather than matching a prefix, so the exemption is exactly the note files and never the tree's `README`, `AGENTS.md`, or anything under `archived/`.
+[scripts/translation-counterpart.ts](../../../../scripts/translation-counterpart.ts) is the one home of the rule:
 
-Two consumers read that rule, and both had to, because they must agree about what a pair is:
+- `TRANSLATION_COUNTERPART_POLICY` is `optional` for every document class: `docs/**`, `python/**`, package and app READMEs, upgrade guides, persistence-change records, the root paired documents, and `.agents/notes/README.md`. A missing, incomplete, or out-of-date counterpart is a reported finding that fails no check. The `required` policy stays implemented and tested, and `verify-translation-pairing --policy=required` applies it to the pairs a requested translation maintains.
+- Agent Notes are outside the pairing contract. The Chinese counterparts and records of all active notes were deleted, a `.zh.md` or `.i18n.yaml` beside an active note fails the pairing gate under either policy, and links to a note use its `.md` path from both languages. The rule reads the path grammar in [scripts/agent-note-tree.ts](../../../../scripts/agent-note-tree.ts), so it covers exactly the note files.
+- Existing Chinese documents outside the note tree stay in the tree and may go out of date.
+- A finding that needs no Chinese writing to fix fails under either policy: a counterpart beside an excluded file, a record that cannot be parsed, and a counterpart whose English source is gone.
 
-- [scripts/verify-translation-pairing.ts](../../../../scripts/verify-translation-pairing.ts) applies it where a discovered source has no counterpart. `--list` reports such a source as `english-only` instead of `missing`, so the exemption is visible rather than silent.
-- [scripts/translation-links.ts](../../../../scripts/translation-links.ts) stops treating an Agent Note with no counterpart on disk as a locale-switchable target. Both sides of any pair that links to an English-only note therefore keep its `.md` path, and the two sides' structural signatures still match.
+Four checks that would otherwise force a Chinese edit read the same policy. [scripts/paired-markdown-derivatives.ts](../../../../scripts/paired-markdown-derivatives.ts) leaves code fences of an out-of-date `.zh.md` unchecked in `doc-typecheck` and `verify-type-equiv`. [scripts/gen-cordis-catalog.ts](../../../../scripts/gen-cordis-catalog.ts) leaves a Chinese subsystem page that is absent or lacks its generated region as it is. [scripts/translation-links.ts](../../../../scripts/translation-links.ts) keeps the `.md` path to a target that has no counterpart. `persistence-changes --prose` accepts input without `zh` and writes the English text into the Chinese record document, which the persistence history still requires to carry the identical machine declaration.
 
-A counterpart that exists is unaffected. It is a pair like any other: complete with its `.i18n.yaml`, hash-checked per section, structurally mirrored, and rejected when either side drifts. Adding a counterpart to an English-only note makes links to it locale-switched again, and the gate names every Chinese-side link still on the `.md` path. Deleting a note deletes whatever of the three files exist.
+The frozen archive keeps its sealed triplets unchanged. [scripts/archived-agent-notes.ts](../../../../scripts/archived-agent-notes.ts) accepts an archived note as either the English file alone or a complete triplet, so archiving a note moves one file. A note with a Chinese file or a record that is not the complete triplet is still rejected, and the append-only content manifest still rejects any change to or removal of a sealed file.
 
-Everything outside the active note files is unchanged: `docs/**`, `python/**`, package READMEs, the root paired documents, `.agents/notes/README.md` itself, and the locale dictionaries. Archiving still requires the complete triplet, so a note that reaches the archive English-only gains its counterpart and sidecar in the archival change — the archive is sealed, append-only history, and relaxing it would mean rewriting sealed content.
+Client UI locale dictionaries are product behavior, not documentation. `locale-dictionary-parity` and `verify-client-ui-i18n` are unchanged.
 
 ## Alternatives considered
 
-**Add `.agents/notes/` to the manifest's `excluded` list.** This is the cheapest edit and the wrong one. An excluded path may have *no* counterpart and *no* sidecar, and the gate actively rejects one that exists — so the several hundred existing note pairs would all have to be deleted, and the exclusion would also cover `.agents/notes/README.md`, which is a published contract page that stays bilingual. The decision needs "optional", which the manifest cannot express.
+**Delete every Chinese document.** Rejected for the documents outside the note tree: they are upstream-owned, and deleting them turns each upstream merge into hundreds of delete/modify conflicts. The note counterparts were deleted because notes change most often and the stricter rule keeps new ones from returning.
 
-**Add an `optional` field to the pairing manifest.** More honest than abusing `excluded`, and rejected because it puts a policy decision in a data file where it reads as a list of paths with no statement of why. A rule with one named exemption belongs in code with its reasoning attached, next to the predicate the gate calls. A manifest field would also invite a second, third, and fourth path to be added with no review of whether the exemption fits.
+**Add the documentation roots to the manifest's `excluded` list.** An excluded path may have no counterpart, and the gate rejects one that exists, so this would require the deletion rejected above.
 
-**Match on the `.agents/notes/` prefix instead of the note path grammar.** A one-line predicate, and too broad: it exempts `.agents/notes/README.md`, which the decision explicitly keeps bilingual, and it would silently exempt any future page added to that tree. Reading the closed lifecycle and class sets from the tree walker costs a few lines and makes the exemption exactly the notes.
+**Remove the pairing checks.** Rejected because a translation the user asks for still needs them. One named switch keeps the `required` behavior implemented and tested instead of leaving dead code or a broad skip.
 
-**Delete the existing Chinese counterparts.** Considered because a half-translated corpus is an odd state to maintain. Rejected: the existing counterparts are consistent, already paid for, and still useful to Chinese-reading maintainers. Deleting them destroys reviewed work to buy tidiness, and the pairing gate keeps them honest at no ongoing cost to notes that do not have one.
+**Keep optional counterparts for active Agent Notes.** Rejected: a note pair that exists must be kept consistent or allowed to rot, and either outcome is Chinese work or misleading history in the decision record. Rejecting the files is one rule with one message.
 
-**Relax the frozen archive too, for consistency.** Rejected on the archive's own terms. Archived triplets are sealed by a content manifest and never change; loosening the completeness rule there would either require rewriting sealed artifacts or leave a rule that can never fire. The asymmetry is deliberate and stated in [.agents/notes/README.md](../../README.md).
+**Require a triplet at archival.** Rejected: it moves the translation cost to the end of a note's life instead of removing it. Sealed triplets are not rewritten; the archive accepts both artifact sets.
 
 ## Consequences
 
-Writing a note costs one file. A later correction to a note costs one edit and no re-record. The cost moves to archival, where an English-only note must be translated before it can be sealed; that is one translation at the end of a note's active life instead of one at the start plus one per correction.
+A documentation change costs one English edit. Chinese counterparts outside the note tree become out of date as English changes, and `verify-translation-pairing --list` names each one as `out-of-sync` or `missing`. Chinese readers of those pages may read superseded text; the English document is authoritative.
 
-The note corpus is now mixed: older notes are pairs, newer ones are not. `verify-translation-pairing --list` distinguishes the two states, and the `english-only` count makes the mix measurable rather than inferred from absent rows.
+An upstream merge that brings a `.zh.md` or `.i18n.yaml` beside an active Agent Note fails the pairing gate until those files are deleted in the merge.
 
-The gate's error surface is narrower by exactly one case and no more. A missing counterpart is still rejected for every `docs/` page, every package README, every `python/` page, the root paired documents, and `.agents/notes/README.md`; a counterpart that exists is still checked in full; and the archive still rejects an incomplete triplet.
+A new persistence format version, release record, or `docs/session-format-status.md` change still needs its Chinese file to exist with the identical machine record, because [scripts/persistence-formats.ts](../../../../scripts/persistence-formats.ts), [scripts/persistence-releases.ts](../../../../scripts/persistence-releases.ts), and [scripts/persistence-finalization.ts](../../../../scripts/persistence-finalization.ts) read both files. Their Chinese prose may be the English text.
 
 ## Testing
 
-[scripts/translation-counterpart.spec.ts](../../../../scripts/translation-counterpart.spec.ts) pins the rule's acceptance and rejection paths: an active Agent Note in each lifecycle merges English-only; a docs page, a nested docs page, a package README, the root README, a root paired document, a `python/` page, `.agents/notes/README.md`, an archived note, and four paths that only resemble a note are each still rejected with the gate's exact message. It also pins that a link to an English-only note resolves to the same target from both sides of a pair, that adding a counterpart makes the Chinese side's `.md` link a violation again, and that an Agent Note pair which does exist still reports record drift and structural divergence.
+[scripts/translation-counterpart.spec.ts](../../../../scripts/translation-counterpart.spec.ts) runs the pairing check over in-memory corpora under both policies. Under `optional` it passes an English-only docs page, package README, and upgrade guide, an out-of-date counterpart, a structurally diverged counterpart, and a counterpart with no record; under `required` each of those fails with its exact message. Under both policies it rejects a counterpart or record beside an active Agent Note, an unparseable record, a counterpart whose source is gone, and a counterpart of an excluded file.
 
-[scripts/archived-agent-notes.spec.ts](../../../../scripts/archived-agent-notes.spec.ts) pins that an archived note missing its Chinese counterpart, its English side, or its record is still rejected as an incomplete triplet.
+[scripts/archived-agent-notes.spec.ts](../../../../scripts/archived-agent-notes.spec.ts) accepts an English-only archived note and a complete triplet, and rejects invalid archive metadata, a partial triplet, a triplet whose record no longer matches, and a sealed triplet stripped to its English file. [scripts/paired-markdown-derivatives.spec.ts](../../../../scripts/paired-markdown-derivatives.spec.ts), [scripts/translation-links.spec.ts](../../../../scripts/translation-links.spec.ts), and [scripts/persistence-changes.spec.ts](../../../../scripts/persistence-changes.spec.ts) cover the policy in their checks.

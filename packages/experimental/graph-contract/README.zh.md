@@ -130,7 +130,7 @@ kind: "package-reference"
 - [Graph 运行器包](../graph-runner/README.zh.md)——在记录的路由上执行已准入计划的 `graph_run` 工具。
 - [Loop graph 配置包](../loop-graph-profile/README.zh.md)——挂载这些 graph 包的可选包。
 - [实验性分组地图](../README.zh.md)——同组实验性包与发布策略。
-- [循环边说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.zh.md)——为什么循环是以记录的迭代重新打开其循环体的回边.
+- [循环边说明](../../../.agents/notes/implemented/architecture/2026-09-30-graph-cycle-edges-reopen-loops.md)——为什么循环是以记录的迭代重新打开其循环体的回边.
 
 -----
 
