@@ -167,4 +167,4 @@ URL 行与浏览器交接都是就绪信号：监督方一观察到该行就发�
 
 </details>
 
-Web 组合包含账号 Remote 控制器和账号设置页面。
+Web 组合包含 AI 账号设置页面及其 Remote 控制器，以及 Coteccons SSO 组件：配置了 CTD-Core 应用注册的 `coteccons-sso` 提供者、`coteccons` 模型路由、`cotecconsSso` Remote 控制器和 Coteccons SSO 设置分组。DeepSeek 账号设置与控制器行保持禁用。

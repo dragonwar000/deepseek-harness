@@ -1,4 +1,4 @@
-/** Desktop account settings registration and reconnecting Remote subscription. */
+/** DeepSeek account UI registration (AI Account group, launcher, sign-in, quota, onboarding) and reconnecting Remote subscription. */
 import type {} from '@deepseek-ai/dsh-client-product-analytics/client'
 import type { TranscriptViewMode } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { Context } from '@deepseek-ai/cordis'
@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings-ai-account/client'
 import type { AccountView, AccountDetails } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { OnboardingChange } from './onboarding-contract.ts'
 import type { PlatformBridge } from './PlatformOverlay.tsx'
@@ -39,11 +40,10 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 /** Services required by account settings. */
 export const inject = ['slots', 'locale', 'remote', 'remote.account', 'remote.session', 'theme', 'configForms']
-/** Register account UI only in the Desktop renderer. @param ctx - client plugin context. */
+/** Register account UI in both Desktop and Web renderers. @param ctx - client plugin context. */
 export function apply(ctx: Context): void {
-  if (!('dshDesktop' in globalThis)) return
+  const isDesktop = 'dshDesktop' in globalThis
   ctx.effect(() => ctx.locale.register('settings.account', { en, zh }), 'account: dictionaries')
-  const t = ctx.locale.bind('settings.account')
   const page = globalThis as Partial<Record<typeof CONTACT_CONFIG_GLOBAL, unknown>>
   const config = ContactConfig(page[CONTACT_CONFIG_GLOBAL] ?? {})
   let snapshot: AccountSnapshot = { view: undefined, details: undefined, failed: false, loginVisible: false }
@@ -124,7 +124,7 @@ export function apply(ctx: Context): void {
       else notices.end()
       if (initialize) void (async () => {
         try {
-          const initialized = await ctx.remote.session.initializeDefaultModel()
+          const initialized = await ctx.remote.session.initializeDefaultModel('deepseek-account')
           if (!initialized.ok) console.info('[deepseek-account] default model initialization failed', { reason: 'refused' })
         } catch (_error) {
           console.info('[deepseek-account] default model initialization failed', { reason: 'disconnected' })
@@ -212,7 +212,7 @@ export function apply(ctx: Context): void {
       try {
         const result = await ctx.remote.account.startSignIn(client(),
           transport?.streamBaseUrl !== undefined ? new URL(transport.streamBaseUrl).origin : window.location.origin,
-          'desktop')
+          isDesktop ? 'desktop' : 'web')
         if (!result.ok) throw new Error('account start failed')
       } catch (error) {
         publish({ ...snapshot, loginFailed: true })
@@ -231,7 +231,7 @@ export function apply(ctx: Context): void {
       throw result.error
     },
   }
-  if ('dshDesktop' in globalThis) {
+  if (isDesktop) {
     const controller = new DesktopOnboardingController(
       ctx.configForms.get<OnboardingSettings>(DESKTOP_ONBOARDING_NAMESPACE),
       ctx.configForms.get<{ transcriptView?: TranscriptViewMode | null; performanceUsage: 'compact' | 'detailed' }>('ui-chat'),
@@ -264,7 +264,7 @@ export function apply(ctx: Context): void {
     }, DesktopOnboardingEntry))
   }
   ctx.slots.inject('settings.models.sign-in', () => ctx.slots.register({
-    name: 'settings.models.sign-in', locale: 'settings.account', inject: () => operations,
+    name: 'settings.models.sign-in', locale: 'settings.account', inject: () => operations, id: 'deepseek',
   }, AccountOnboarding))
   ctx.slots.inject('shell.quota-notice', () => ctx.slots.register({
     name: 'shell.quota-notice', locale: 'settings.account',
@@ -286,21 +286,8 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('settings.launcher', () => ctx.slots.register({
     name: 'settings.launcher', locale: 'settings.account', inject: () => operations,
   }, AccountMenu))
-  ctx.slots.inject('settings.section', () => {
-    let unregister: (() => void) | undefined
-    const update = () => {
-      if (snapshot.view?.status === 'credential-stored') {
-        unregister ??= ctx.slots.register({
-          name: 'settings.section', id: 'account', order: -10, label: () => t('nav'),
-          locale: 'settings.account', inject: () => operations,
-        }, AccountSection)
-      } else {
-        unregister?.()
-        unregister = undefined
-      }
-    }
-    listeners.add(update)
-    update()
-    return () => { listeners.delete(update); unregister?.() }
-  })
+  // The DeepSeek account has no settings page of its own: its group leads the AI Account page in every account state.
+  ctx.slots.inject('settings.ai-account.group', () => ctx.slots.register({
+    name: 'settings.ai-account.group', id: 'deepseek', order: 0, locale: 'settings.account', inject: () => operations,
+  }, AccountSection))
 }

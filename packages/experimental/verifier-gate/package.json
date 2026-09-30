@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-verifier-gate",
   "description": "Turn-stopping gate: runs configured verify commands before a turn may end; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

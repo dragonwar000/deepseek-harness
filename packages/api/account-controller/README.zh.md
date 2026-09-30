@@ -11,6 +11,8 @@ kind: "package-reference"
 
 账号页面使用经过认证的 Remote 操作和快照流。控制器提供登录状态，不返回 token 或 PKCE 私密数据。
 
+已发布的组合将 Web App Bundle 的 `account-controller` 行保持禁用：在 CTD Core 中，[Coteccons SSO](../../credentials/coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用该行。
+
 ## 目录
 
 - [使用此包](#use-this-package)

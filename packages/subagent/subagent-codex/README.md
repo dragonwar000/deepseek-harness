@@ -59,7 +59,7 @@ The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-a
 
 ### Exposing the tool
 
-Each delegation tool row names one provider and needs its own `toolName`, so the model sees static tools rather than a dynamic provider selector. Full Agent Presets carry a matching default tool row with `disabled: true`; copy a preset and remove that field to expose `subagent_codex` only to agents composed from the copy.
+Each delegation tool row names one provider and needs its own `toolName`, so the model sees static tools rather than a dynamic provider selector. The Web App's full Agent Presets carry this matching tool row enabled; it registers `subagent_codex` only while a provider named `codex` is mounted, so installing this Bundle exposes the tool to agents composed from those presets. Add `disabled: true` to the row in a copied preset to withhold it.
 
 ```yaml
 - id: jobs

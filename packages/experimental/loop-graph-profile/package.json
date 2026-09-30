@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-loop-graph-profile",
   "description": "Loop engineering guards and the graph plan layer in one experimental bundle: verifier gate, stationarity guard, denial budget, loop budget, infra snapshot, graph contract, graph projection, and graph runner, switched on from the Plugins page",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "icon": "./icon.svg",
   "publishConfig": {
     "access": "public"

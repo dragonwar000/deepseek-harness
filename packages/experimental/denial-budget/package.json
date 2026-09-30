@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-denial-budget",
   "description": "Counts policy-denied tool calls, appends fixed safer-approach advice, and asks approval before continuing past a denial budget; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

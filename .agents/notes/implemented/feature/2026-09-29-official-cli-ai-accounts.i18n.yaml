@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-09-29-official-cli-ai-accounts.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md
+/agent-note-official-cli-ai-accounts:
+  en: 7b97c0d05a706d6c
+  zh: 8ded30ecb62d593a
+/agent-note-official-cli-ai-accounts/problem:
+  en: b43e8bfded9104e5
+  zh: c9f824d7a749d34e
+/agent-note-official-cli-ai-accounts/decision:
+  en: 38aa918788169155
+  zh: 885907054f70c7f5
+/agent-note-official-cli-ai-accounts/alternatives-considered:
+  en: 5347d8266dc0b05a
+  zh: 7da05224273d5e4f
+/agent-note-official-cli-ai-accounts/consequences:
+  en: 59a1562a37c88691
+  zh: ad31c3e7cc3ec306

@@ -4,7 +4,7 @@ vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'tes
 import { afterEach, expect, it, vi } from 'vitest'
 import type { BrowserWindowConstructorOptions } from 'electron'
 import type { DesktopLocale } from '../src/locale.ts'
-import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
+import type { CotecconsSsoSignInId, CotecconsSsoView } from '@deepseek-ai/dsh-coteccons-sso/types'
 import type { WelcomeOperations } from '../src/welcome-api.ts'
 import { DESKTOP_IPC } from '../src/ipc.ts'
 
@@ -14,11 +14,9 @@ const state = vi.hoisted(() => ({
   beforeRead: vi.fn(async () => {}),
   beforeWelcome: vi.fn(async () => {}),
   copy: vi.fn(),
-  expiryListener: undefined as (() => void) | undefined,
-  accountListener: undefined as ((value: AccountView) => void) | undefined,
-  accountState: vi.fn<() => Promise<AccountView>>().mockResolvedValue({
-    status: 'signed-out', attempt: null, links: { usageUrl: '', topUpUrl: '' },
-  }),
+  ssoListener: undefined as ((value: CotecconsSsoView) => void) | undefined,
+  ssoState: vi.fn<() => Promise<CotecconsSsoView>>().mockResolvedValue({ status: 'signed-out' }),
+  selectDefaultModel: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
   quit: vi.fn(),
   startHost: vi.fn().mockResolvedValue({ url: 'http://127.0.0.1:3080/?token=test', injections: [] }),
   stopHost: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
@@ -130,13 +128,13 @@ vi.mock('../src/welcome-backend.ts', () => ({
       return { loggedIn: false, hasApiKey: state.hasApiKey, writable: true, localePreference: state.preference }
     },
     save: async () => ({ ok: true }),
-    account: {
-      watch: (listener: (value: AccountView) => void, _failed: () => void, expired: () => void) => {
-        state.accountListener = listener
-        state.expiryListener = expired
+    sso: {
+      watch: (listener: (value: CotecconsSsoView) => void) => {
+        state.ssoListener = listener
         return () => {}
       },
-      state: state.accountState,
+      state: state.ssoState,
+      selectDefaultModel: state.selectDefaultModel,
     },
   }),
 }))
@@ -177,7 +175,7 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   state.preference = 'zh'
   state.hasApiKey = false
   state.operations = undefined
-  state.accountState.mockResolvedValue({ status: 'signed-out', attempt: null, links: { usageUrl: '', topUpUrl: '' } })
+  state.ssoState.mockResolvedValue({ status: 'signed-out' })
   if (updated) vi.stubGlobal('process', { ...process, platform: 'win32', argv: ['desktop', '--updated'] })
   vi.useFakeTimers()
   vi.stubEnv('DSH_CLIENT_VERSION', '1.2.3')
@@ -219,20 +217,19 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   expect(state.welcomeLocale).toMatchObject({ id: 'zh-CN' })
   expect(await state.operations!.takeNotice()).toBeUndefined()
   expect(state.dialogLocale!().id).toBe('zh-CN')
-  const attemptId = 'login' as NonNullable<AccountView['attempt']>['id']
-  const account: AccountView = { status: 'signed-out', links: { usageUrl: '', topUpUrl: '' },
-    attempt: { id: attemptId, phase: 'waiting-browser', authorizeUrl: 'https://example.test/login' } }
-  state.accountState.mockResolvedValue(account)
+  const attemptId = 'login' as CotecconsSsoSignInId
+  const signedIn: CotecconsSsoView = { status: 'signed-in', account: { name: null, username: 'a@coteccons.vn', tenantId: 't' } }
+  const expired: CotecconsSsoView = { status: 'error', errorCode: 'session-expired' }
+  const signedOut: CotecconsSsoView = { status: 'signed-out' }
+  state.ssoState.mockResolvedValue({ status: 'signing-in', attemptId, url: 'https://login.microsoftonline.com/login' })
   await state.operations!.copySignInLink(attemptId)
-  expect(state.copy).toHaveBeenCalledExactlyOnceWith('https://example.test/login?theme=light')
-  state.nativeTheme.shouldUseDarkColors = true
-  await state.operations!.copySignInLink(attemptId)
-  expect(state.copy).toHaveBeenLastCalledWith('https://example.test/login?theme=dark')
-  state.nativeTheme.shouldUseDarkColors = false
-  await expect(state.operations!.copySignInLink('stale' as typeof attemptId)).rejects.toThrow('login link is unavailable')
-  state.accountState.mockResolvedValue({ ...account, attempt: { id: attemptId, phase: 'expired' } })
-  await expect(state.operations!.copySignInLink(attemptId)).rejects.toThrow('login link is unavailable')
-  expect(state.copy).toHaveBeenCalledTimes(2)
+  expect(state.copy).toHaveBeenCalledExactlyOnceWith('https://login.microsoftonline.com/login')
+  await expect(state.operations!.copySignInLink('stale' as CotecconsSsoSignInId)).rejects.toThrow('sign-in link is unavailable')
+  state.ssoState.mockResolvedValue({ status: 'signing-in', attemptId, url: null })
+  await expect(state.operations!.copySignInLink(attemptId)).rejects.toThrow('sign-in link is unavailable')
+  state.ssoState.mockResolvedValue(expired)
+  await expect(state.operations!.copySignInLink(attemptId)).rejects.toThrow('sign-in link is unavailable')
+  expect(state.copy).toHaveBeenCalledOnce()
   await state.operations!.skip()
   expect(state.loadWorkspace).not.toHaveBeenCalled()
   expect(state.showWorkspace).toHaveBeenCalledOnce()
@@ -265,31 +262,31 @@ it.each([false, true])('starts welcome onboarding without carrying update focus 
   expect(await bootstrap(event)).toEqual({ languages: ['en-US'], preference: 'en' })
   const welcomeCount = state.beforeWelcome.mock.calls.length
   state.hasApiKey = true
-  state.accountListener!({ ...account, status: 'credential-stored', attempt: null })
-  state.accountListener!({ ...account, status: 'signed-out', attempt: null })
-  state.expiryListener!()
+  state.ssoListener!(signedIn)
+  state.ssoListener!(expired)
   await vi.advanceTimersByTimeAsync(0)
   expect(state.beforeWelcome).toHaveBeenCalledTimes(welcomeCount)
   expect(await state.operations!.takeNotice()).toBeUndefined()
   state.hasApiKey = false
-  state.accountListener!({ ...account, status: 'credential-stored', attempt: null })
-  state.accountListener!({ ...account, status: 'signed-out', attempt: null })
-  state.expiryListener!()
+  state.ssoListener!(signedIn)
+  state.ssoListener!(expired)
   await vi.waitFor(() => { expect(state.beforeWelcome).toHaveBeenCalledTimes(welcomeCount + 1) })
   expect(await state.operations!.takeNotice()).toBe('session-expired')
   expect(await state.operations!.takeNotice()).toBeUndefined()
-  state.accountListener!({ ...account, status: 'signed-out', attempt: null })
+  state.ssoListener!(signedOut)
   await vi.advanceTimersByTimeAsync(0)
   expect(await state.operations!.takeNotice()).toBeUndefined()
-  state.accountListener!({ ...account, status: 'credential-stored', attempt: null })
-  state.accountListener!({ ...account, status: 'signed-out', attempt: null })
+  state.ssoListener!(signedIn)
+  state.ssoListener!(signedOut)
   await vi.advanceTimersByTimeAsync(0)
   expect(await state.operations!.takeNotice()).toBeUndefined()
   state.showWorkspace.mockClear()
   state.focusWorkspace.mockClear()
   vi.stubEnv('DSH_DESKTOP_OPEN_DEVTOOLS', '1')
-  state.accountListener!({ ...account, status: 'credential-stored', attempt: { id: attemptId, phase: 'succeeded' } })
+  state.ssoListener!({ status: 'signing-in', attemptId, url: null })
+  state.ssoListener!(signedIn)
   await vi.waitFor(() => { expect(state.showInactiveWorkspace).toHaveBeenCalledOnce() })
+  expect(state.selectDefaultModel).toHaveBeenCalledOnce()
   expect(state.showWorkspace).not.toHaveBeenCalled()
   expect(state.focusWorkspace).not.toHaveBeenCalled()
   expect(state.moveTopWorkspace).not.toHaveBeenCalled()

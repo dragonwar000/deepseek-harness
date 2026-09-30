@@ -1,0 +1,7 @@
+# Optional Profile Bundle: mount the Claude Code and Codex subagent providers
+# for the default AI Account of each kind. Agent Presets grant the
+# model-facing tools independently. Do not also install the standalone
+# provider Bundles, whose rows would register the same provider names.
+- insert:
+    - id: subagent-ai-account
+      name: '@deepseek-ai/dsh-subagent-ai-account'

@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/api/coteccons-sso-controller/README.md
+/:
+  en: 816e677604b6c5ef
+  zh: 4aec7a7d540b47df
+/deepseek-ai-dsh-api-coteccons-sso-controller:
+  en: 94a7a37844a69f11
+  zh: 8104110ca35d6d90
+/deepseek-ai-dsh-api-coteccons-sso-controller/summary:
+  en: f3f6f6d1b61532a4
+  zh: e32bb569189780f3
+/deepseek-ai-dsh-api-coteccons-sso-controller/table-of-contents:
+  en: e6747830a09a09aa
+  zh: 76900a6bcd1bc756
+/deepseek-ai-dsh-api-coteccons-sso-controller/use-this-package:
+  en: 067be6ded0c0de96
+  zh: 75cf31134ccd1b66
+/deepseek-ai-dsh-api-coteccons-sso-controller/understand-the-implementation:
+  en: 33dd02d9fe9767bb
+  zh: 3ffaf69862ac9207
+/deepseek-ai-dsh-api-coteccons-sso-controller/further-exploration:
+  en: ad4c2599acd2c1b3
+  zh: c81406cbf926f0ab
+/deepseek-ai-dsh-api-coteccons-sso-controller/model-experience:
+  en: fd9be73e2a5c74ba
+  zh: 562c26178718c27f
+/deepseek-ai-dsh-api-coteccons-sso-controller/model-experience/kv-cache-effect:
+  en: ca3015e252db0114
+  zh: ebca9253cf15e8e9
+/deepseek-ai-dsh-api-coteccons-sso-controller/known-limitations-and-deferred-work:
+  en: 262cbdd7cf652f4b
+  zh: f161e49f17ddc715
+/deepseek-ai-dsh-api-coteccons-sso-controller/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

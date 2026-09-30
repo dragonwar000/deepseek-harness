@@ -61,7 +61,7 @@ dsh --profile <name>
 
 ### 暴露工具
 
-每个委派工具行指名一个提供方，并需要独立的 `toolName`，因此模型看到的是静态工具，而不是动态提供方选择器。完整 Agent Preset 携带对应的默认工具行并设置 `disabled: true`；复制一个 preset 后删除该字段，即可只向由该副本组装的 agent（智能体）暴露 `subagent_claude_code`。
+每个委派工具行指名一个提供方，并需要独立的 `toolName`，因此模型看到的是静态工具，而不是动态提供方选择器。Web App 的完整 Agent Preset 携带已启用的对应工具行；只有名为 `claude-code` 的提供方挂载期间它才注册 `subagent_claude_code`，因此安装此 Bundle 会向由这些 preset 组装的 agent（智能体）暴露该工具。在复制的 preset 中为该行添加 `disabled: true` 即可不暴露。
 
 ```yaml
 - id: jobs

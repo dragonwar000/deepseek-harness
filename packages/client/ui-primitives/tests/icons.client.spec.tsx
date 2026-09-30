@@ -122,28 +122,39 @@ describe('product icon set', () => {
   })
 })
 
-describe('FishLogo', () => {
-  it('renders the fish path in currentColor at the native ratio', () => {
-    const { container } = render(<primitives.FishLogo />)
+describe('CtdMark', () => {
+  it('renders the Coteccons symbol at the requested size, filled by the theme-driven brand ink', () => {
+    const { container } = render(<primitives.CtdMark size={32} className="slot" />)
     const svg = container.querySelector('svg')!
-    expect(svg.getAttribute('width')).toBe('24')
-    expect(Number(svg.getAttribute('height'))).toBeCloseTo(17.66, 1)
-    expect(svg.getAttribute('viewBox')).toBe('0 0 23.16 17.04')
-    expect(container.querySelectorAll('path')).toHaveLength(1)
-    expect(container.innerHTML).toContain('currentColor')
-    expect(container.innerHTML).not.toContain('M0 0L23.16')
+    expect(svg.getAttribute('width')).toBe('32')
+    expect(svg.getAttribute('height')).toBe('32')
+    expect(svg.getAttribute('viewBox')).toBe('-0.55 -9.45 61.8 61.8')
+    expect(svg.getAttribute('fill')).toBe('currentColor')
+    expect(svg.classList.contains(primitives.CTD_BRAND_INK_CLASS)).toBe(true)
+    expect(svg.classList.contains('slot')).toBe(true)
+    expect(container.querySelectorAll('path')).toHaveLength(2)
+    expect(container.querySelector('text')).toBeNull()
+    expect(container.innerHTML).not.toContain('#')
   })
 })
 
 describe('BrandWordmark', () => {
-  it('can render the name artwork with or without its leading mark', () => {
+  it('can render the "CTD Core" wordmark with or without its leading mark', () => {
     const view = render(<primitives.BrandWordmark />)
     const svg = view.container.querySelector('svg')!
-    expect(svg.getAttribute('width')).toBe('182')
-    expect(svg.getAttribute('viewBox')).toBe('0 0 182 24')
+    const wordmarkText = () => view.container.querySelectorAll('text')
+    expect(svg.getAttribute('width')).toBe('152')
+    expect(svg.getAttribute('viewBox')).toBe('0 0 152 24')
+    expect(view.container.querySelectorAll('path')).toHaveLength(2)
+    expect(wordmarkText()).toHaveLength(1)
+    expect(wordmarkText()[0]?.textContent).toBe('CTD Core')
+    expect(wordmarkText()[0]?.getAttribute('fill')).toBe('currentColor')
 
     view.rerender(<primitives.BrandWordmark includeMark={false} />)
-    expect(svg.getAttribute('width')).toBe('156')
-    expect(svg.getAttribute('viewBox')).toBe('26 0 156 24')
+    expect(svg.getAttribute('width')).toBe('120')
+    expect(svg.getAttribute('viewBox')).toBe('0 0 120 24')
+    expect(view.container.querySelector('path')).toBeNull()
+    expect(wordmarkText()).toHaveLength(1)
+    expect(wordmarkText()[0]?.textContent).toBe('CTD Core')
   })
 })

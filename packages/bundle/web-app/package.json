@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-web-app",
   "description": "The dsh browser-surface bundle: the web patch layer over dsh-base plus the runtime glue plugin (frontend dist serving, web-surface prompt, bash runtime variables, URL line)",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },
@@ -171,7 +171,13 @@
     "commander": "^15.0.0",
     "open": "^11.0.0",
     "@deepseek-ai/dsh-api-account-controller": "workspace:*",
+    "@deepseek-ai/dsh-api-ai-account-controller": "workspace:*",
     "@deepseek-ai/dsh-client-ui-settings-account": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-ai-account": "workspace:*",
+    "@deepseek-ai/dsh-api-coteccons-sso-controller": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-coteccons-sso": "workspace:*",
+    "@deepseek-ai/dsh-coteccons-sso-msal": "workspace:*",
+    "@deepseek-ai/dsh-llm-coteccons-sso": "workspace:*",
     "@deepseek-ai/dsh-client-shortcuts": "workspace:*",
     "@deepseek-ai/dsh-client-ui-shortcuts": "workspace:*",
     "@deepseek-ai/dsh-client-product-analytics": "workspace:*",

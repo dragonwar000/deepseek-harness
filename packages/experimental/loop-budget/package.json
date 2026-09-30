@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-loop-budget",
   "description": "Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor; pauses the goal on a trip; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

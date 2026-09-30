@@ -28,9 +28,15 @@ const RECOVERY_CONFIRMATION_MS = 2_000
 /** Minimum visible time for the connecting pill; shorter attempts read as flicker. */
 const CONNECTING_MIN_VISIBLE_MS = 800
 
+/**
+ * Section ids a merge retired, mapped to the section that now shows their content.
+ * `account` was the DeepSeek account page; its content is the first group of AI Account.
+ */
+const RETIRED_SECTION_IDS: Readonly<Partial<Record<string, string>>> = { account: 'ai-account' }
+
 /** Nav glyph by section id; unknown ids fall back to the settings gear. */
 function navIcon(id: string) {
-  if (id === 'account') return <IconUserOutlineMedium className={css.navIcon} size={16} />
+  if (id === 'ai-account') return <IconUserOutlineMedium className={css.navIcon} size={16} />
   if (id === 'models') return <IconDataOutlineMedium className={css.navIcon} size={16} />
   if (id === 'agent-presets') return <IconAgentPresetOutlineMedium className={css.navIcon} size={16} />
   if (id === 'plugins') return <IconPersonalizationOutlineMedium className={css.navIcon} size={16} />
@@ -54,7 +60,8 @@ type PanelProps = {
 function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelProps) {
   // Entries can unmount underneath the requested id, so the render-time
   // projection falls back to the first row when the id is gone.
-  const active = rows.find(r => r.id === activeId)?.id ?? rows[0]?.id
+  const requested = activeId === undefined ? undefined : RETIRED_SECTION_IDS[activeId] ?? activeId
+  const active = rows.find(r => r.id === requested)?.id ?? rows[0]?.id
   const titleId = useId()
 
   const panel = useRef<HTMLDivElement>(null)

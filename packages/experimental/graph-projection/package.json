@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-graph-projection",
   "description": "Task graphs, turn evidence, and compacted history folded from the session log, with the read-only graph_query, graph_cite, and history_read tools",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-tool-knowledge",
   "description": "Model-facing knowledge tools: knowledge_query, knowledge_read, knowledge_cite, and approval-gated knowledge_write whose pages cite the session's successful reads",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

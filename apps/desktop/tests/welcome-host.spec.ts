@@ -4,6 +4,7 @@ import { connectDesktopWelcome } from '../src/welcome-backend.ts'
 
 function transport(preference?: string) {
   const keys = new Map<string, string>()
+  const sso = { status: 'signed-out' as string }
   const namespaces = [
     { ns: 'llm-deepseek', value: { apiKeyEnv: 'CUSTOM_DEEPSEEK_KEY' } },
     { ns: 'llm-pi-ai', value: { profiles: { example: { apiKeyEnv: 'EXAMPLE_API_KEY' } } } },
@@ -17,16 +18,22 @@ function transport(preference?: string) {
       payload: { args: { ref: string; value: string; refs: string[] } }
     }
     let value: unknown
-    if (method === 'account/getState') value = { links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out', attempt: null }
+    if (method === 'cotecconsSso/getState') {
+      value = sso.status === 'signed-in'
+        ? { status: 'signed-in', account: { name: 'A', username: 'a@coteccons.vn', tenantId: 't' } }
+        : { status: sso.status }
+    }
     else if (method === 'settings/describe') value = { namespaces }
-    else if (method === 'llm/listConfigurableProviders') value = [{ settingsNs: 'llm-pi-ai', settingsPath: ['profiles', 'example'] }]
+    else if (method === 'llm/listConfigurableProviders') {
+      value = [{ settingsNs: 'llm-deepseek', settingsPath: [] }, { settingsNs: 'llm-pi-ai', settingsPath: ['profiles', 'example'] }]
+    }
     else if (method === 'productAnalytics/enabled') value = true
     else if (method === 'productAnalytics/report') value = undefined
     else if (method === 'credentials/set') keys.set(payload.args.ref, payload.args.value)
     else value = Object.fromEntries(payload.args.refs.map(ref => [ref, { configured: keys.has(ref), writable: true }]))
     return Response.json({ type: 'server-response', rpcId, result: { ok: true, value } })
   })
-  return { send, keys, namespaces }
+  return { send, keys, namespaces, sso }
 }
 
 const url = 'http://127.0.0.1:19387/?token=fixture'
@@ -37,9 +44,11 @@ describe('desktop welcome Web operations', () => {
     const backend = await connectDesktopWelcome(url, host.send)
     expect(host.send).toHaveBeenCalledExactlyOnceWith(url, { credentials: 'include' })
     expect(await backend.analyticsEnabled()).toBe(true)
-    expect(await backend.save('sk-example')).toEqual({ ok: true })
+    expect(await backend.save('llm-deepseek', 'sk-example')).toEqual({ ok: true })
     expect(host.keys.get('CUSTOM_DEEPSEEK_KEY')).toBe('sk-example')
-    expect(await backend.read()).toEqual({ loggedIn: false, hasApiKey: true, writable: true, localePreference: null })
+    expect(await backend.read()).toEqual({
+      loggedIn: false, hasApiKey: true, writable: true, writableProviders: ['llm-deepseek', 'llm-pi-ai'], localePreference: null,
+    })
     for (const [input, init] of host.send.mock.calls.slice(1)) {
       expect(input).toMatch(/^http:\/\/127\.0\.0\.1:19387\/api\//u)
       expect(init).toMatchObject({ credentials: 'include', redirect: 'error' })
@@ -56,7 +65,16 @@ describe('desktop welcome Web operations', () => {
     expect(host.send.mock.calls.every(([, init]) => !(init?.body as string | undefined)?.includes('credentials/set'))).toBe(true)
   })
 
-  it('reads language without querying account or model providers', async () => {
+  it('reports a signed-in Coteccons SSO account as logged in', async () => {
+    const host = transport()
+    host.sso.status = 'signed-in'
+    const backend = await connectDesktopWelcome(url, host.send)
+    expect(await backend.read()).toMatchObject({ loggedIn: true, hasApiKey: false })
+    host.sso.status = 'not-configured'
+    await expect(backend.read()).rejects.toThrow('invalid missing settings')
+  })
+
+  it('reads language without querying sign-in or model providers', async () => {
     const host = transport('zh')
     const backend = await connectDesktopWelcome(url, host.send)
     host.send.mockClear()
@@ -69,10 +87,10 @@ describe('desktop welcome Web operations', () => {
     const host = transport()
     host.namespaces.splice(0, 1)
     const backend = await connectDesktopWelcome(url, host.send)
-    expect(await backend.read()).toMatchObject({ hasApiKey: false, writable: false })
+    expect(await backend.read()).toMatchObject({ hasApiKey: false, writable: true, writableProviders: ['llm-pi-ai'] })
     host.keys.set('EXAMPLE_API_KEY', 'custom-key')
-    expect(await backend.read()).toMatchObject({ hasApiKey: true, writable: false })
-    expect(await backend.save('official-key')).toEqual({ ok: false })
+    expect(await backend.read()).toMatchObject({ hasApiKey: true, writableProviders: ['llm-pi-ai'] })
+    expect(await backend.save('llm-pi-ai', 'official-key')).toEqual({ ok: false })
     expect(host.keys.has('undefined')).toBe(false)
   })
 
@@ -80,7 +98,7 @@ describe('desktop welcome Web operations', () => {
     const host = transport()
     const backend = await connectDesktopWelcome(url, host.send)
     host.send.mockClear()
-    expect(await backend.save(value)).toEqual({ ok: false })
+    expect(await backend.save('llm-deepseek', value)).toEqual({ ok: false })
     expect(host.send).not.toHaveBeenCalled()
   })
 
@@ -88,7 +106,7 @@ describe('desktop welcome Web operations', () => {
     const host = transport()
     const backend = await connectDesktopWelcome(url, host.send)
     host.send.mockRejectedValueOnce(new Error('private credential sk-must-not-leak'))
-    expect(await backend.save('sk-example')).toEqual({ ok: false })
+    expect(await backend.save('llm-deepseek', 'sk-example')).toEqual({ ok: false })
     host.send.mockResolvedValueOnce(Response.json({ type: 'server-response', rpcId: 'other', result: { ok: true } }))
     await expect(backend.read()).rejects.toThrow('Web RPC failed')
   })

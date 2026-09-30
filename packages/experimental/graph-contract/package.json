@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-graph-contract",
   "description": "dsh-graph/v1 plan contract: deterministic graph_audit admission and graph/plan records with rejection memory; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

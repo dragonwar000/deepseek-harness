@@ -178,6 +178,33 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-agent-tool-presentation -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->
+<a id="deepseek-aidsh-ai-account-platform"></a>
+
+## `@deepseek-ai/dsh-ai-account-platform`
+
+- `inject`: `subprocess`
+- `source`: [`packages/credentials/ai-account-platform/src/index.ts:21`](../packages/credentials/ai-account-platform/src/index.ts)
+
+```ts config-catalog
+/** Deployment choices for the account root, CLI executables, and command deadlines. */
+export interface Config {
+  /** Directory holding `accounts.json` and the per-account CLI configuration directories; defaults to `<Harness home>/ai-accounts`. */
+  root?: string
+  /** Claude Code executable: an absolute path or a bare name resolved from `PATH`. */
+  claudeCliPath?: string
+  /** Codex executable: an absolute path or a bare name resolved from `PATH`. */
+  codexCliPath?: string
+  /** Deadline for one complete login, including the time the user spends authorizing, in milliseconds. */
+  loginTimeoutMs?: number
+  /** Deadline for one status or logout command, in milliseconds. */
+  commandTimeoutMs?: number
+  /** Grace between termination tiers when a CLI command is cancelled, in milliseconds. */
+  graceMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-api-gateway -->
 <a id="deepseek-aidsh-api-gateway"></a>
 
@@ -787,6 +814,37 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-cordis-host-runner -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-coteccons-sso-msal -->
+<a id="deepseek-aidsh-coteccons-sso-msal"></a>
+
+## `@deepseek-ai/dsh-coteccons-sso-msal`
+
+- `inject`: `credentials`
+- `source`: [`packages/credentials/coteccons-sso-msal/src/index.ts:28`](../packages/credentials/coteccons-sso-msal/src/index.ts)
+
+```ts config-catalog
+/** Deployment settings for the Entra ID app registration and the tokens it requests. */
+export interface Config {
+  /** Directory (tenant) id or verified domain; unset leaves the provider `not-configured`. */
+  tenantId?: string
+  /** Application (client) id of the public-client app registration; unset leaves the provider `not-configured`. */
+  clientId?: string
+  /** Authority URL; defaults to `https://login.microsoftonline.com/<tenantId>`. */
+  authority?: string
+  /** Scopes requested at sign-in besides {@link aiScope}. */
+  scopes?: string[]
+  /** Azure AI resource scope consented at sign-in and used for model requests. */
+  aiScope?: string
+  /** Lowercase email domains allowed to sign in; empty allows every account of the tenant. */
+  allowedDomains?: string[]
+  /** Open the sign-in page in the Host's default browser; the URL is always also published in the sign-in state. */
+  openBrowser?: boolean
+  /** Deadline for one interactive sign-in, including the time the user spends in the browser, in milliseconds. */
+  signInTimeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-coteccons-sso-msal -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-credentials-local -->
 <a id="deepseek-aidsh-credentials-local"></a>
@@ -2068,6 +2126,31 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-jobs-local -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-coteccons-sso -->
+<a id="deepseek-aidsh-llm-coteccons-sso"></a>
+
+## `@deepseek-ai/dsh-llm-coteccons-sso`
+
+- `inject`: `llm`
+- `refs`: [`PiAiModelProfile`](../packages/llm/llm-pi-ai/src/index.ts)
+- `source`: [`packages/llm/llm-coteccons-sso/src/index.ts:51`](../packages/llm/llm-coteccons-sso/src/index.ts)
+
+```ts config-catalog
+/** Deployment choices with every default applied. */
+type ValidConfig = Required<Config>
+
+/** Deployment choices for the endpoint and its model catalog. */
+export interface Config {
+  /** Name shown in model selectors. */
+  displayName?: string
+  /** OpenAI-compatible v1 endpoint of the Azure OpenAI or Foundry resource. */
+  baseURL?: string
+  /** Deployments served on the endpoint; each `id` is sent as the request's `model`. */
+  models?: PiAiModelProfile[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-coteccons-sso -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-deepseek-account -->
 <a id="deepseek-aidsh-llm-deepseek-account"></a>
@@ -3659,6 +3742,26 @@ export type PermissionPolicy = 'allow' | 'reject'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-subagent-acp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-subagent-ai-account -->
+<a id="deepseek-aidsh-subagent-ai-account"></a>
+
+## `@deepseek-ai/dsh-subagent-ai-account`
+
+- `inject`: `aiAccount`
+- `refs`: [`claudeCode`](../packages/subagent/subagent-claude-code/src/index.ts) · [`codex`](../packages/subagent/subagent-codex/src/index.ts)
+- `source`: [`packages/subagent/subagent-ai-account/src/index.ts:19`](../packages/subagent/subagent-ai-account/src/index.ts)
+
+```ts config-catalog
+/** Provider row configuration for each product; the account directory is layered over each `env`. */
+export interface Config {
+  /** `@deepseek-ai/dsh-subagent-claude-code` configuration for the default Claude account (provider name defaults to `claude-code`). */
+  claudeCode?: claudeCode.Config
+  /** `@deepseek-ai/dsh-subagent-codex` configuration for the default ChatGPT account (provider name defaults to `codex`). */
+  codex?: codex.Config
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-subagent-ai-account -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-subagent-claude-code -->
 <a id="deepseek-aidsh-subagent-claude-code"></a>
 
@@ -4839,6 +4942,8 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-acp-app` | `cmdlineArgs` | [`packages/bundle/acp-app/src/index.ts`](../packages/bundle/acp-app/src/index.ts) |
 | `@deepseek-ai/dsh-agent` | — | [`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts) |
 | `@deepseek-ai/dsh-api-account-controller` | `deepseekAccount` · `agents` | [`packages/api/account-controller/src/index.ts`](../packages/api/account-controller/src/index.ts) |
+| `@deepseek-ai/dsh-api-ai-account-controller` | `aiAccount` | [`packages/api/ai-account-controller/src/index.ts`](../packages/api/ai-account-controller/src/index.ts) |
+| `@deepseek-ai/dsh-api-coteccons-sso-controller` | `cotecconsSso` | [`packages/api/coteccons-sso-controller/src/index.ts`](../packages/api/coteccons-sso-controller/src/index.ts) |
 | `@deepseek-ai/dsh-api-remotes` | `typertGateway` | [`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts) |
 | `@deepseek-ai/dsh-authorization` | `credentials` | [`packages/credentials/authorization/src/index.ts`](../packages/credentials/authorization/src/index.ts) |
 | `@deepseek-ai/dsh-browser-use` | — | [`packages/browser-use/browser-use/src/index.ts`](../packages/browser-use/browser-use/src/index.ts) |
@@ -4872,6 +4977,8 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-client-ui-session` | — | [`packages/client/ui-session/src/index.ts`](../packages/client/ui-session/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings` | — | [`packages/client/ui-settings/src/index.ts`](../packages/client/ui-settings/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-agent-loop` | — | [`packages/client/ui-settings-agent-loop/src/index.ts`](../packages/client/ui-settings-agent-loop/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-settings-ai-account` | `slots` · `locale` | [`packages/client/ui-settings-ai-account/src/index.ts`](../packages/client/ui-settings-ai-account/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-settings-coteccons-sso` | `slots` · `locale` | [`packages/client/ui-settings-coteccons-sso/src/index.ts`](../packages/client/ui-settings-coteccons-sso/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-general` | — | [`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-plugin-inventory` | — | [`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-plugins` | — | [`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts) |
@@ -4942,8 +5049,10 @@ Abstract service classes — a deployment loads a concrete implementation packag
 <!-- BEGIN GENERATED config-catalog:seam -->
 | `package` | `class` | `inject` | `source` |
 | --- | --- | --- | --- |
+| `@deepseek-ai/dsh-ai-account` | `AiAccount` | — | [`packages/credentials/ai-account/src/index.ts`](../packages/credentials/ai-account/src/index.ts) |
 | `@deepseek-ai/dsh-attachment` | `AttachmentStore` | — | [`packages/attachment/attachment/src/index.ts`](../packages/attachment/attachment/src/index.ts) |
 | `@deepseek-ai/dsh-compaction` | `CompactionEngine` | — | [`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts) |
+| `@deepseek-ai/dsh-coteccons-sso` | `CotecconsSso` | — | [`packages/credentials/coteccons-sso/src/index.ts`](../packages/credentials/coteccons-sso/src/index.ts) |
 | `@deepseek-ai/dsh-credentials` | `CredentialProvider` | — | [`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts) |
 | `@deepseek-ai/dsh-deepseek-account` | `DeepSeekAccount` | — | [`packages/credentials/deepseek-account/src/index.ts`](../packages/credentials/deepseek-account/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-knowledge` | `KnowledgeService` | — | [`packages/experimental/knowledge/src/index.ts`](../packages/experimental/knowledge/src/index.ts) |

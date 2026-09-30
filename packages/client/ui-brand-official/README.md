@@ -1,5 +1,5 @@
 ---
-description: "Official DeepSeek Harness brand occupants for the sidebar, active only in official builds; for users and maintainers choosing or replacing brand presentation."
+description: "Official CTD Core brand occupants for the sidebar, active only in official builds; for users and maintainers choosing or replacing brand presentation."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This package gives an `official` client build the DeepSeek Harness mark and name in the sidebar. Other build profiles keep the shell's fish mark and local-build label, while the conversation hero always uses the animated fish. Choose it for deployments branded as DeepSeek Harness; deployments with another identity should provide a replacement brand package. It has no runtime state and does not affect model requests.
+This package gives an `official` client build the CTD Core name wordmark in the sidebar. Every build profile already shows the same Coteccons mark there — this package's mark occupant renders the identical `CtdMark` artwork as the shell's own fallback — so only the name presentation differs: the official wordmark SVG instead of the shell's plain-text local-build label. The conversation hero always uses the Coteccons mark fallback regardless of profile. Choose this package for deployments branded as CTD Core; deployments with another identity should provide a replacement brand package. It has no runtime state and does not affect model requests.
 
 ## Table of Contents
 
@@ -25,11 +25,11 @@ This package gives an `official` client build the DeepSeek Harness mark and name
 <a id="use-this-package"></a>
 ## Use this package
 
-Mount this plugin in the browser roster of a deployment whose identity is DeepSeek's own, then build the client with the `official` profile so the occupants register.
+Mount this plugin in the browser roster of a deployment whose identity is CTD Core's own; its occupants register unconditionally once mounted.
 
 ### Choosing the profile
 
-`DSH_CLIENT_BUILD_PROFILE` selects which brand renders. An `official` build shows the official mark and name in the sidebar; any other value leaves the shell fallbacks — the fish mark and the local-build label — in place. The conversation hero shows the animated hero fish from `dsh-client-ui-conversation` regardless of profile, because that fallback is already the official mark. The plugin still loads and validates in both cases; only the registration is profile-gated.
+This package has no internal build-profile check: `apply()` always registers `OfficialBrandMark` and `OfficialBrandName` once the plugin is mounted. A deployment's composition — not a runtime env value — decides whether this package is in the roster at all; `DSH_CLIENT_BUILD_PROFILE` only selects the embedded `official`/default client build record read elsewhere (see [`scripts/client-build-environment.ts`](../../../scripts/client-build-environment.ts)), not this package's own registration. A deployment that leaves this package out of its roster keeps the shell fallbacks — the Coteccons mark and the local-build label — in place. The conversation hero shows the Coteccons mark fallback from `dsh-client-ui-conversation` regardless of profile, because that fallback is already the official mark.
 
 ### Replacing the brand
 

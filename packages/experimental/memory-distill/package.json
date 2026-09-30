@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-memory-distill",
   "description": "Episode distillation into the knowledge store: after the verifier gate records verdict ok, one episode page with the request, the filtered final response, and the changed files, citing their tool results; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

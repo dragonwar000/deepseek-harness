@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 Account screens use authenticated Remote commands and a snapshot stream. The controller exposes login state without returning tokens or PKCE secrets.
 
+The shipped composition keeps row `account-controller` (Web App Bundle) disabled: [Coteccons SSO](../../credentials/coteccons-sso/README.md) replaces DeepSeek Platform sign-in in CTD Core. A profile patch can re-enable the row.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

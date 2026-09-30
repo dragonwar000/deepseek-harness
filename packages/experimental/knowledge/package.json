@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-knowledge",
   "description": "Knowledge capability seam (ctx.knowledge): page and edge vocabulary, the abstract KnowledgeService, and the knowledge/write and knowledge/inject session events",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

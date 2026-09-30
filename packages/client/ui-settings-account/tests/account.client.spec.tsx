@@ -50,7 +50,7 @@ function mount(state: Omit<AccountView, 'links'>, copy: typeof en | typeof zh = 
     <AccountSection {...globals} {...operations}
       useAccount={selector => selector(operations.hooks.account.getSnapshot())}
       useTheme={selector => selector(operations.hooks.theme.getSnapshot())}
-      close={() => {}} t={key => key in copy ? copy[key as AccountKey] : key} />
+      t={key => key in copy ? copy[key as AccountKey] : key} />
     {/* The application renders this from `shell.overlay`; the settings page only requests a page. */}
     {platform !== undefined && pages !== undefined
       && <SharedPlatformHost Globals={globals} pages={pages} platform={platform} copy={copy}
@@ -103,9 +103,22 @@ it.each([en, zh])('renders account cards without inventing profile or balance da
   expect(screen.getAllByText(copy.loading)).toHaveLength(3)
   expect(screen.getByRole('link', { name: copy.usage }).getAttribute('href')).toBe('http://localhost:8081/usage')
   expect(screen.getByRole('link', { name: copy.topUp }).getAttribute('href')).toBe('http://localhost:8081/top_up')
-  expect(screen.queryByRole('button', { name: copy.signOut })).toBeNull()
+  expect(screen.getByRole('heading', { name: copy.groupTitle })).toBeTruthy()
+  expect(screen.getByRole('button', { name: copy.signOut })).toBeTruthy()
   expect(document.body.textContent).not.toContain('209.00')
   await expect(`${screen.getByRole('region').textContent}\n`).toMatchFileSnapshot(`./expected/account-${copy === en ? 'en' : 'zh'}.txt`)
+})
+
+it.each([en, zh].flatMap(copy => ([false, 'unknown'] as const).map(running => ({ copy, running }))))('signs out from the DeepSeek group after confirming task impact $running', async ({ copy, running }) => {
+  const operations = mount({ status: 'credential-stored', attempt: null }, copy)
+  vi.mocked(operations.hasRunningAccountTasks).mockImplementation(async () => { if (running === 'unknown') throw new Error('offline'); return running })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: copy.signOut })) })
+  const dialog = screen.getByRole('dialog', { name: copy.signOut })
+  expect(dialog.textContent).toContain(running === 'unknown' ? copy.signOutUnknownDescription : copy.signOutDescription)
+  expect(operations.signOut).not.toHaveBeenCalled()
+  await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: copy.signOut })) })
+  expect(operations.signOut).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 it('starts sign-in and disables cancellation during persistence', async () => {
@@ -268,7 +281,7 @@ it.each([en, zh])('shows the signed-out settings prompt without balance or Platf
 })
 
 
-it('opens usage inside Desktop and returns to the same Account settings', async () => {
+it('opens usage inside Desktop and returns to the same DeepSeek account group', async () => {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   const platform: PlatformBridge = { open: vi.fn(async () => {}), setBounds: vi.fn(async () => {}), close: vi.fn(async () => {}) }
   mount({ status: 'credential-stored', attempt: null }, en, undefined, platform)
@@ -281,7 +294,7 @@ it('opens usage inside Desktop and returns to the same Account settings', async 
   await act(async () => { fireEvent.click(back) })
   expect(platform.close).toHaveBeenCalledOnce()
   expect(screen.queryByRole('button', { name: en.backToHarness })).toBeNull()
-  expect(screen.getByRole('region', { name: en.nav })).toBeTruthy()
+  expect(screen.getByRole('region', { name: en.groupTitle })).toBeTruthy()
   // The overlay's layout cleanup hands the page's return focus back to the link
   // that opened it, with no dialog to take it instead.
   expect(document.activeElement).toBe(usage)
@@ -347,7 +360,7 @@ it('ignores a retried document completing after returning to Account', async () 
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: en.backToHarness })) })
   await act(async () => { loaded.resolve(undefined); await loaded.promise })
   expect(screen.queryByRole('dialog')).toBeNull()
-  expect(screen.getByRole('region', { name: en.nav })).toBeTruthy()
+  expect(screen.getByRole('region', { name: en.groupTitle })).toBeTruthy()
   expect(platform.close).toHaveBeenCalledTimes(2)
 })
 
@@ -510,7 +523,7 @@ it('opens the authorization link with the active Desktop palette and follows lat
   const operations = operationsOf({ status: 'signed-out', attempt: { id: 'attempt' as SignInAttemptId, phase: 'waiting-browser', authorizeUrl } })
   const element = (theme: ThemeSnapshot) => <AccountSection {...({} as GlobalStandardProps)} {...operations}
     useAccount={selector => selector(operations.hooks.account.getSnapshot())}
-    useTheme={selector => selector(theme)} close={() => {}} t={key => key in en ? en[key as AccountKey] : key} />
+    useTheme={selector => selector(theme)} t={key => key in en ? en[key as AccountKey] : key} />
   const view = render(element(themeOf('dark')))
   expect(screen.getByRole('link', { name: en.open }).getAttribute('href'))
     .toBe('https://platform.deepseek.com/dsh/authorize?state=example&theme=dark')

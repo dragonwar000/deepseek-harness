@@ -21,6 +21,8 @@ getPlatformSession 仅在已存授权的 issuer 与 platformOrigin 一致时导�
 
 设备身份读取会校验已有登录设备记录，仅提供设备 ID、当前账户 ID 和与登录共用的操作系统版本字符串。
 
+已发布的组合将 base Bundle 的 `deepseek-account` 行保持禁用：在 CTD Core 中，[Coteccons SSO](../coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用该行。
+
 ## 目录
 
 - [使用此包](#use-this-package)

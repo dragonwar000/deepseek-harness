@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-context-knowledge",
   "description": "Knowledge index context: page ids, titles, types, update dates, and stale marks of the knowledge store, capped by lines and bytes, added at the first step of a turn when the index changed",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

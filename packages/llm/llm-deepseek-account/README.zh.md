@@ -13,6 +13,8 @@ kind: "package-reference"
 
 鉴权解析返回 `x-dsh-auth-token` 和捕获同一 token 的失败回调。HTTP 401 的分类和凭据失效处理由此提供方负责；被拒绝的旧请求不能清除替换后的登录。
 
+已发布的组合将 base Bundle 的 `llm-deepseek-account` 行保持禁用：在 CTD Core 中，[Coteccons SSO](../../credentials/coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用该行。
+
 ## 目录
 
 - [使用此包](#use-this-package)

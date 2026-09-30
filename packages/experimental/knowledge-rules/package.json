@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-knowledge-rules",
   "description": "Fail-closed guard of the knowledge store: refuses file tool writes and edits and shell commands that change store pages without going through knowledge_write",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

@@ -23,6 +23,8 @@ Account consumers read stored login state, start or cancel a browser login, and 
 
 `getDeviceIdentity()` returns existing device and account IDs plus the login OS version string, without credentials or device creation.
 
+The shipped Bundles keep the provider and consumer rows of this Service Definition disabled: [Coteccons SSO](../coteccons-sso/README.md) replaces DeepSeek Platform sign-in in CTD Core. A profile patch can re-enable those rows.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

@@ -1,17 +1,33 @@
-/** Desktop welcome presentation; account and credential operations stay in the preload. */
+/** Desktop welcome presentation; Coteccons SSO and credential operations stay in the preload. */
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Toast } from '@deepseek-ai/dsh-client-ui-primitives/src/Toast.tsx'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives/src/StateDot.tsx'
-import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
+import type { CotecconsSsoView } from '@deepseek-ai/dsh-coteccons-sso/types'
 import type { WelcomeApi } from '../welcome-api.ts'
 
-type Page = 'entry' | 'key' | 'account'
+type Page = 'entry' | 'key' | 'sso'
 
 /**
- * Render the standalone welcome flow using shell-owned operations and localized copy.
- * Clearing the account attempt returns the sign-in status page to the initial choices.
- * @param props.api - isolated preload API; no account credentials reach the renderer.
+ * Human-readable label derived from the settings namespace.
+ * Falls back to the raw namespace when there is no known provider.
+ */
+function providerLabel(ns: string): string {
+  const KNOWN: Record<string, string> = {
+    'llm-deepseek': 'DeepSeek',
+    'llm-openai': 'OpenAI',
+    'llm-anthropic': 'Anthropic',
+    'llm-pi-ai': 'Pi AI',
+    'llm-google': 'Google',
+    'llm-xai': 'xAI',
+  }
+  return KNOWN[ns] ?? ns
+}
+
+/**
+ * Render the standalone welcome flow using shell-owned operations and localized copy: Coteccons SSO sign-in,
+ * a provider API key, or setting up later. A sign-in that ends as signed out returns to the entry page.
+ * @param props.api - isolated preload API; no tokens or credentials reach the renderer.
  * @returns welcome pages with fixed bottom actions.
  */
 export function Welcome({ api }: { api: WelcomeApi }) {
@@ -20,8 +36,8 @@ export function Welcome({ api }: { api: WelcomeApi }) {
   const [page, setPage] = useState<Page>('entry')
   const pageRef = useRef<Page>('entry')
   const visiblePage = useRef<Page>('entry')
-  const [attempt, setAttempt] = useState<AccountView['attempt']>(null)
-  const attemptRef = useRef<AccountView['attempt']>(null)
+  const [sso, setSso] = useState<CotecconsSsoView | null>(null)
+  const ssoRef = useRef<CotecconsSsoView | null>(null)
   const [starting, setStarting] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState<{ status: 'idle' | 'busy' | 'copied' | 'failed' }>({ status: 'idle' })
@@ -33,38 +49,52 @@ export function Welcome({ api }: { api: WelcomeApi }) {
   const mounted = useRef(true)
   const revision = useRef(0)
   const input = useRef<HTMLInputElement>(null)
-  const keyButton = useRef<HTMLButtonElement>(null)
-  const focusEntry = useRef(false)
+  const apiKey = useRef<HTMLButtonElement>(null)
+  const [providers, setProviders] = useState<readonly string[]>([])
+  const [selectedProvider, setSelectedProvider] = useState('')
 
   function navigate(next: Page) {
     pageRef.current = next
     setPage(next)
   }
-  function showAccount(state: AccountView) {
-    if (pageRef.current === 'key' || (state.attempt === null && pageRef.current === 'entry')) return
-    attemptRef.current = state.attempt
-    setAttempt(state.attempt)
+  function showSso(state: CotecconsSsoView) {
+    const previous = ssoRef.current
+    ssoRef.current = state
+    setSso(state)
+    if (state.status !== 'signing-in' || previous?.status !== 'signing-in' || previous.attemptId !== state.attemptId) {
+      setCopyFeedback({ status: 'idle' })
+    }
+    if (pageRef.current !== 'sso') return
     setStarting(false)
-    setCopyFeedback({ status: 'idle' })
-    navigate(state.attempt === null || state.attempt.phase === 'cancelled' ? 'entry' : 'account')
+    if (state.status === 'signed-out' || state.status === 'not-configured') navigate('entry')
   }
 
   useEffect(() => {
     mounted.current = true
     document.documentElement.lang = api.id
     document.title = m.welcomeTitle
+    void api.getWritableProviders().then((list) => {
+      if (!mounted.current) return
+      const offered = list.length > 0 ? list : ['llm-deepseek']
+      setProviders(offered)
+      setSelectedProvider(offered[0] ?? 'llm-deepseek')
+    }).catch(() => {
+      if (!mounted.current) return
+      setProviders(['llm-deepseek'])
+      setSelectedProvider('llm-deepseek')
+    })
     const takeNotice = (): void => {
       void api.takeNotice().then((notice) => {
         if (mounted.current && notice === 'session-expired') setExpiryNotice(true)
       }).catch((_closedChannel: unknown) => {
-        // A closed Welcome IPC channel must not interrupt the sign-in page.
+        // A closed Welcome IPC channel must not interrupt the entry page.
       })
     }
     takeNotice()
-    const stop = api.onAccountState((state) => {
+    const stop = api.onSsoState((state) => {
       revision.current++
       takeNotice()
-      showAccount(state)
+      showSso(state)
     })
     return () => { mounted.current = false; stop() }
   }, [api, m.welcomeTitle])
@@ -73,10 +103,6 @@ export function Welcome({ api }: { api: WelcomeApi }) {
     if (page === 'entry' && visiblePage.current !== 'entry') void api.analytics?.('auth_page_view', {})
     visiblePage.current = page
     if (page === 'key') input.current?.focus()
-    else if (page === 'entry' && focusEntry.current) {
-      focusEntry.current = false
-      keyButton.current?.focus()
-    }
   }, [page, api])
 
   useEffect(() => {
@@ -85,6 +111,17 @@ export function Welcome({ api }: { api: WelcomeApi }) {
     return () => { clearTimeout(timer) }
   }, [copyFeedback])
 
+  function openKey() {
+    setError('')
+    navigate('key')
+  }
+  function backToEntry() {
+    if (busyRef.current) return
+    setDraft('')
+    setError('')
+    navigate('entry')
+    apiKey.current?.focus()
+  }
   async function saveKey(event: FormEvent) {
     event.preventDefault()
     if (busyRef.current) return
@@ -100,7 +137,7 @@ export function Welcome({ api }: { api: WelcomeApi }) {
     setBusy(true)
     setError('')
     try {
-      const result = await api.saveApiKey(value)
+      const result = await api.saveApiKey(selectedProvider, value)
       if (!mounted.current) return
       if (result.ok) setDraft('')
       else setError(m.welcomeKeyFailed)
@@ -126,25 +163,27 @@ export function Welcome({ api }: { api: WelcomeApi }) {
     }
   }
   async function start() {
-    navigate('account')
+    navigate('sso')
     setStarting(true)
-    setAttempt(null)
-    attemptRef.current = null
     const current = ++revision.current
     try {
       const state = await api.startSignIn()
-      if (mounted.current && revision.current === current) showAccount(state)
+      if (mounted.current && revision.current === current) showSso(state)
     } catch {
-      if (mounted.current && revision.current === current) setStarting(false)
+      if (mounted.current && revision.current === current) {
+        setStarting(false)
+        showSso({ status: 'error', errorCode: 'sign-in-failed' })
+      }
     }
   }
   async function cancel() {
-    if (cancelling || attemptRef.current === null) return
+    const current = ssoRef.current
+    if (cancelling || current?.status !== 'signing-in') return
     setCancelling(true)
-    const current = ++revision.current
+    const request = ++revision.current
     try {
-      const state = await api.cancelSignIn(attemptRef.current.id)
-      if (mounted.current && revision.current === current) showAccount(state)
+      const state = await api.cancelSignIn(current.attemptId)
+      if (mounted.current && revision.current === request) showSso(state)
     } catch {
       // The current attempt remains visible so cancellation can be retried.
     } finally {
@@ -152,37 +191,49 @@ export function Welcome({ api }: { api: WelcomeApi }) {
     }
   }
   async function copyLink() {
-    const current = attemptRef.current
-    if (current?.phase !== 'waiting-browser' || (copyState === 'busy' || copyState === 'copied')) return
+    const current = ssoRef.current
+    if (current?.status !== 'signing-in' || current.url === null || copyState === 'busy' || copyState === 'copied') return
     setCopyFeedback({ status: 'busy' })
     try {
-      await api.copySignInLink(current.id)
-      if (mounted.current && attemptRef.current === current) setCopyFeedback({ status: 'copied' })
+      await api.copySignInLink(current.attemptId)
+      if (mounted.current && ssoRef.current === current) setCopyFeedback({ status: 'copied' })
     } catch {
-      if (mounted.current && attemptRef.current === current) setCopyFeedback({ status: 'failed' })
+      if (mounted.current && ssoRef.current === current) setCopyFeedback({ status: 'failed' })
     }
   }
 
-  const phase = starting ? 'initializing' : attempt?.phase ?? 'failed'
-  const waiting = phase === 'waiting-browser'
-  const failed = phase === 'expired' || phase === 'failed'
-  const title = phase === 'initializing' ? m.welcomeAuthStarting
-    : waiting ? m.welcomeAuthWaiting : phase === 'expired' ? m.welcomeAuthExpired
-      : phase === 'failed' ? m.welcomeAuthFailed : m.welcomeAuthExchanging
+  const configured = sso?.status !== 'not-configured'
+  const waiting = !starting && sso?.status === 'signing-in' && sso.url !== null
+  const errorCode = !starting && sso?.status === 'error' ? sso.errorCode : undefined
+  const failed = errorCode !== undefined
+  const title = starting || (sso?.status === 'signing-in' && sso.url === null) ? m.welcomeAuthStarting
+    : waiting ? m.welcomeAuthWaiting
+      : errorCode === 'timeout' ? m.welcomeAuthExpired
+        : errorCode === 'domain-not-allowed' ? m.welcomeAuthDomain
+          : failed ? m.welcomeAuthFailed : m.welcomeAuthExchanging
   const heading = page === 'entry' ? 'welcome-heading' : page === 'key' ? 'key-title' : 'auth-status'
+  const cancellable = !starting && sso?.status === 'signing-in'
 
   return <>
     {expiryNotice && <Toast text={m.welcomeSessionExpired} onDone={() => { setExpiryNotice(false) }} />}
     <div className="titlebar" aria-hidden="true" />
-    <main className="welcome" aria-labelledby={heading}>
-      <img className="brand" src="assets/welcome-brand.svg" alt={m.welcomeBrand} width="472" height="40" />
+    <main className={`welcome${waiting && page === 'sso' ? ' waiting-page' : ''}`} aria-labelledby={heading}>
+      <img className="brand" src="assets/welcome-brand.svg" alt={m.welcomeBrand} width="149" height="40" />
       <div id="tagline" className="tagline" hidden={page !== 'entry'}>
         <h1 id="welcome-heading"><span>{m.welcomeTaglineBefore}</span><em>{m.welcomeTaglineBrand}</em><span>{m.welcomeTaglineAfter}</span></h1>
         <p id="welcome-description">{m.welcomeDescription}</p>
+        <p id="sso-note" hidden={configured}>{m.welcomeSsoNotConfigured}</p>
       </div>
       <form id="key-form" className="key-form" hidden={page !== 'key'} noValidate onSubmit={(event) => { void saveKey(event) }} aria-busy={busy}>
         <header className="key-heading"><h1 id="key-title">{m.welcomeKeyTitle}</h1><p id="key-description">{m.welcomeKeyDescription}</p></header>
         <div className="key-field">
+          <label className="visually-hidden" htmlFor="provider-select">{m.welcomeProviderLabel}</label>
+          <select id="provider-select" className="provider-select" value={selectedProvider}
+            disabled={busy} onChange={(event) => { setSelectedProvider(event.target.value); setError('') }}>
+            {providers.map(ns => (
+              <option key={ns} value={ns}>{providerLabel(ns)}</option>
+            ))}
+          </select>
           <label className="visually-hidden" htmlFor="key-input">{m.welcomeKeyPlaceholder}</label>
           <input ref={input} id="key-input" type="password" autoComplete="new-password" autoCapitalize="off" spellCheck={false} required
             aria-describedby="key-description key-error" aria-invalid={error !== ''} placeholder={m.welcomeKeyPlaceholder}
@@ -190,35 +241,38 @@ export function Welcome({ api }: { api: WelcomeApi }) {
           <p id="key-error" className="key-error" role="alert" hidden={error === ''}>{error}</p>
         </div>
       </form>
-      <section id="auth-page" className={`key-heading ${waiting ? 'auth-waiting' : phase === 'expired' ? 'auth-expired' : ''}`}
-        hidden={page !== 'account'} aria-live="polite">
+      <section id="auth-page" className={`key-heading ${waiting ? 'auth-waiting' : failed ? 'auth-expired' : ''}`}
+        hidden={page !== 'sso'} aria-live="polite">
         <h1 id="auth-status">{title}</h1>
-        <p id="auth-description" hidden={!waiting && phase !== 'expired'}>{waiting ? m.welcomeAuthWaitingDescription : m.welcomeAuthExpiredDescription}</p>
-        <button id="auth-copy" className="copy-link" type="button" hidden={!waiting} disabled={!waiting || (copyState === 'busy' || copyState === 'copied')} onClick={() => { void copyLink() }}>
+        <p id="auth-description" hidden={!waiting && !failed}>{waiting ? m.welcomeAuthWaitingDescription : m.welcomeAuthExpiredDescription}</p>
+        <button id="auth-copy" className="copy-link" type="button" hidden={!waiting} disabled={!waiting || copyState === 'busy' || copyState === 'copied'}
+          onClick={() => { void copyLink() }}>
           {copyState === 'copied' ? m.welcomeAuthCopied : copyState === 'failed' ? m.welcomeAuthCopyFailed : m.welcomeAuthCopyLink}
         </button>
       </section>
-      <div id="auth-actions" className="actions" hidden={page !== 'account'}>
+      <div id="auth-actions" className="actions" hidden={page !== 'sso'}>
         <button id="auth-loading" className="primary" type="button" hidden={failed} disabled aria-label={m.welcomeAuthExchanging}>
           <StateDot state="ongoing" size={16} className="welcome-loading" />
         </button>
         <button id="auth-retry" className="primary" type="button" hidden={!failed} onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'sign_in' }); void start() }}>{m.welcomeAuthRetry}</button>
-        <button id="auth-api-key" className="secondary" type="button" hidden={!failed} onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'api-key' }); navigate('key') }}>{m.welcomeApiKey}</button>
+        <button id="auth-api-key" className="secondary" type="button" hidden={!failed} onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'api-key' }); openKey() }}>{m.welcomeApiKey}</button>
         <button id="auth-cancel" className="secondary" type="button" hidden={failed}
-          disabled={cancelling || phase === 'committing' || phase === 'succeeded' || (phase === 'initializing' && !attempt?.id)}
-          onClick={() => { void cancel() }}>{m.welcomeAuthCancel}</button>
-      </div>
-      <div id="entry-actions" className="actions" hidden={page !== 'entry'}>
-        <button id="sign-in" className="primary" type="button" onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'sign_in' }); void start() }}>{m.welcomeSignIn}</button>
-        <button ref={keyButton} id="api-key" className="secondary" type="button" onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'api-key' }); navigate('key') }}>{m.welcomeApiKey}</button>
+          disabled={cancelling || !cancellable} onClick={() => { void cancel() }}>{m.welcomeAuthCancel}</button>
       </div>
       <div id="key-actions" className="actions" hidden={page !== 'key'}>
-        <button id="save-key" className="primary" type="submit" form="key-form" disabled={busy || draft.trim() === ''}>{m.welcomeKeySave}</button>
-        <button id="skip-key" className="secondary" type="button" disabled={busy} onClick={() => { void skip() }}>{m.welcomeKeyLater}</button>
-        <button id="back-to-login" className="back" type="button" disabled={busy} onClick={() => {
-          if (busyRef.current) return
-          setDraft(''); setError(''); focusEntry.current = true; navigate('entry')
-        }}>{m.welcomeKeyBack}</button>
+        <button id="save-key" className="primary" type="submit" form="key-form"
+          disabled={busy || draft.trim() === '' || selectedProvider === ''}>{m.welcomeKeySave}</button>
+        <button id="skip-key" className="secondary" type="button" disabled={busy}
+          onClick={() => { void skip() }}>{m.welcomeKeyLater}</button>
+        <button id="back-to-login" className="back" type="button" disabled={busy} onClick={backToEntry}>{m.welcomeKeyBack}</button>
+      </div>
+      <div id="entry-actions" className="actions" hidden={page !== 'entry'}>
+        <button id="sign-in" className="primary" type="button" disabled={busy || !configured}
+          onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'sign_in' }); void start() }}>{m.welcomeSignIn}</button>
+        <button ref={apiKey} id="api-key" className="secondary" type="button" disabled={busy}
+          onClick={() => { void api.analytics?.('auth_page_click', { button_name: 'api-key' }); openKey() }}>{m.welcomeApiKey}</button>
+        <button id="skip-entry" className="back" type="button" disabled={busy}
+          onClick={() => { void skip() }}>{m.welcomeKeyLater}</button>
       </div>
     </main>
   </>

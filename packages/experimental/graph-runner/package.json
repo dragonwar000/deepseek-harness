@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-graph-runner",
   "description": "Runs admitted dsh-graph/v1 plans in the foreground: each agent node a fresh subagent, verify commands and human gates as proof, retries, resume, and write-scope enforcement; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

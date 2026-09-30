@@ -315,12 +315,13 @@ const modelFields = {
   compat: compatProfile,
 }
 
-const modelProfile: z<PiAiModelProfile> = z.object({
+/** Runtime schema for one {@link PiAiModelProfile}, shared with routes that declare their own model catalog. */
+export const PiAiModelProfileSchema: z<PiAiModelProfile> = z.object({
   id: z.string().required(),
   ...modelFields,
 })
 
-/** A {@link modelProfile} whose id lives in the `modelOverrides` dict key. */
+/** A {@link PiAiModelProfileSchema} entry whose id lives in the `modelOverrides` dict key. */
 const modelOverride: z<PiAiModelOverride> = z.object(modelFields)
 
 const profile = z.object({
@@ -328,7 +329,7 @@ const profile = z.object({
   displayName: z.string(),
   api: z.union(supportedProtocols()),
   baseURL: z.string(),
-  models: z.array(modelProfile),
+  models: z.array(PiAiModelProfileSchema),
   modelOverrides: z.dict(modelOverride),
   compat: compatProfile,
   defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW),

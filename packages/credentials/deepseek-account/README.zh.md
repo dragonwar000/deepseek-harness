@@ -23,6 +23,8 @@ getUnnotifiedBonuses 返回平台尚未记录为已展示的赠金及其所属�
 
 `getDeviceIdentity()` 返回已有设备和账户 ID 以及登录使用的操作系统版本字符串，不返回凭据，也不创建设备标识。
 
+已发布的 Bundle 将此服务定义的提供者与使用方行保持禁用：在 CTD Core 中，[Coteccons SSO](../coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用这些行。
+
 ## 目录
 
 - [使用此包](#use-this-package)

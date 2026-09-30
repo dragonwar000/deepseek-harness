@@ -1,0 +1,69 @@
+---
+description: "AI Account settings page in the dsh web client: the Coteccons SSO group for the main model, then Claude and ChatGPT subscription accounts added through the official CLIs, with a default of each kind and sign-out."
+kind: "package-reference"
+---
+
+# @deepseek-ai/dsh-client-ui-settings-ai-account
+
+English | [中文](README.zh.md)
+
+## Summary
+
+Open **Settings → AI Account** to manage every account the app uses. The **Coteccons SSO — used for the main model** group signs a Coteccons staff member in with Microsoft Entra ID; that user's own sign-in runs the main model. The Claude and ChatGPT groups add subscription accounts, show which account of each kind is the default, switch the default, and sign an account out; adding one runs the official Claude Code or Codex login on the Host, and the page shows the link to open and, for ChatGPT, the one-time code to enter.
+
+## Table of Contents
+
+- [Use this package](#use-this-package)
+- [Understand the implementation](#understand-the-implementation)
+- [Further Exploration](#further-exploration)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+
+<a id="use-this-package"></a>
+## Use this package
+
+The page shows three groups in order. **Coteccons SSO — used for the main model** comes from [ui-settings-coteccons-sso](../ui-settings-coteccons-sso/README.md), which owns its sign-in and sign-out; the page only reserves its place. **Claude — used through Claude Code** and **ChatGPT — used through Codex** list official-CLI accounts. Each row shows the email the CLI reported (or **Signed-in account** when it reported none), the plan when known, and a **Default** badge on the default account. **Set as default** switches the default of that kind; **Sign out and remove** signs the account out through its CLI and forgets it.
+
+**Add Claude account** starts `claude auth login`: the Claude CLI opens a browser window on the Host, and the page shows the authorization link in case no window opened. **Add ChatGPT account** starts `codex login --device-auth`: the page shows the verification link and the one-time code to enter there. **Cancel** stops the login. Failures explain whether the CLI is missing, the login did not complete, it timed out, or the CLI reported no signed-in account. Adding is disabled while a sign-in is active.
+
+<a id="understand-the-implementation"></a>
+## Understand the implementation
+
+<details>
+<summary>Implementation internals — click to expand</summary>
+
+The Host half is an empty `apply` that gives the package a Loader row. The browser half subscribes to `ctx.remote.aiAccount.watch` through a reconnecting Remote stream, publishes each snapshot through the section's `accounts` hook, and registers `AiAccountSection` into the `settings.section` slot with id `ai-account`. The section declares the `settings.ai-account.group` list slot and renders its entries after the introduction and before the Claude and ChatGPT groups, in every account-list state, so a group with its own Host stream (Coteccons SSO) stays usable while the official-CLI list loads or after it is lost. Commands publish the snapshot they return; a refused command shows a generic failure, and an ended account stream keeps the last snapshot with a reload notice. All copy lives in the `settings.aiAccount` dictionary. No invariant companion is published because every displayed fact derives from the Host account stream.
+
+</details>
+
+<a id="further-exploration"></a>
+## Further Exploration
+
+- [ai-account](../../credentials/ai-account/README.md) — the Service Definition and views.
+- [api-ai-account-controller](../../api/ai-account-controller/README.md) — the Remote namespace this page calls.
+- [ui-settings](../ui-settings/README.md) — the settings page that hosts the section slot.
+
+<a id="model-experience"></a>
+## Model Experience
+
+None, as AI Account management registers no model context or tools; subscription credentials stay inside the official CLIs.
+
+#### KV Cache effect
+
+None; this package neither assembles nor sends a provider request.
+
+## Known Limitations and Deferred Work
+
+<a id="known-limitations-and-deferred-work"></a>
+
+- **No removal confirmation** — **Sign out and remove** acts immediately; signing in again is the recovery path.
+
+<a id="dev-note"></a>
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+None.
+
+</details>

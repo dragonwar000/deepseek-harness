@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-stationarity-guard",
   "description": "Step-boundary guard: reminds or stops an agent whose tool steps keep returning identical evidence; shadow or enforce",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

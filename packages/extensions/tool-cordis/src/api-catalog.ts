@@ -385,6 +385,57 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'aiAccount',
+    summary: 'Account registry whose credentials never leave the official Claude Code and Codex CLIs.',
+    description: 'Account registry whose credentials never leave the official Claude Code and Codex CLIs. Each account owns one CLI configuration directory; implementations sign in, identify, and sign out only by running the official CLI against that directory.',
+    methods: [
+      {
+        signature: 'abstract getState(): Promise<AiAccountsView>',
+        description: 'Read the registered accounts and the latest sign-in attempt.',
+        parameters: [],
+        returns: 'a snapshot without credentials or directory paths.',
+      },
+      {
+        signature: 'abstract startSignIn(kind: AiAccountKind): Promise<AiAccountsView>',
+        description: 'Join the active sign-in attempt or start the official CLI login for a new account.',
+        parameters: [{ name: 'kind', description: 'account kind to add.' }],
+        returns: 'the snapshot after the attempt starts, without waiting for authorization.',
+      },
+      {
+        signature: 'abstract cancelSignIn(id: AiAccountSignInId): Promise<AiAccountsView>',
+        description: 'Cancel the named attempt and discard its unfinished configuration directory.',
+        parameters: [{ name: 'id', description: 'attempt identity from this Host; any other id leaves state unchanged.' }],
+        returns: 'the snapshot after the attempt settles.',
+      },
+      {
+        signature: 'abstract setDefault(id: AiAccountId): Promise<AiAccountsView>',
+        description: 'Make one account the default of its kind.',
+        parameters: [{ name: 'id', description: 'registered account.' }],
+        returns: 'the snapshot after the default changes.',
+        throws: ['when no account has this id.'],
+      },
+      {
+        signature: 'abstract remove(id: AiAccountId): Promise<AiAccountsView>',
+        description: 'Sign the account out through its official CLI, delete its configuration directory, and forget it. Removing the default promotes the oldest remaining account of the same kind.',
+        parameters: [{ name: 'id', description: 'registered account.' }],
+        returns: 'the snapshot after removal.',
+        throws: ['when no account has this id.'],
+      },
+      {
+        signature: 'abstract watch(signal: AbortSignal): AsyncIterable<AiAccountsView>',
+        description: 'Subscribe to complete snapshots, starting with the current one.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels a sign-in.' }],
+        returns: 'snapshots as accounts or the attempt change.',
+      },
+      {
+        signature: 'abstract defaultHome(kind: AiAccountKind): string | undefined',
+        description: 'Resolve the configuration directory of the default account of one kind, for launching that kind\'s official CLI (`CLAUDE_CONFIG_DIR` for Claude Code, `CODEX_HOME` for Codex).',
+        parameters: [{ name: 'kind', description: 'account kind.' }],
+        returns: 'the absolute directory, or `undefined` when the kind has no default account.',
+      },
+    ],
+  },
+  {
     key: 'approval',
     summary: 'Approval service that applies session policy before answerers and logs every ask/outcome pair to the requesting session.',
     description: 'Approval service that applies session policy before answerers and logs every ask/outcome pair to the requesting session. It exposes deterministic policy changes to the model through the runtime-context snapshot and switch notices.',
@@ -755,6 +806,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Add the fresh process token to an ordinary Web application URL.',
         parameters: [{ name: 'baseUrl', description: 'clean application URL whose authority and mount are preserved.' }],
         returns: 'tokenized URL for initial login; a mount proxy strips its prefix before {@link authorizeIndex}.',
+      },
+    ],
+  },
+  {
+    key: 'cotecconsSso',
+    summary: 'One Entra ID sign-in per Host.',
+    description: 'One Entra ID sign-in per Host. Views never carry tokens; getAccessToken is Host-only and its result must never be sent to a Client, logged, or stored outside the provider\'s token cache.',
+    methods: [
+      {
+        signature: 'abstract readonly aiScope: string',
+        description: 'Resource scope consented at sign-in for Azure AI requests, such as `https://cognitiveservices.azure.com/.default`. Model routes request tokens for exactly this scope.',
+        parameters: [],
+      },
+      {
+        signature: 'abstract getState(): Promise<CotecconsSsoView>',
+        description: 'Read the current sign-in state.',
+        parameters: [],
+        returns: 'a snapshot without tokens.',
+      },
+      {
+        signature: 'abstract startSignIn(): Promise<CotecconsSsoView>',
+        description: 'Join the active attempt or start an interactive browser sign-in. While the deployment is not configured or an account is signed in, the state is returned unchanged.',
+        parameters: [],
+        returns: 'the snapshot after the attempt starts, without waiting for the user.',
+      },
+      {
+        signature: 'abstract cancelSignIn(id: CotecconsSsoSignInId): Promise<CotecconsSsoView>',
+        description: 'Cancel the named attempt.',
+        parameters: [{ name: 'id', description: 'attempt identity from this Host; any other id leaves state unchanged.' }],
+        returns: 'the snapshot after the attempt settles.',
+      },
+      {
+        signature: 'abstract signOut(): Promise<CotecconsSsoView>',
+        description: 'Forget the signed-in account and delete its stored token cache.',
+        parameters: [],
+        returns: 'the signed-out snapshot.',
+      },
+      {
+        signature: 'abstract watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView>',
+        description: 'Subscribe to complete snapshots, starting with the current one.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels a sign-in.' }],
+        returns: 'snapshots as the state changes.',
+      },
+      {
+        signature: 'abstract getAccessToken(scope: string, signal?: AbortSignal): Promise<string>',
+        description: 'Return a current access token for the signed-in account, refreshing it silently when it expired.',
+        parameters: [{ name: 'scope', description: 'resource scope the token is for.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the bearer token value.',
+        throws: ['CotecconsSsoTokenUnavailableError when the deployment is not configured, nobody is signed in, or Entra ID requires the user to sign in again.'],
       },
     ],
   },
@@ -1993,10 +2093,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the normalized selection installed for the Session, without waiting for default persistence.',
       },
       {
-        signature: '@Remote async initializeDefaultModel(): Promise<void>',
-        description: 'Select the first available account model after login when no provider API key is configured.',
-        parameters: [],
-        returns: 'after saving the first available model or retaining the existing default.',
+        signature: '@Remote async initializeDefaultModel(provider: string): Promise<void>',
+        description: 'Save the first available model of an account route as the Agent default after that account signs in.',
+        parameters: [{ name: 'provider', description: 'account route whose first model becomes the default, such as `coteccons`.' }],
+        returns: 'after the selection is saved.',
       },
       {
         signature: '@Remote(\'modelCatalog\') modelCatalog(): Promise<ModelCatalog>',
@@ -3919,6 +4019,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'payload', description: '.signal - the current turn\'s explicit abort signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
   },
   {
+    name: 'ai-account/default-changed',
+    mode: 'emit',
+    signature: '\'ai-account/default-changed\'(kind: AiAccountKind): void',
+    summary: 'The default account of one kind changed, including to no default.',
+    description: 'The default account of one kind changed, including to no default.',
+    parameters: [{ name: 'kind', description: 'account kind whose default changed.' }],
+  },
+  {
     name: 'api-session/activity',
     mode: 'emit',
     signature: '\'api-session/activity\'(sessionId: SessionId, updatedAt: number): void',
@@ -4567,6 +4675,38 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AgentStatus = \'idle\' | \'running\';',
   },
   {
+    name: 'AiAccountId',
+    declaration: 'export type AiAccountId = Branded<\'AiAccountId\'>;',
+  },
+  {
+    name: 'AiAccountKind',
+    declaration: 'export type AiAccountKind = \'claude\' | \'chatgpt\';',
+  },
+  {
+    name: 'AiAccountSignInError',
+    declaration: 'export type AiAccountSignInError = \'executable-missing\' | \'login-failed\' | \'timeout\' | \'identity-unavailable\';',
+  },
+  {
+    name: 'AiAccountSignInId',
+    declaration: 'export type AiAccountSignInId = Branded<\'AiAccountSignInId\'>;',
+  },
+  {
+    name: 'AiAccountSignInPhase',
+    declaration: 'export type AiAccountSignInPhase = \'starting\' | \'waiting-browser\' | \'waiting-device-code\' | \'verifying\' | \'succeeded\' | \'cancelled\' | \'failed\';',
+  },
+  {
+    name: 'AiAccountSignInView',
+    declaration: 'export interface AiAccountSignInView {\n    readonly id: AiAccountSignInId;\n    readonly kind: AiAccountKind;\n    readonly phase: AiAccountSignInPhase;\n    readonly url: string | null;\n    readonly userCode: string | null;\n    readonly errorCode: AiAccountSignInError | null;\n}',
+  },
+  {
+    name: 'AiAccountsView',
+    declaration: 'export interface AiAccountsView {\n    readonly accounts: readonly AiAccountView[];\n    readonly signIn: AiAccountSignInView | null;\n}',
+  },
+  {
+    name: 'AiAccountView',
+    declaration: 'export interface AiAccountView {\n    readonly id: AiAccountId;\n    readonly kind: AiAccountKind;\n    readonly email: string | null;\n    readonly plan: string | null;\n    readonly createdAt: number;\n    readonly isDefault: boolean;\n}',
+  },
+  {
     name: 'ApiKeyRecord',
     declaration: 'export interface ApiKeyRecord {\n    readonly kind: \'api-key\';\n    readonly key?: string;\n    readonly env?: Readonly<Record<string, string>>;\n}',
   },
@@ -4997,6 +5137,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CordisRuntimeTreeReader',
     declaration: 'export interface CordisRuntimeTreeReader {\n    getTree(): Promise<CordisRuntimeTree>;\n}',
+  },
+  {
+    name: 'CotecconsSsoAccountView',
+    declaration: 'export interface CotecconsSsoAccountView {\n    readonly name: string | null;\n    readonly username: string;\n    readonly tenantId: string;\n}',
+  },
+  {
+    name: 'CotecconsSsoError',
+    declaration: 'export type CotecconsSsoError = \'sign-in-failed\' | \'timeout\' | \'domain-not-allowed\' | \'session-expired\';',
+  },
+  {
+    name: 'CotecconsSsoSetting',
+    declaration: 'export type CotecconsSsoSetting = \'tenantId\' | \'clientId\';',
+  },
+  {
+    name: 'CotecconsSsoSignInId',
+    declaration: 'export type CotecconsSsoSignInId = Branded<\'CotecconsSsoSignInId\'>;',
+  },
+  {
+    name: 'CotecconsSsoView',
+    declaration: 'export type CotecconsSsoView = {\n    readonly status: \'not-configured\';\n    readonly missing: readonly CotecconsSsoSetting[];\n} | {\n    readonly status: \'signed-out\';\n} | {\n    readonly status: \'signing-in\';\n    readonly attemptId: CotecconsSsoSignInId;\n    readonly url: string | null;\n} | {\n    readonly status: \'signed-in\';\n    readonly account: CotecconsSsoAccountView;\n} | {\n    readonly status: \'error\';\n    readonly errorCode: CotecconsSsoError;\n};',
   },
   {
     name: 'CreateAgentOptions',

@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-infra-snapshot",
   "description": "Appends one infra/snapshot session event per agent: node, platform, cpu, memory, sandbox mode",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

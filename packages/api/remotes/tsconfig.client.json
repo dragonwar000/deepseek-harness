@@ -106,7 +106,19 @@
       "path": "../account-controller"
     },
     {
+      "path": "../ai-account-controller"
+    },
+    {
       "path": "../../credentials/deepseek-account"
+    },
+    {
+      "path": "../../credentials/ai-account"
+    },
+    {
+      "path": "../coteccons-sso-controller"
+    },
+    {
+      "path": "../../credentials/coteccons-sso"
     }
   ]
 }

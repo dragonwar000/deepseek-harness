@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem",
   "description": "Wiki filesystem provider of the knowledge seam: Markdown pages with YAML frontmatter in the session workspace, derived links, relations, touches edges and staleness, and rule-checked writes that cite session events",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.5",
   "publishConfig": {
     "access": "public"
   },

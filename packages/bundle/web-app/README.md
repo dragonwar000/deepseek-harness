@@ -167,4 +167,4 @@ None.
 
 </details>
 
-The Web composition includes the account Remote controller and Account settings section.
+The Web composition includes the AI Account settings page with its Remote controller and the Coteccons SSO stack: the `coteccons-sso` provider configured with the CTD-Core app registration, the `coteccons` model route, the `cotecconsSso` Remote controller, and the Coteccons SSO settings group. The DeepSeek account settings and controller rows stay disabled.
