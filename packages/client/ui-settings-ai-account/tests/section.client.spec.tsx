@@ -69,6 +69,23 @@ it('renders contributed groups first, before Claude and ChatGPT, in every accoun
   expect(screen.getByRole('alert').textContent).toBe(zh.unavailable)
 })
 
+it('tells each group why it adds no chat model, and which API key does', () => {
+  mount({ accounts: [claudeDefault, chatgpt], signIn: null })
+  // Whose client the grant belongs to, and the key that replaces it — both
+  // per group, because the vendor and the key differ between them.
+  const claude = group('claude').getByText(en.claudeMainModel).textContent ?? ''
+  expect(claude).toContain('Claude Code client')
+  expect(claude).toContain('Anthropic API key')
+  const chat = group('chatgpt').getByText(en.chatgptMainModel).textContent ?? ''
+  expect(chat).toContain('Codex client')
+  expect(chat).toContain('OpenAI API key')
+  cleanup()
+  // Stated in both shipped languages, so neither reader is left guessing.
+  mount({ accounts: [], signIn: null }, zh)
+  expect(group('claude').getByText(zh.claudeMainModel)).toBeTruthy()
+  expect(group('chatgpt').getByText(zh.chatgptMainModel)).toBeTruthy()
+})
+
 it('groups accounts by kind with default badges and per-account commands', async () => {
   const operations = mount({ accounts: [claudeDefault, claudeOther, chatgpt], signIn: null })
   expect(screen.getByRole('heading', { name: en.title })).toBeTruthy()

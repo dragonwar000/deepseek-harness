@@ -24,6 +24,8 @@ Open **Settings → AI Account** to manage every account the app uses. The **Cot
 
 The page shows three groups in order. **Coteccons SSO — used for the main model** comes from [ui-settings-coteccons-sso](../ui-settings-coteccons-sso/README.md), which owns its sign-in and sign-out; the page only reserves its place. **Claude — used through Claude Code** and **ChatGPT — used through Codex** list official-CLI accounts. Each row shows the email the CLI reported (or **Signed-in account** when it reported none), the plan when known, and a **Default** badge on the default account. **Set as default** switches the default of that kind; **Sign out and remove** signs the account out through its CLI and forgets it.
 
+Each subscription group also states why it adds nothing to the chat model picker and which key does instead: a Claude subscription is issued to Anthropic's own Claude Code client and a ChatGPT subscription to OpenAI's own Codex client, so only those clients may send them, and running the main model on that vendor means adding an Anthropic or OpenAI API key under **Models**. [llm-pi-ai](../../llm/llm-pi-ai/README.md#use-this-package) owns that rule and the classification behind it.
+
 **Add Claude account** starts `claude auth login`: the Claude CLI opens a browser window on the Host, and the page shows the authorization link in case no window opened. **Add ChatGPT account** starts `codex login --device-auth`: the page shows the verification link and the one-time code to enter there. **Cancel** stops the login. Failures explain whether the CLI is missing, the login did not complete, it timed out, or the CLI reported no signed-in account. Adding is disabled while a sign-in is active.
 
 <a id="understand-the-implementation"></a>
@@ -57,6 +59,7 @@ None; this package neither assembles nor sends a provider request.
 <a id="known-limitations-and-deferred-work"></a>
 
 - **No removal confirmation** — **Sign out and remove** acts immediately; signing in again is the recovery path.
+- **The Models pointer is prose, not a link** — the per-group explanation names the **Models** page, but the settings shell exposes `openSection` only to the onboarding slot, so a section cannot navigate there; the reader switches pages themselves.
 
 <a id="dev-note"></a>
 ### Dev Note

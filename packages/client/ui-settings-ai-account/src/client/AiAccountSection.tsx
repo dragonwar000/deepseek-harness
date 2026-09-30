@@ -83,6 +83,11 @@ export function AiAccountSection(props: AiAccountSectionProps) {
                 {t(kind === 'claude' ? 'addClaude' : 'addChatgpt')}
               </Button>
             </div>
+            {/* Stated per group rather than once in the intro: the reason is
+                the vendor's, and the API key that replaces it is a different
+                one for each, so a reader who only came for Claude still gets
+                both halves. */}
+            <p className={css.hint}>{t(kind === 'claude' ? 'claudeMainModel' : 'chatgptMainModel')}</p>
             {accounts.length === 0
               ? <p className={css.hint}>{t('empty')}</p>
               : (
