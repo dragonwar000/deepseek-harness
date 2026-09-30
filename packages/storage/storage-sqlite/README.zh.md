@@ -98,7 +98,7 @@ kind: "package-reference"
 - [存储子系统](../../../docs/subsystems/storage.zh.md)——后端约定、领域语义与生成的 API。
 - [存储包映射](../README.zh.md)——家族的各包及其在仓库中的位置。
 - [JSON 存储后端](../storage-json/README.zh.md)——面向小而可检查数据的人类可读介质。
-- [领域 KV 存储 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.zh.md)——后端家族背后的设计与被推迟的会话后端迁移。
+- [领域 KV 存储 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)——后端家族背后的设计与被推迟的会话后端迁移。
 
 -----
 

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-graph-evidence-heuristic-claims.zh.md)
-
 ## Problem
 
 A turn can end with an answer that names files and commands nothing in the turn looked at. The session log already holds every tool call and tool result, but nothing related the answer to them, and compacted spans could not be read back at all.

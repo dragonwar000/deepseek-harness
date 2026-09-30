@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-graph-cycle-edges-reopen-loops.zh.md)
-
 ## Problem
 
 Some multi-unit work repeats until a check passes, but `dsh-graph/v1` ordered nodes by acyclic needs, node status ended at `executed`, and waves, fingerprints, carry-over, and skip-cascade all assume that order.

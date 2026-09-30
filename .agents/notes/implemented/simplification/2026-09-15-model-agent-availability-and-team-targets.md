@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-15-model-agent-availability-and-team-targets.zh.md)
-
 ## Problem
 
 Team operations accept member names, but returning both names and Session UUIDs invites the model to choose an unusable address. Loaded and stored agents also have distinct internal statuses despite requiring the same model action to continue work.

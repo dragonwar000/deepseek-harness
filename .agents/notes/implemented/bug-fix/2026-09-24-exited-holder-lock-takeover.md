@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-24-exited-holder-lock-takeover.zh.md)
-
 ## Problem
 
 `withFileLock` in [dsh-atomic-write](../../../../packages/util/atomic-write/README.md) creates `<file>.lock` with exclusive create and removes it in a `finally`. A process that ends without running that `finally` leaves the lock behind, and every later writer of the file times out until someone deletes it by hand. The [original decision](../../archived/architecture/2026-07-30-settings-write-path-integrity.md) accepted this because file age cannot distinguish a crashed holder from a paused one.

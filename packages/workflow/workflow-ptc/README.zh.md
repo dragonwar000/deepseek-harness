@@ -111,7 +111,7 @@ Host 分别跟踪待完成的提供方启动与已发布子 agent。共享中止
 - [Node PTC 运行时](../../ptc-runtime/ptc-runtime-node/README.zh.md)——文件策略、进程限制与部署选择。
 - [workflow 工具](../tool-workflow/README.zh.md)——面向模型的脚本编排。
 - [Ralph 工具](../tool-ralph/README.zh.md)——需显式启用的固定全新 agent 迭代。
-- [工作流沙箱复用](../../../.agents/notes/implemented/architecture/2026-09-13-workflow-ptc-sandbox-reuse.zh.md)——执行归属与取舍。
+- [工作流沙箱复用](../../../.agents/notes/implemented/architecture/2026-09-13-workflow-ptc-sandbox-reuse.md)——执行归属与取舍。
 
 -----
 

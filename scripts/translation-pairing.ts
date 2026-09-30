@@ -12,6 +12,11 @@ import { gfmFromMarkdown } from 'mdast-util-gfm'
 import { gfm } from 'micromark-extension-gfm'
 import type { Nodes } from 'mdast'
 import {
+  parseTranslationCounterpartPolicy,
+  TRANSLATION_COUNTERPART_POLICY,
+  type TranslationCounterpartPolicy,
+} from './translation-counterpart.ts'
+import {
   languageSwitcherLinkOffset,
   semanticTranslationLinkNodeTarget,
   type TranslationLinkContext,
@@ -235,6 +240,8 @@ export interface TranslationPairingCliRequest {
   scope: 'corpus' | 'pairs'
   /** English anchor paths, empty for corpus scope. */
   anchors: string[]
+  /** Counterpart policy: the repository policy unless `--policy=<name>` names another. */
+  policy: TranslationCounterpartPolicy
 }
 
 /**
@@ -243,14 +250,20 @@ export interface TranslationPairingCliRequest {
  * Check accepts optional pair paths; `--write` requires either pair paths or
  * `--all` so a bulk re-record is always an explicit choice — a bare
  * `--write` would silently bless every drifted pair in the tree, including
- * ones the caller never confirmed. `--list` is corpus-only.
+ * ones the caller never confirmed. `--list` is corpus-only. `--policy=<name>`
+ * combines with every mode and selects the counterpart policy for that run.
  *
  * @param argv - Arguments after the script name.
  * @returns The validated request.
  * @throws Error when flags or their combination are invalid.
  */
 export function parseTranslationPairingCliArgs(argv: string[]): TranslationPairingCliRequest {
-  const flags = argv.filter(argument => argument.startsWith('--'))
+  const policyFlags = argv.filter(argument => argument.startsWith('--policy='))
+  if (policyFlags.length > 1) throw new Error('--policy may be given once')
+  const policy = policyFlags[0] === undefined
+    ? TRANSLATION_COUNTERPART_POLICY
+    : parseTranslationCounterpartPolicy(policyFlags[0].slice('--policy='.length))
+  const flags = argv.filter(argument => argument.startsWith('--') && !argument.startsWith('--policy='))
   const anchors = [...new Set(argv.filter(argument => !argument.startsWith('--')).map(pairAnchorOfArgument))].sort()
   const unknown = flags.filter(flag => !['--list', '--write', '--all', '--cached'].includes(flag))
   if (unknown.length > 0) throw new Error(`unknown flag(s): ${unknown.join(', ')}`)
@@ -269,14 +282,15 @@ export function parseTranslationPairingCliArgs(argv: string[]): TranslationPairi
     if (anchors.length === 0 && !allMode) {
       throw new Error('--write requires the pair(s) you confirmed (any file of a pair), or --all to re-record every complete pair; recording pairs you did not review blesses unconfirmed content')
     }
-    return { input: 'worktree', mode: 'write', scope: allMode ? 'corpus' : 'pairs', anchors }
+    return { input: 'worktree', mode: 'write', scope: allMode ? 'corpus' : 'pairs', anchors, policy }
   }
-  if (listMode) return { input: 'worktree', mode: 'list', scope: 'corpus', anchors: [] }
+  if (listMode) return { input: 'worktree', mode: 'list', scope: 'corpus', anchors: [], policy }
   return {
     input: cachedMode ? 'index' : 'worktree',
     mode: 'check',
     scope: anchors.length > 0 ? 'pairs' : 'corpus',
     anchors,
+    policy,
   }
 }
 

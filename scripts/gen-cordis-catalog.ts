@@ -34,6 +34,7 @@ import {
   parseTranslationPairingManifest,
   translationPairSourcePredicate,
 } from './translation-pairing.ts'
+import { TRANSLATION_COUNTERPART_POLICY } from './translation-counterpart.ts'
 import { rewriteTranslationLinkLocales } from './translation-links.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -1219,20 +1220,22 @@ export function computeOutputs(): [string, string][] {
     )
     for (const side of [page, page.replace(/\.md$/, '.zh.md')]) {
       const rel = `${SUBSYSTEMS_DIR}/${side}`
+      // The English page must exist and carry the region. Under the `optional`
+      // counterpart policy a Chinese page that is absent or lacks the region is
+      // left as it is; under `required` both are violations.
+      const mustCarryRegion = side === page || TRANSLATION_COUNTERPART_POLICY === 'required'
       const localizedRegion = localizePageRegion(region, rel)
       let current: string
       try {
         current = readFileSync(resolve(root, rel), 'utf8')
       } catch {
-        // Both pair sides must exist before a region can be injected; the
-        // pairing gate owns pair completeness, this generator names the miss.
-        problems.push(`${rel}: mapped subsystems page does not exist.`)
+        if (mustCarryRegion) problems.push(`${rel}: mapped subsystems page does not exist.`)
         continue
       }
       try {
         outputs.push([rel, spliceRegion(current, localizedRegion)])
       } catch (error) {
-        problems.push(`${rel}: ${error instanceof Error ? error.message : String(error)}`)
+        if (mustCarryRegion) problems.push(`${rel}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
   }

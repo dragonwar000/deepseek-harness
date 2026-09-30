@@ -1,8 +1,12 @@
 /**
- * Separate byte-identical Chinese Markdown code blocks from the primary checks
- * performed on their unsuffixed English siblings. The bilingual pairing gate
- * owns cross-language identity; source-oriented gates consume one copy.
+ * Separate Chinese Markdown code blocks from the primary checks performed on
+ * their unsuffixed English siblings. Source-oriented gates consume one copy of
+ * a byte-identical sequence. A Chinese sequence that differs from its sibling
+ * is unchecked under the `optional` counterpart policy, so an out-of-date
+ * counterpart cannot fail a source gate, and primary under `required`.
  */
+
+import type { TranslationCounterpartPolicy } from './translation-counterpart.ts'
 
 /** The result of separating canonical blocks from paired Chinese derivatives. */
 export interface MarkdownDerivativePartition<T> {
@@ -10,6 +14,8 @@ export interface MarkdownDerivativePartition<T> {
   primary: T[]
   /** Chinese blocks covered by the byte-identical unsuffixed sequence. */
   derivatives: T[]
+  /** Chinese blocks that differ from the unsuffixed sequence and are left unchecked; empty under `required`. */
+  unchecked: T[]
 }
 
 /** Return the unsuffixed sibling of a Chinese Markdown path. */
@@ -18,19 +24,22 @@ function unsuffixedSibling(doc: string): string | null {
 }
 
 /**
- * Partition complete byte-identical `.zh.md` block sequences from primary
- * blocks. A partial or reordered match stays primary so the caller fails
- * closed; the translation-pairing gate reports the cross-language mismatch.
+ * Partition `.zh.md` block sequences from primary blocks. A complete
+ * byte-identical sequence is derivative. A partial, reordered, changed, or
+ * orphan sequence is unchecked under `optional` and stays primary under
+ * `required`; the translation-pairing gate reports the cross-language mismatch.
  *
  * @param blocks - Blocks in repository scan order.
  * @param docOf - Repository-relative Markdown path owning a block.
  * @param fingerprintOf - Block kind/info string plus byte-exact body.
- * @returns Primary blocks and paired Chinese derivatives, preserving order.
+ * @param policy - Counterpart policy in effect.
+ * @returns Primary, derivative, and unchecked blocks, each preserving order.
  */
 export function partitionPairedMarkdownDerivatives<T>(
   blocks: readonly T[],
   docOf: (block: T) => string,
   fingerprintOf: (block: T) => string,
+  policy: TranslationCounterpartPolicy,
 ): MarkdownDerivativePartition<T> {
   const byDoc = new Map<string, T[]>()
   for (const block of blocks) {
@@ -56,8 +65,12 @@ export function partitionPairedMarkdownDerivatives<T>(
 
   const primary: T[] = []
   const derivatives: T[] = []
+  const unchecked: T[] = []
   for (const block of blocks) {
-    (derivativeDocs.has(docOf(block)) ? derivatives : primary).push(block)
+    const doc = docOf(block)
+    if (derivativeDocs.has(doc)) derivatives.push(block)
+    else if (policy === 'optional' && unsuffixedSibling(doc) !== null) unchecked.push(block)
+    else primary.push(block)
   }
-  return { primary, derivatives }
+  return { primary, derivatives, unchecked }
 }

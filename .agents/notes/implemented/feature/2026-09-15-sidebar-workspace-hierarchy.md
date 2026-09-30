@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-15-sidebar-workspace-hierarchy.zh.md)
-
 ## Problem
 
 A flat Workspace list makes related projects hard to browse when many directories share one parent. Treating that parent as the owner of every descendant Session would conflict with the Workspace requirement that a member Session's canonical working directory equals the registered path.

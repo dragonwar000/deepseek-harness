@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-27-desktop-cli-runtime.zh.md)
-
 ## Problem
 
 Desktop contains dsh and its production dependencies. Users need terminal access to plugin management and other CLI functions without maintaining another installation.

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-coteccons-sso-entra-main-model.zh.md)
-
 ## Problem
 
 CTD Core is a Coteccons-internal product. Its main model runs on a Coteccons Azure AI resource (`ctd-opus-resource`, OpenAI-compatible v1 endpoint), and access must follow the company directory: a staff member who leaves or changes role loses access through Microsoft Entra ID, without anyone rotating a shared key. The inherited DeepSeek Platform sign-in authenticated against DeepSeek's own accounts and billing, which Coteccons does not manage, and a shared Azure API key would give every installation the same unaudited identity.

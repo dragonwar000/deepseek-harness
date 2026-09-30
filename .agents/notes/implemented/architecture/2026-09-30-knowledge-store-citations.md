@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-30-knowledge-store-citations.zh.md)
-
 ## Problem
 
 Knowledge that outlives a session is read by later sessions as if it were true. A page written from a tool output that carried an instruction, a guess, or a statement meant only for one session becomes a durable, trusted input: memory poisoning. The loop layer judges one turn; nothing constrained what may enter durable knowledge, what reaches the model from it, or how a stored relation stays true when the pages or code it names change.

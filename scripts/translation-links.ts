@@ -11,7 +11,11 @@ import {
   visitMarkdown,
   type MarkdownDestination,
 } from './markdown.ts'
-import { requiresTranslationCounterpart } from './translation-counterpart.ts'
+import {
+  isLocaleSwitchedTarget,
+  TRANSLATION_COUNTERPART_POLICY,
+  type TranslationCounterpartPolicy,
+} from './translation-counterpart.ts'
 
 /** Repository and source document used to resolve one relative link. */
 export interface TranslationLinkContext {
@@ -23,6 +27,8 @@ export interface TranslationLinkContext {
   isTranslationPairSource: (sourcePath: string) => boolean
   /** Selected content plane; defaults to regular files in the working tree. */
   repositoryFileExists?: (repoPath: string) => boolean
+  /** Counterpart policy for link targets; defaults to `TRANSLATION_COUNTERPART_POLICY`. */
+  counterpartPolicy?: TranslationCounterpartPolicy
 }
 
 /** One relative document link whose target uses the wrong locale sibling. */
@@ -141,11 +147,13 @@ function translationPairTarget(targetPath: string, context: TranslationLinkConte
     : targetPath.endsWith('.md') ? targetPath : undefined
   if (source === undefined || !context.isTranslationPairSource(source)) return undefined
   const zh = source.replace(/\.md$/, '.zh.md')
-  // An English-only Agent Note has no counterpart to switch to, so both sides of
-  // a pair link to its `.md` path and the target stays outside locale switching.
-  // Adding the counterpart later makes the target paired again, and the gate then
-  // rejects the Chinese side's stale `.md` link.
-  if (!requiresTranslationCounterpart(source) && !repositoryFileExists(context, zh)) return undefined
+  // A target with no counterpart that needs none keeps its `.md` path on both
+  // sides of a pair; `translation-counterpart.ts` owns that rule.
+  if (!isLocaleSwitchedTarget(
+    source,
+    repositoryFileExists(context, zh),
+    context.counterpartPolicy ?? TRANSLATION_COUNTERPART_POLICY,
+  )) return undefined
   return { source, zh }
 }
 

@@ -1,7 +1,8 @@
 /**
  * Typecheck Markdown `ts` fences against the workspace API. `ignore-check` fences are reported as
  * opt-outs; generated catalog fragments and source-equivalence blocks are skipped here because their
- * owning gates verify them. Byte-identical `.zh.md` copies reuse their unsuffixed sibling's check. A
+ * owning gates verify them. Byte-identical `.zh.md` copies reuse their unsuffixed sibling's check, and
+ * `.zh.md` fences that differ from that sibling are unchecked under the `optional` counterpart policy. A
  * build-coordinated mode consumes existing declarations without emit.
  */
 
@@ -12,6 +13,7 @@ import ts from 'typescript'
 import { builtDeclarationPath } from './doc-typecheck-paths.ts'
 import { markdownFences } from './markdown.ts'
 import { partitionPairedMarkdownDerivatives } from './paired-markdown-derivatives.ts'
+import { TRANSLATION_COUNTERPART_POLICY } from './translation-counterpart.ts'
 import { isArchivedAgentNotePath } from './repo-files.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -213,10 +215,11 @@ for (const pattern of markdownGlobs) {
 files.sort()
 
 const extracted = files.flatMap(extractBlocks)
-const { primary: all, derivatives } = partitionPairedMarkdownDerivatives(
+const { primary: all, derivatives, unchecked } = partitionPairedMarkdownDerivatives(
   extracted,
   block => block.file,
   block => `${block.kind}\0${block.code}`,
+  TRANSLATION_COUNTERPART_POLICY,
 )
 const checked = all.filter(b => b.kind === 'check')
 const ignored = all.filter(b => b.kind === 'ignore')
@@ -244,7 +247,7 @@ if (compilationError !== undefined) {
 
 const ratio = ignored.length / ratioDenominator
 const skipped = all.length - ratioDenominator
-console.log(`doc-typecheck: ${checked.length} block(s) compiled, ${ignored.length} ignored (${(ratio * 100).toFixed(0)}% opt-out), ${skipped} type-equiv/catalog (checked elsewhere), ${derivatives.length} paired derivative(s).`)
+console.log(`doc-typecheck: ${checked.length} block(s) compiled, ${ignored.length} ignored (${(ratio * 100).toFixed(0)}% opt-out), ${skipped} type-equiv/catalog (checked elsewhere), ${derivatives.length} paired derivative(s), ${unchecked.length} unchecked block(s) in out-of-date Chinese counterparts.`)
 // Guard against the escape hatch becoming the norm.
 if (ratioDenominator >= 4 && ratio > 0.5) {
   console.error(`doc-typecheck: too many blocks opt out of checking (${ignored.length}/${ratioDenominator}). Make them compile or delete them.`)

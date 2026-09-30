@@ -42,7 +42,7 @@ Web App Bundle 以 `llm-coteccons-sso` 行挂载此路由。配置：
 
 - [coteccons-sso](../../credentials/coteccons-sso/README.zh.md) — 令牌来源。
 - [llm-pi-ai](../llm-pi-ai/README.zh.md) — 适配器、配置档解析与模型条目字段。
-- [Coteccons SSO 决策](../../../.agents/notes/implemented/feature/2026-09-30-coteccons-sso-entra-main-model.zh.md) — 为何以按用户令牌取代 API key。
+- [Coteccons SSO 决策](../../../.agents/notes/implemented/feature/2026-09-30-coteccons-sso-entra-main-model.md) — 为何以按用户令牌取代 API key。
 - [生成的配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-llm-coteccons-sso) — 所有可接受的字段。
 
 <a id="model-experience"></a>

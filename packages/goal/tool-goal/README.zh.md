@@ -98,7 +98,7 @@ kind: "package-reference"
 - [goal 服务](../goal/README.zh.md)——工具变更的 goal 状态与生命周期。
 - [goal 组地图](../README.zh.md)——goal 各包及其组合方式。
 - [生成的工具目录](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-goal)——模型接收的精确 schema。
-- [goal 工具 Agent Note](../../../.agents/notes/implemented/feature/2026-07-19-model-facing-goal-tools.zh.md)——权限拆分与 UX 决策。
+- [goal 工具 Agent Note](../../../.agents/notes/implemented/feature/2026-07-19-model-facing-goal-tools.md)——权限拆分与 UX 决策。
 
 -----
 
