@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md
 /agent-note-official-cli-ai-accounts:
-  en: 7b97c0d05a706d6c
-  zh: 8ded30ecb62d593a
+  en: fa383649ab9fbd82
+  zh: 4a8b04767d0bc96b
 /agent-note-official-cli-ai-accounts/problem:
   en: b43e8bfded9104e5
   zh: c9f824d7a749d34e
