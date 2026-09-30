@@ -69,6 +69,7 @@ export function apply(ctx: Context): void {
     submitSignInCode: (id, code) => settle(ctx.remote.aiAccount.submitSignInCode(id, code)),
     setDefault: id => settle(ctx.remote.aiAccount.setDefault(id)),
     remove: id => settle(ctx.remote.aiAccount.removeAccount(id)),
+    checkStatus: () => settle(ctx.remote.aiAccount.checkStatus()),
   }
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'ai-account', order: 10, label: () => t('nav'),

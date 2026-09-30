@@ -30,6 +30,8 @@ export interface AiAccountSectionInjected {
   setDefault: (id: AiAccountId) => Promise<void>
   /** Sign one account out and forget it. */
   remove: (id: AiAccountId) => Promise<void>
+  /** Ask the Host to run every account's status check now. */
+  checkStatus: () => Promise<void>
 }
 
 /** Props bound by the settings-section renderer. */
@@ -82,6 +84,11 @@ export function AiAccountSection(props: AiAccountSectionProps) {
       )}
       {signIn?.phase === 'failed' && <p className={css.error} role="alert">{t(failureKey(signIn))}</p>}
       {actionFailed && <p className={css.error} role="alert">{t('errorAction')}</p>}
+      {view.accounts.length > 0 && (
+        <div>
+          <Button variant="outline" size="sm" disabled={pending} onClick={() => { run(() => props.checkStatus()) }}>{t('checkStatus')}</Button>
+        </div>
+      )}
       {KINDS.map((kind) => {
         const accounts = view.accounts.filter(account => account.kind === kind)
         return (
@@ -107,6 +114,8 @@ export function AiAccountSection(props: AiAccountSectionProps) {
                       account={account}
                       t={t}
                       disabled={pending}
+                      signInDisabled={pending || signingIn}
+                      onSignIn={() => { run(() => props.startSignIn(kind)) }}
                       onSetDefault={() => { run(() => props.setDefault(account.id)) }}
                       onRemove={() => { run(() => props.remove(account.id)) }}
                     />
@@ -137,25 +146,38 @@ function failureKey(signIn: AiAccountSignInView): AiAccountLocaleKey {
   return FAILURE_KEYS[signIn.errorCode ?? 'login-failed']
 }
 
-/** One registered account with its default badge and commands. */
-function AccountRow({ account, t, disabled, onSetDefault, onRemove }: {
+/** One registered account with its default badge, signed-out notice, and commands. */
+function AccountRow({ account, t, disabled, signInDisabled, onSignIn, onSetDefault, onRemove }: {
   account: AiAccountView
   t: AiAccountSectionProps['t']
   disabled: boolean
+  signInDisabled: boolean
+  onSignIn: () => void
   onSetDefault: () => void
   onRemove: () => void
 }) {
+  const signedOut = account.status.status === 'signedOut'
   return (
-    <li className={css.row} data-account={account.id}>
-      <div className={css.identity}>
-        <span className={css.email}>{account.email ?? t('unnamedAccount')}</span>
-        {account.plan !== null && <Tag tone="neutral">{account.plan}</Tag>}
-        {account.isDefault && <Tag tone="success">{t('defaultBadge')}</Tag>}
+    <li className={css.account} data-account={account.id} data-status={account.status.status}>
+      <div className={css.row}>
+        <div className={css.identity}>
+          <span className={css.email}>{account.email ?? t('unnamedAccount')}</span>
+          {account.plan !== null && <Tag tone="neutral">{account.plan}</Tag>}
+          {account.isDefault && <Tag tone="success">{t('defaultBadge')}</Tag>}
+          {signedOut && <Tag tone="warning">{t('signedOutBadge')}</Tag>}
+        </div>
+        <div className={css.actions}>
+          {signedOut && <Button size="sm" variant="outline" disabled={signInDisabled} onClick={onSignIn}>{t('signInAgain')}</Button>}
+          {!account.isDefault && <Button size="sm" disabled={disabled} onClick={onSetDefault}>{t('setDefault')}</Button>}
+          <Button size="sm" disabled={disabled} onClick={onRemove}>{t('remove')}</Button>
+        </div>
       </div>
-      <div className={css.actions}>
-        {!account.isDefault && <Button size="sm" disabled={disabled} onClick={onSetDefault}>{t('setDefault')}</Button>}
-        <Button size="sm" disabled={disabled} onClick={onRemove}>{t('remove')}</Button>
-      </div>
+      {signedOut && (
+        <div className={css.statusDetail}>
+          <p className={css.hint}>{t('signedOutHint')}</p>
+          {account.status.message !== null && <p className={css.cliMessage}>{account.status.message}</p>}
+        </div>
+      )}
     </li>
   )
 }

@@ -62,6 +62,27 @@
   gap: 4px;
 }
 
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statusDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cliMessage {
+  margin: 0;
+  font-family: var(--dsw-font-mono, monospace);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  overflow-wrap: anywhere;
+}
+
 .row {
   display: flex;
   align-items: center;

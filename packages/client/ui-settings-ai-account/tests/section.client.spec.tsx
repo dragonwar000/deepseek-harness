@@ -31,6 +31,7 @@ function mount(view: AiAccountsView | null, copy: Record<AiAccountLocaleKey, str
     submitSignInCode: vi.fn<AiAccountSectionInjected['submitSignInCode']>(() => Promise.resolve()),
     setDefault: vi.fn<AiAccountSectionInjected['setDefault']>(() => Promise.resolve()),
     remove: vi.fn<AiAccountSectionInjected['remove']>(() => Promise.resolve()),
+    checkStatus: vi.fn<AiAccountSectionInjected['checkStatus']>(() => Promise.resolve()),
   }
   const snapshot = { view, failed }
   // The Coteccons SSO plugin fills this seat in the application; the stand-in marks where the page renders it.
@@ -225,4 +226,35 @@ it('reports a refused command and clears the report on the next command', async 
   expect(screen.getByRole('alert').textContent).toBe(en.errorAction)
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: en.setDefault })) })
   expect(screen.queryByRole('alert')).toBeNull()
+})
+
+it('marks a signed-out account, shows the CLI message, and signs in again for its kind', async () => {
+  const signedOut: AiAccountStatusView = { status: 'signedOut', checkedAt: 10, message: 'Not logged in · Please run /login' }
+  const signedIn: AiAccountStatusView = { status: 'signedIn', checkedAt: 10, message: null }
+  const accounts = [{ ...claudeDefault, status: signedOut }, { ...claudeOther, status: signedIn }, chatgpt]
+  const operations = mount({ accounts, signIn: null })
+  const row = within(document.querySelector<HTMLElement>('[data-account="c1"]')!)
+  expect(document.querySelector('[data-account="c1"]')!.getAttribute('data-status')).toBe('signedOut')
+  expect(row.getByText(en.signedOutBadge)).toBeTruthy()
+  expect(row.getByText(en.signedOutHint)).toBeTruthy()
+  expect(row.getByText('Not logged in · Please run /login')).toBeTruthy()
+  expect(within(document.querySelector<HTMLElement>('[data-account="c2"]')!).queryByText(en.signedOutBadge)).toBeNull()
+  expect(group('chatgpt').queryByRole('button', { name: en.signInAgain })).toBeNull()
+  await act(async () => { fireEvent.click(row.getByRole('button', { name: en.signInAgain })) })
+  expect(operations.startSignIn).toHaveBeenCalledWith('claude')
+  cleanup()
+  // A signed-out answer without output keeps the notice; an active attempt disables signing in again.
+  mount({ accounts: [{ ...chatgpt, status: { ...signedOut, message: null } }], signIn: attempt({ kind: 'chatgpt' }) }, zh)
+  const chatRow = within(document.querySelector<HTMLElement>('[data-account="g1"]')!)
+  expect(chatRow.getByText(zh.signedOutHint)).toBeTruthy()
+  expect(chatRow.getByRole('button', { name: zh.signInAgain }).hasAttribute('disabled')).toBe(true)
+})
+
+it('runs the status checks on request once accounts exist', async () => {
+  mount({ accounts: [], signIn: null })
+  expect(screen.queryByRole('button', { name: en.checkStatus })).toBeNull()
+  cleanup()
+  const operations = mount({ accounts: [chatgpt], signIn: null })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: en.checkStatus })) })
+  expect(operations.checkStatus).toHaveBeenCalledOnce()
 })

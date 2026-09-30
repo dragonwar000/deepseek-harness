@@ -28,6 +28,8 @@ Each subscription group also states why it adds nothing to the chat model picker
 
 **Add Claude account** starts `claude auth login`: the Claude CLI opens a browser window on the Host, and the page shows the authorization link in case no window opened. That browser page ends on an authorization code, so the page also shows **Authorization code**; pasting it there and pressing Enter or **Complete sign-in** hands it to the waiting login command, which is what completes the sign-in. The field stays available until the command exits, so a code the CLI refuses can be entered again. **Add ChatGPT account** starts `codex login --device-auth`: the page shows the verification link and the one-time code to enter there. **Cancel** stops the login. Failures explain whether the CLI is missing, the login did not complete, it timed out before the code was entered, the CLI reported no signed-in account, or the account could not be saved on the Host. Adding is disabled while a sign-in is active.
 
+The Host checks every account's sign-in status through its official CLI on a schedule ([ai-account-platform](../../credentials/ai-account-platform/README.md)). When the latest check reports an account signed out, its row shows a **Signed out** badge, the notice "The official CLI reports this account is signed out. Sign in again to keep using it.", the CLI's own first output line when it printed one, and **Sign in again**, which starts the same login as the group's add button. **Check sign-in status**, shown once any account exists, runs every account's check now instead of waiting for the next scheduled one; rows update from the returned snapshot.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 

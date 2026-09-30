@@ -61,7 +61,13 @@ it('forwards commands to the Host, publishes their snapshots, and rejects refuse
   await operations.remove(account)
   expect(mock.remote.aiAccount.removeAccount).toHaveBeenCalledWith(account)
   expect(operations.hooks.accounts.getSnapshot().view).toEqual(empty)
-  const failure = { ok: false as const, error: new RemoteError('gateway/internal', 'offline', {}) }
+  mock.remote.aiAccount.checkStatus.mockResolvedValue(ok(added))
+  await operations.checkStatus()
+  expect(mock.remote.aiAccount.checkStatus).toHaveBeenCalledWith()
+  expect(operations.hooks.accounts.getSnapshot().view).toEqual(added)
+  mock.remote.aiAccount.removeAccount.mockResolvedValue(ok(empty))
+  await operations.remove(account)
+  const failure ={ ok: false as const, error: new RemoteError('gateway/internal', 'offline', {}) }
   mock.remote.aiAccount.removeAccount.mockResolvedValueOnce(failure)
   await expect(operations.remove(account)).rejects.toBe(failure.error)
   expect(operations.hooks.accounts.getSnapshot().view).toEqual(empty)
