@@ -292,6 +292,9 @@ importers:
       '@deepseek-ai/dsh-launch-environment':
         specifier: workspace:*
         version: link:../../packages/util/launch-environment
+      '@deepseek-ai/dsh-llm-claude-cli':
+        specifier: workspace:*
+        version: link:../../packages/llm/llm-claude-cli
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:*
         version: link:../../packages/mcp/mcp-client
