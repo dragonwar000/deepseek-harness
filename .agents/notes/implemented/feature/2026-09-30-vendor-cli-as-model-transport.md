@@ -22,9 +22,9 @@ Three consequences of using the CLI as the transport are load-bearing and were v
 
 **A catalog is not a login.** `list_models` answers successfully against an unauthenticated configuration directory, returning the list-priced catalog rather than the subscription's. `claude auth status --json` is therefore asked first and separately, and a signed-out directory produces a named `CLI_NOT_AUTHENTICATED` error. `listModels()` throws rather than returning an empty list, because `buildModelCatalog` renders a throw as a visible `ModelCatalogFailure` while an empty list silently drops the provider group.
 
-**What this route cannot do, and does not pretend to.** Claude Code accepts no caller-supplied tool definitions and offers no mode that reports a tool call without executing it; its only tool mechanism is MCP, where the CLI invokes the tool inside its own loop. A request that declares tools therefore fails with `TOOL_CALLS_UNSUPPORTED` instead of losing the declarations quietly. The route serves text-only requests, and it is not yet the main agent-loop chat model.
+**The CLI takes no tool definitions, so the prompt carries them.** Claude Code accepts no caller-supplied tool definitions and offers no mode that reports a tool call without executing it; its only tool mechanism is MCP, where the CLI invokes the tool inside its own loop. A request that declares tools is therefore served by rendering its tool schemas into the system prompt and parsing the model's fenced reply back into a real `tool-call` block, which keeps the Harness's loop, guards, approvals, and compaction. [That emulation has its own note](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.md); `toolCalls: 'refuse'` keeps the original refusal.
 
-The row ships `disabled: true` for that reason. It is enabled from a profile patch, and it registers only while an AI Account of kind `claude` has a default; a composition that declares the same provider id keeps it.
+The row ships `disabled: true`. It is enabled from a profile patch, and it registers only while an AI Account of kind `claude` has a default; a composition that declares the same provider id keeps it.
 
 ## Alternatives considered
 
@@ -32,7 +32,7 @@ The row ships `disabled: true` for that reason. It is enabled from a profile pat
 
 **Expose the Harness's tools to the CLI as an MCP server.** The CLI would then call real Harness tools with the Harness's own guards, and the subscription would serve full agent turns. It lost because the CLI keeps the loop: turn iteration, compaction, and the stop decision would move out of `agent-loop` into another product, which is the one thing the delegated route (`@deepseek-ai/dsh-subagent-claude-code`) already does better and more honestly.
 
-**Emulate tool calls in the prompt.** Serializing the request's `ToolSchema[]` into the system prompt and parsing a fenced call back out would keep the Harness's loop, tools, guards, and compaction, and would make this route usable as the main chat model. It is deferred rather than refused: the emulation preamble is a new model-visible input, so it needs a session event, a persistence record, a keyless snapshot, and a named failure path for a malformed call. Building it half-way would ship a model that silently cannot call a tool.
+**Emulate tool calls in the prompt.** Chosen, and [recorded separately](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.md), because it is a decision about a transport that cannot take tool definitions rather than about which transport to use.
 
 **Do nothing and keep subscriptions delegated-only.** No new package, no undocumented control request. It lost because it leaves the owner's subscription unable to answer even a tool-free request inside the Harness.
 
@@ -46,10 +46,10 @@ The row ships `disabled: true` for that reason. It is enabled from a profile pat
 
 A Claude subscription can answer tool-free requests inside the Harness with no token in Harness code, logs, or storage, and with nothing but the CLI's own documented directory variable passed to it. Each login stays revocable in exactly one place, and revoking it in the CLI stops this route too.
 
-The route is not the main chat model. Almost every real turn declares tools, including compaction, so with the route enabled a user choosing it for chat will meet `TOOL_CALLS_UNSUPPORTED` on the first tool-bearing turn. That is why the row ships disabled and why the picker states, in locale-owned copy, that the entry is subscription-backed and runs through the vendor CLI.
+The picker states, in locale-owned copy, that the entry is subscription-backed and runs through the vendor CLI. What a tool-bearing turn costs over this transport, and what it depends on, belongs to the [emulation decision](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.md).
 
 Prompt caching is lost: substituting the Harness system prompt discards the cache Claude Code keeps for its own, so every turn pays full prompt cost. Each request also spawns and tears down a process.
 
 The `list_models` control request is undocumented and can change without notice; an unreadable answer degrades to a named catalog error, and a real-CLI test that self-skips without a signed-in CLI detects the change. The vendor documents nothing about concurrent `--print` runs against one configuration directory, so each run takes its own session id with persistence off, and concurrency is a bounded, configurable number.
 
-No session event, persistence record, or `SESSION_FORMAT_VERSION` change was needed: the route introduces no model-visible input the Harness did not already author. Serializing a conversation into one user turn is an adapter projection of messages the session log already holds, like any other adapter's.
+Serializing a conversation into one user turn adds no model-visible input: it is an adapter projection of messages the session log already holds, like any other adapter's. The prompt text that declares tools does add one, and the [emulation decision](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.md) owns its session event.

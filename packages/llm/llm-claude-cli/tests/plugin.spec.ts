@@ -8,9 +8,10 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, LlmProviderInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Route from '../src/index.ts'
-import { FakeAiAccount, FakeCli, FakeSubprocessRuntime } from './harness.ts'
+import { FakeAiAccount, FakeCli, FakeSubprocessRuntime, streamLines } from './harness.ts'
 import type { FakeAccountState, FakeCliScript } from './harness.ts'
 
 const contexts: Context[] = []
@@ -44,12 +45,14 @@ async function mount(
     readonly account?: FakeAccountState
     readonly script?: FakeCliScript
     readonly declare?: true
+    readonly sessions?: true
   } = {},
 ) {
   const cli = new FakeCli(options.script ?? {})
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin(LlmRuntime)
+  if (options.sessions === true) await ctx.plugin(SessionStore)
   await ctx.plugin(FakeSubprocessRuntime, cli)
   const accountFiber = options.account === undefined
     ? undefined
@@ -201,6 +204,10 @@ describe('llm-claude-cli configuration', () => {
       requestTimeoutMs: 600_000,
       maxConcurrent: 2,
       graceMs: 2_000,
+      toolCalls: 'prompt',
+      toolCallMaxCalls: 4,
+      toolCallMaxBytes: 32_768,
+      toolCallRetries: 1,
     })
   })
 
@@ -235,8 +242,11 @@ describe('llm-claude-cli model listing through the runtime', () => {
     await expect(ctx.llm.listModels('claude-cli')).rejects.toThrow(/listed no models/)
   })
 
-  it('reports the tool refusal through the runtime with its own code', async () => {
-    const { ctx } = await mount({ account: { home: '/accounts/claude/one' } })
+  it('reports the configured tool refusal through the runtime with its own code', async () => {
+    const { ctx } = await mount({
+      account: { home: '/accounts/claude/one' },
+      config: { toolCalls: 'refuse' },
+    })
     const chunks = []
     for await (const chunk of ctx.llm.stream({
       provider: 'claude-cli',
@@ -257,6 +267,61 @@ describe('llm-claude-cli model listing through the runtime', () => {
     ctx.emit('loader/volatile-update', [['cliPath']])
     await ctx.llm.listModels('claude-cli')
     expect(cli.callsOf('catalog')).toHaveLength(2)
+  })
+})
+
+describe('llm-claude-cli tool-call emulation through the runtime', () => {
+  /** A request that declares one tool and belongs to a session. */
+  const toolRequest = (sessionId: SessionId): GenerateOptions => ({
+    provider: 'claude-cli',
+    model: 'opus',
+    tools: [{ name: 'read_file', description: 'Read a file', parameters: { type: 'object' } }],
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'read it' }] }],
+    sessionId,
+  })
+
+  it('serves a tool-declaring turn and logs the run that carried the preamble', async () => {
+    const { ctx } = await mount({
+      account: { home: '/accounts/claude/one' },
+      sessions: true,
+      script: {
+        inference: () => streamLines('```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```'),
+      },
+    })
+    const session = ctx.sessions.create()
+    const chunks: StreamChunk[] = []
+    for await (const chunk of ctx.llm.stream(toolRequest(session.id))) chunks.push(chunk)
+    const call = chunks.find(chunk => chunk.type === 'tool-call-delta')
+    expect(call?.type === 'tool-call-delta' && call.name).toBe('read_file')
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    const logged = session.snapshotEvents().filter(event => event.type === 'llm/cli-tool-emulation')
+    expect(logged).toHaveLength(1)
+    expect(logged[0]?.data).toMatchObject({
+      provider: 'claude-cli',
+      model: 'opus',
+      template: Route.PREAMBLE_TEMPLATE,
+      tools: ['read_file'],
+      attempt: 1,
+    })
+    expect(logged[0]?.data.preambleChars).toBeGreaterThan(0)
+  })
+
+  it('fails loud rather than emulating for a session the log cannot reach', async () => {
+    const { ctx } = await mount({ account: { home: '/accounts/claude/one' }, sessions: true })
+    const chunks: StreamChunk[] = []
+    for await (const chunk of ctx.llm.stream(toolRequest(SessionId('never-created')))) chunks.push(chunk)
+    const finish = chunks.at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
+      .toBe(Route.EMULATION_NOT_LOGGABLE)
+  })
+
+  it('fails loud rather than emulating when no session store is mounted at all', async () => {
+    const { ctx } = await mount({ account: { home: '/accounts/claude/one' } })
+    const chunks: StreamChunk[] = []
+    for await (const chunk of ctx.llm.stream(toolRequest(SessionId('s1')))) chunks.push(chunk)
+    const finish = chunks.at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.message)
+      .toMatch(/Mount @deepseek-ai\/dsh-session/)
   })
 })
 

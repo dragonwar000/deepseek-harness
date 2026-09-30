@@ -77,3 +77,46 @@ export interface ClaudeCliAuthStatus {
   readonly authMethod: string | undefined
   readonly subscriptionType: string | undefined
 }
+
+/** Why one correction run was needed, and the text it added to the request. */
+export interface CliToolEmulationCorrection {
+  /** The `TOOL_CALL_*` code that rejected the previous reply. */
+  readonly code: string
+  /** Verbatim notice appended to the request, which the model reads. */
+  readonly text: string
+}
+
+/**
+ * One CLI run whose tool declarations reached the model as prompt text rather than as an API
+ * `tools` field.
+ *
+ * Recorded before the run, so the preamble and any correction notice are in the log before the
+ * model reads them. The preamble itself is not stored: it is a pure function of {@link template}
+ * and the request header's tool schemas, both of which the log already holds.
+ */
+export interface CliToolEmulation {
+  /** Provider route that served the request. */
+  readonly provider: string
+  /** Model id pinned on the CLI run. */
+  readonly model: string
+  /** Identity of the pinned preamble wording the model read. */
+  readonly template: string
+  /** Characters the preamble added after the request's system prompt. */
+  readonly preambleChars: number
+  /** Declared tool names the preamble carried, in preamble order. */
+  readonly tools: readonly string[]
+  /** 1 for a request's first run; 2 and up for a correction run. */
+  readonly attempt: number
+  /** Why the previous run was rejected and what this one tells the model; absent on the first run. */
+  readonly correction?: CliToolEmulationCorrection
+}
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /**
+     * One Claude Code CLI run whose tool declarations travelled in the prompt. Log-only; never
+     * derived history.
+     */
+    'llm/cli-tool-emulation': CliToolEmulation
+  }
+}

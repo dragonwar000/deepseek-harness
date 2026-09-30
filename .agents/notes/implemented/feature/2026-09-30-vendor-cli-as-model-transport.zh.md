@@ -22,9 +22,9 @@ Status: implemented
 
 **目录不等于登录。** 即便面对未登录的配置目录，`list_models` 也会成功作答，返回的是按刊例价标注的那份目录而非订阅的那份。因此先单独询问 `claude auth status --json`；未登录的目录会产生具名的 `CLI_NOT_AUTHENTICATED` 错误。`listModels()` 抛错而不是返回空列表，因为 `buildModelCatalog` 会把抛错呈现为可见的 `ModelCatalogFailure`，而空列表只会让这个 provider 分组悄悄消失。
 
-**这条路由做不到、也不假装做得到的事。** Claude Code 不接收调用方提供的工具定义，也没有任何模式能报告一次工具调用却不执行它；它唯一的工具机制是 MCP，而那时是 CLI 在自己的循环里调用工具。因此声明了工具的请求会以 `TOOL_CALLS_UNSUPPORTED` 失败，而不是把声明悄悄丢掉。该路由服务纯文本请求，它还不是主 agent 循环的聊天模型。
+**CLI 不接收工具定义，于是提示词来承载它们。** Claude Code 不接收调用方提供的工具定义，也没有任何模式能报告一次工具调用却不执行它；它唯一的工具机制是 MCP，而那时是 CLI 在自己的循环里调用工具。因此声明了工具的请求改为这样服务：把它的工具 schema 渲染进系统提示词，再把模型回复里的围栏块解析回真正的 `tool-call` 块，从而保住 Harness 的循环、守卫、审批与压缩。[那套模拟有自己的 note](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md)；`toolCalls: 'refuse'` 保留最初的拒绝行为。
 
-正因如此，这一行以 `disabled: true` 发布。它由 profile patch 打开，并且只在某个 `claude` 类型的 AI 账号存在默认项时注册；如果 composition 自己声明了同一个 provider id，则该声明保留。
+这一行以 `disabled: true` 发布。它由 profile patch 打开，并且只在某个 `claude` 类型的 AI 账号存在默认项时注册；如果 composition 自己声明了同一个 provider id，则该声明保留。
 
 ## Alternatives considered
 
@@ -32,7 +32,7 @@ Status: implemented
 
 **把 Harness 的工具作为 MCP server 暴露给 CLI。** 那样 CLI 会带着 Harness 自己的 guard 调用真正的 Harness 工具，订阅也就能服务完整的 agent 回合。它落选，是因为循环归 CLI 所有：回合迭代、compaction 与停止判定都会从 `agent-loop` 移到另一个产品里，而这恰恰是既有的委派路线（`@deepseek-ai/dsh-subagent-claude-code`）做得更好也更诚实的那件事。
 
-**在提示词里模拟工具调用。** 把请求的 `ToolSchema[]` 序列化进系统提示词、再从围栏块里解析出调用，可以保住 Harness 的循环、工具、guard 与 compaction，也会让这条路由能当主聊天模型用。它是被推迟而非被拒绝：模拟用的前导块是一个新的 model-visible 输入，因此需要一个 session event、一条 persistence 记录、一个 keyless snapshot，以及一条针对格式错误调用的具名失败路径。半途而废地交付，等于交付一个悄悄无法调用工具的模型。
+**在提示词里模拟工具调用。** 已采纳，并[单独记录](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md)，因为它是关于「一个接收不了工具定义的传输层该怎么办」的决策，而不是关于「选哪个传输层」的决策。
 
 **什么也不做，订阅继续只能被委派。** 没有新包，没有未文档化的 control request。它落选，是因为那样所有者的订阅连一次不带工具的请求都无法在 Harness 里作答。
 
@@ -46,10 +46,10 @@ Status: implemented
 
 一份 Claude 订阅可以在 Harness 内部作答不带工具的请求，Harness 的代码、日志与存储中没有任何令牌，传给 CLI 的只有它自己公开的目录变量。每次登录仍然只在一个地方可吊销，在 CLI 里吊销它也就停掉了这条路由。
 
-这条路由不是主聊天模型。几乎每个真实回合都声明工具，compaction 也不例外，因此启用后，选它来聊天的用户会在第一个带工具的回合遇到 `TOOL_CALLS_UNSUPPORTED`。这就是这一行默认关闭的原因，也是选择器要用本地化文案说明该条目由订阅支撑、并经厂商 CLI 运行的原因。
+选择器用本地化文案说明该条目由订阅支撑、并经厂商 CLI 运行。一个带工具的回合在这条传输层上要付什么代价、依赖什么，属于[模拟决策](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md)。
 
 Prompt 缓存被放弃了：顶替 Harness 的系统提示词会丢掉 Claude Code 为自己那份保留的缓存，所以每一轮都付全额 prompt 成本。每个请求还会拉起并拆掉一个进程。
 
 `list_models` control request 未被文档化，可能随时变化而无预告；读不懂的回答会降级为具名的目录错误，而一个在没有已登录 CLI 时自动跳过的真实 CLI 测试会察觉这种变化。厂商对同一配置目录上的并发 `--print` 运行没有任何说明，因此每次运行取用自己的 session id 并关闭持久化，并发数是一个有上限、可配置的数字。
 
-不需要 session event、persistence 记录或 `SESSION_FORMAT_VERSION` 变更：该路由没有引入任何 Harness 本来没有撰写的 model-visible 输入。把一段对话序列化进单个用户回合，是对 session log 已经持有的消息所做的适配器投影，与任何其他适配器所做的一样。
+把一段对话序列化进单个用户回合不增加任何 model-visible 输入：它是对 session log 已经持有的消息所做的适配器投影，与任何其他适配器所做的一样。声明工具的那段提示词文本确实增加了一个，[模拟决策](2026-09-30-prompt-emulated-tool-calls-for-cli-transports.zh.md)拥有它的 session event。

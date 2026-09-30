@@ -13,13 +13,38 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type {} from '@deepseek-ai/dsh-ai-account'
+import { LlmError } from '@deepseek-ai/dsh-llm'
 import type { AdapterRegistrationHandle } from '@deepseek-ai/dsh-llm'
-import { ClaudeCliAdapter } from './adapter.ts'
+import type { SessionId } from '@deepseek-ai/dsh-session'
+import { ClaudeCliAdapter, EMULATION_NOT_LOGGABLE } from './adapter.ts'
+import type { EmulationRecorder } from './adapter.ts'
 import { ClaudeCliCatalog } from './catalog.ts'
+import type { CliToolEmulation } from './types.ts'
 
-export { ClaudeCliAdapter, TOOL_CALLS_UNSUPPORTED, UNKNOWN_MODEL } from './adapter.ts'
+export {
+  ClaudeCliAdapter,
+  EMULATION_NOT_LOGGABLE,
+  TOOL_CALLS_UNSUPPORTED,
+  UNKNOWN_MODEL,
+} from './adapter.ts'
 export { CLI_CATALOG_UNAVAILABLE, CLI_MISSING, CLI_NOT_AUTHENTICATED, ClaudeCliCatalog } from './catalog.ts'
-export type { ClaudeCliLaunch, ClaudeCliModelId, ClaudeCliModelRow } from './types.ts'
+export {
+  buildToolPreamble,
+  PREAMBLE_TEMPLATE,
+  TOOL_CALL_FENCE,
+  TOOL_CALL_LIMIT,
+  TOOL_CALL_MALFORMED,
+  TOOL_CALL_TOO_LARGE,
+  TOOL_CALL_TRUNCATED,
+  TOOL_CALL_UNKNOWN_TOOL,
+} from './emulate.ts'
+export type {
+  ClaudeCliLaunch,
+  ClaudeCliModelId,
+  ClaudeCliModelRow,
+  CliToolEmulation,
+  CliToolEmulationCorrection,
+} from './types.ts'
 
 /** Plugin name, and the settings namespace fallback when the row declares no id. */
 export const name = 'llm-claude-cli'
@@ -54,6 +79,18 @@ export interface Config {
   maxConcurrent?: number
   /** Grace before a terminated child is killed. */
   graceMs?: number
+  /**
+   * How a request that declares tools is served. `prompt` declares the tools as system-prompt text
+   * and reads the model's fenced call back as a real tool call; `refuse` fails the request with
+   * `TOOL_CALLS_UNSUPPORTED`, which is what the route did before emulation existed.
+   */
+  toolCalls?: 'refuse' | 'prompt'
+  /** Tool-call blocks accepted from one emulated reply; the preamble states this number. */
+  toolCallMaxCalls?: number
+  /** Bytes accepted inside one tool-call block; the preamble states this number. */
+  toolCallMaxBytes?: number
+  /** Correction runs allowed after a rejected reply that produced no output yet. */
+  toolCallRetries?: number
 }
 
 /** Config with every default applied. */
@@ -71,6 +108,10 @@ export const Config: z<Config, ValidConfig> = z.object({
   requestTimeoutMs: z.natural().min(1).default(600_000),
   maxConcurrent: z.natural().min(1).default(2),
   graceMs: z.natural().min(1).default(2_000),
+  toolCalls: z.union(['refuse', 'prompt'] as const).default('prompt'),
+  toolCallMaxCalls: z.natural().min(1).default(4),
+  toolCallMaxBytes: z.natural().min(1).default(32_768),
+  toolCallRetries: z.natural().default(1),
 })
 
 /**
@@ -80,6 +121,29 @@ export const Config: z<Config, ValidConfig> = z.object({
  */
 function declaredRoutes(ctx: Context): ReadonlySet<string> {
   return new Set(ctx.llm.listProviders().map(provider => provider.id))
+}
+
+/**
+ * Build the session recorder for emulated runs.
+ *
+ * The session store is resolved per record rather than injected: the route mounts and serves
+ * tool-free requests in a composition with no session store at all, and only an emulated request
+ * needs a log. A request that names a session the store cannot reach fails loud, because the
+ * emulation preamble is model-visible input and the Harness requires it to be in the log.
+ * @param ctx - the plugin context.
+ * @returns a recorder that appends one `llm/cli-tool-emulation` event.
+ */
+function recorder(ctx: Context): EmulationRecorder {
+  return (sessionId: SessionId, record: CliToolEmulation): void => {
+    const session = ctx.get('sessions')?.get(sessionId)
+    if (session === undefined) {
+      throw new LlmError(
+        `The claude-cli route declares this request's tools in the prompt, which is model-visible input that must be logged, but session ${sessionId} could not be reached to log it. Mount @deepseek-ai/dsh-session, or set this route's toolCalls to "refuse".`,
+        EMULATION_NOT_LOGGABLE,
+      )
+    }
+    session.append('llm/cli-tool-emulation', record)
+  }
 }
 
 /**
@@ -114,6 +178,11 @@ export function apply(ctx: Context, config: ValidConfig): void {
     maxConcurrent: config.maxConcurrent,
     graceMs: config.graceMs,
     spawn,
+    toolCalls: config.toolCalls,
+    toolCallMaxCalls: config.toolCallMaxCalls,
+    toolCallMaxBytes: config.toolCallMaxBytes,
+    toolCallRetries: config.toolCallRetries,
+    recordEmulation: recorder(ctx),
   })
 
   let registration: AdapterRegistrationHandle | undefined

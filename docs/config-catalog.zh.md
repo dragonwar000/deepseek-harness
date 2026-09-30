@@ -2135,7 +2135,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-llm-claude-cli`
 
 - `inject`: `llm` · `subprocess`
-- `source`: [`packages/llm/llm-claude-cli/src/index.ts:60`](../packages/llm/llm-claude-cli/src/index.ts)
+- `source`: [`packages/llm/llm-claude-cli/src/index.ts:97`](../packages/llm/llm-claude-cli/src/index.ts)
 
 ```ts config-catalog
 /** Config with every default applied. */
@@ -2165,6 +2165,18 @@ export interface Config {
   maxConcurrent?: number
   /** Grace before a terminated child is killed. */
   graceMs?: number
+  /**
+   * How a request that declares tools is served. `prompt` declares the tools as system-prompt text
+   * and reads the model's fenced call back as a real tool call; `refuse` fails the request with
+   * `TOOL_CALLS_UNSUPPORTED`, which is what the route did before emulation existed.
+   */
+  toolCalls?: 'refuse' | 'prompt'
+  /** Tool-call blocks accepted from one emulated reply; the preamble states this number. */
+  toolCallMaxCalls?: number
+  /** Bytes accepted inside one tool-call block; the preamble states this number. */
+  toolCallMaxBytes?: number
+  /** Correction runs allowed after a rejected reply that produced no output yet. */
+  toolCallRetries?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-claude-cli -->

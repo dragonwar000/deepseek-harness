@@ -13465,6 +13465,126 @@
       }
     },
     {
+      "key": "event:llm/cli-tool-emulation",
+      "kind": "event",
+      "event": "llm/cli-tool-emulation",
+      "surface": false,
+      "digest": "17a26effacb05125a5fafa61dd5963ca9cd4008c3ee11aff2170befef1d1846f",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 6,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 7,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "attempt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "correction",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "model",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "preambleChars",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "provider",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "template",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "tools",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "code",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "text",
+                "type": 4,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 4
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "llm/cli-tool-emulation"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:llm/retry",
       "kind": "event",
       "event": "llm/retry",
@@ -27697,6 +27817,11 @@
       "sources": []
     },
     {
+      "digest": "17a26effacb05125a5fafa61dd5963ca9cd4008c3ee11aff2170befef1d1846f",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "17aae616ef020b8b9f011ec398ec935450fb06d3e2a0722c456f63aeaf5ff728",
       "names": [],
       "sources": []
@@ -29690,6 +29815,15 @@
       "digest": "756cae5b6534b8b417c104e6726b2feb3f1aa9e531111c563efadf819fa41aff",
       "names": [],
       "sources": []
+    },
+    {
+      "digest": "757ad1dd02bdea94a475a5f38b9a35774b0609ff008f2ef3a3fb5f336539a9ea",
+      "names": [
+        "packages/llm/llm-claude-cli/src/types.ts#CliToolEmulation"
+      ],
+      "sources": [
+        "packages/llm/llm-claude-cli/src/types.ts:97"
+      ]
     },
     {
       "digest": "7624ca28c61ca0eaa4f015140f3cea6e0c16cce2f2960fab5f531203d253903e",
@@ -31841,6 +31975,15 @@
       "sources": []
     },
     {
+      "digest": "e1cb3cad05780d6c3b35e3f6d0d5d17d94050f6cd666d8bc9ba1fdb3d0d6add7",
+      "names": [
+        "packages/llm/llm-claude-cli/src/types.ts#CliToolEmulationCorrection"
+      ],
+      "sources": [
+        "packages/llm/llm-claude-cli/src/types.ts:82"
+      ]
+    },
+    {
       "digest": "e2ad8f5bcd813f268ffef1b10a12d7ddd2b8ced8b9b6d0275b3f6b7ed094a187",
       "names": [],
       "sources": []
@@ -31944,6 +32087,11 @@
     },
     {
       "digest": "e6411b09c1d982f789bf741ca74e2bea69df56029847f86a6148e722039ee732",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "e6e4a0beb34012d8d08303e1f1b7faf733fccd82f1689fa61b0f79731ba655d7",
       "names": [],
       "sources": []
     },

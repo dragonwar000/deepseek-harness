@@ -2,10 +2,18 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { LlmError } from '@deepseek-ai/dsh-llm'
+import { createSystemMessage, LlmError } from '@deepseek-ai/dsh-llm'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { GenerateOptions, RequestMessage, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { ClaudeCliAdapter, TOOL_CALLS_UNSUPPORTED, UNKNOWN_MODEL } from '../src/adapter.ts'
 import { ClaudeCliCatalog } from '../src/catalog.ts'
+import {
+  PREAMBLE_TEMPLATE,
+  TOOL_CALL_MALFORMED,
+  TOOL_CALL_TRUNCATED,
+  TOOL_CALL_UNKNOWN_TOOL,
+} from '../src/emulate.ts'
+import type { CliToolEmulation } from '../src/types.ts'
 import { FakeCli, streamLines } from './harness.ts'
 import type { FakeCliScript } from './harness.ts'
 
@@ -25,8 +33,17 @@ function user(text: string): RequestMessage {
 }
 
 /** An adapter over a scripted CLI. */
-function build(script: FakeCliScript = {}, overrides: { readonly maxConcurrent?: number } = {}) {
+function build(
+  script: FakeCliScript = {},
+  overrides: {
+    readonly maxConcurrent?: number
+    readonly toolCalls?: 'refuse' | 'prompt'
+    readonly toolCallRetries?: number
+    readonly toolCallMaxCalls?: number
+  } = {},
+) {
   const cli = new FakeCli(script)
+  const records: CliToolEmulation[] = []
   const shared = {
     spawn: cli.spawn,
     workingDirectory: join(root, 'cwd'),
@@ -47,9 +64,31 @@ function build(script: FakeCliScript = {}, overrides: { readonly maxConcurrent?:
     displayName: 'Claude (Claude Code CLI)',
     requestTimeoutMs: 400,
     maxConcurrent: overrides.maxConcurrent ?? 2,
+    toolCalls: overrides.toolCalls ?? 'prompt',
+    toolCallMaxCalls: overrides.toolCallMaxCalls ?? 4,
+    toolCallMaxBytes: 32_768,
+    toolCallRetries: overrides.toolCallRetries ?? 1,
+    recordEmulation: (_sessionId, record) => { records.push(record) },
   })
-  return { cli, catalog, adapter }
+  return { cli, catalog, adapter, records }
 }
+
+/** The tools a request declares in the emulation tests. */
+const TOOLS = [
+  {
+    name: 'read_file',
+    description: 'Read a file from the workspace.',
+    parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+  },
+]
+
+/** One CLI reply carrying only the given assistant text. */
+function replyLines(text: string): readonly string[] {
+  return streamLines(text)
+}
+
+/** Session identity the emulation records are written against. */
+const SESSION = SessionId('s-emulation')
 
 /** A minimal request over this route. */
 function request(overrides: Partial<GenerateOptions> = {}): GenerateOptions {
@@ -124,8 +163,8 @@ describe('ClaudeCliAdapter.resolveModel', () => {
 })
 
 describe('ClaudeCliAdapter.stream', () => {
-  it('refuses a request that declares tools, naming the limit and the alternative', () => {
-    const { adapter } = build()
+  it('refuses a request that declares tools when configured to refuse rather than emulate', () => {
+    const { adapter } = build({}, { toolCalls: 'refuse' })
     let thrown: unknown
     try {
       adapter.stream(request({ tools: [{ name: 'read', description: 'read', parameters: {} }] }))
@@ -136,7 +175,7 @@ describe('ClaudeCliAdapter.stream', () => {
     expect(thrown).toBeInstanceOf(LlmError)
     expect((thrown as LlmError).code).toBe(TOOL_CALLS_UNSUPPORTED)
     expect((thrown as LlmError).message).toMatch(/no caller-supplied tool definitions/)
-    expect((thrown as LlmError).message).toMatch(/API-key model route/)
+    expect((thrown as LlmError).message).toMatch(/toolCalls to "prompt"/)
   })
 
   it('accepts a request whose tools array is empty', async () => {
@@ -293,5 +332,191 @@ describe('ClaudeCliAdapter.stream', () => {
     expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.message)
       .toMatch(/error_max_turns/)
     expect(cli.callsOf('inference')[0]?.terminateCalls).toBe(1)
+  })
+})
+
+describe('ClaudeCliAdapter tool-call emulation', () => {
+  it('declares the request tools in the system prompt and reports the fenced call back', async () => {
+    const { cli, adapter, records } = build({
+      inference: () => replyLines('```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```'),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    const argv = cli.callsOf('inference')[0]?.spec.argv ?? []
+    const system = argv[argv.indexOf('--system-prompt') + 1] ?? ''
+    expect(system).toContain('#### read_file')
+    expect(system).toContain('```dsh-tool-call')
+    // The CLI itself still runs with every tool switched off; the tools live in the prompt only.
+    expect(argv[argv.indexOf('--tools') + 1]).toBe('')
+    const call = chunks.find(chunk => chunk.type === 'tool-call-delta')
+    expect(call?.type === 'tool-call-delta' && call.name).toBe('read_file')
+    expect(call?.type === 'tool-call-delta' && call.argumentsDelta).toBe('{"path":"/a"}')
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    expect(records).toEqual([{
+      provider: 'claude-cli',
+      model: 'opus',
+      template: PREAMBLE_TEMPLATE,
+      preambleChars: system.length,
+      tools: ['read_file'],
+      attempt: 1,
+    }])
+  })
+
+  it('keeps the prose a reply wrote before its call and drops what it invented after', async () => {
+    const { adapter } = build({
+      inference: () => replyLines(
+        'Reading it now.\n```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```\nThe file says hello.',
+      ),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(chunks.filter(chunk => chunk.type === 'text-delta').map(chunk => chunk.text))
+      .toEqual(['Reading it now.\n'])
+    expect(chunks.filter(chunk => chunk.type === 'tool-call-delta')).toHaveLength(1)
+  })
+
+  it('reports two calls from one reply', async () => {
+    const { adapter } = build({
+      inference: () => replyLines(
+        '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"a"}}\n```\n\n'
+        + '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"b"}}\n```',
+      ),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(chunks.filter(chunk => chunk.type === 'tool-call-delta')
+      .map(chunk => chunk.type === 'tool-call-delta' && chunk.argumentsDelta))
+      .toEqual(['{"path":"a"}', '{"path":"b"}'])
+  })
+
+  it('runs the request again with a named correction when the first reply is rejected', async () => {
+    let call = 0
+    const { cli, adapter, records } = build({
+      inference: () => {
+        call += 1
+        return replyLines(call === 1
+          ? '```dsh-tool-call\n{"name":"web_search","arguments":{}}\n```'
+          : '```dsh-tool-call\n{"name":"read_file","arguments":{"path":"/a"}}\n```')
+      },
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(2)
+    // The rejected reply never reached the consumer, so the stream shows only the accepted call.
+    expect(chunks.filter(chunk => chunk.type === 'tool-call-delta')).toHaveLength(1)
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'tool-calls' } })
+    const retried = JSON.parse((cli.callsOf('inference')[1]?.stdin ?? '').trim()) as {
+      message: { content: { text: string }[] }
+    }
+    expect(retried.message.content[0]?.text)
+      .toMatch(/Harness: Your previous reply was rejected and no tool ran\. No tool named `web_search`/)
+    expect(records.map(record => record.attempt)).toEqual([1, 2])
+    expect(records[1]?.correction?.code).toBe(TOOL_CALL_UNKNOWN_TOOL)
+    expect(records[1]?.correction?.text).toMatch(/following the tool-call format exactly/)
+    // Every run is logged before it happens, so the model-visible correction is in the log first.
+    expect(records[0]?.correction).toBeUndefined()
+  })
+
+  it('fails with the named rejection once the correction budget is spent', async () => {
+    const { cli, adapter } = build(
+      { inference: () => replyLines('```dsh-tool-call\n{"name":"web_search","arguments":{}}\n```') },
+      { toolCallRetries: 1 },
+    )
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(2)
+    const finish = chunks.at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
+      .toBe(TOOL_CALL_UNKNOWN_TOOL)
+    expect(chunks.some(chunk => chunk.type === 'tool-call-delta')).toBe(false)
+  })
+
+  it('makes one run only when no correction is budgeted', async () => {
+    const { cli, adapter } = build(
+      { inference: () => replyLines('```dsh-tool-call\n{"name":"read_file"') },
+      { toolCallRetries: 0 },
+    )
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(1)
+    const finish = chunks.at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
+      .toBe(TOOL_CALL_TRUNCATED)
+  })
+
+  it('does not retry once text has reached the consumer, and names the rejection instead', async () => {
+    const { cli, adapter } = build({
+      inference: () => replyLines('Let me look.\n```dsh-tool-call\n{"name":"web_search","arguments":{}}\n```'),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(cli.callsOf('inference')).toHaveLength(1)
+    expect(chunks.filter(chunk => chunk.type === 'text-delta')).toHaveLength(1)
+    const finish = chunks.at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
+      .toBe(TOOL_CALL_UNKNOWN_TOOL)
+  })
+
+  it('names a reply that ends inside an unterminated block rather than dropping the call', async () => {
+    const { adapter } = build({
+      inference: () => replyLines('```dsh-tool-call\n{"name":"read_file","argu'),
+    }, { toolCallRetries: 0 })
+    const finish = (await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))).at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.message)
+      .toMatch(/unterminated tool-call block/)
+  })
+
+  it('names a block whose contents are not one JSON object', async () => {
+    const { adapter } = build({
+      inference: () => replyLines('```dsh-tool-call\nname = read_file\n```'),
+    }, { toolCallRetries: 0 })
+    const finish = (await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))).at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.code)
+      .toBe(TOOL_CALL_MALFORMED)
+  })
+
+  it('names a reply carrying more blocks than the configured cap', async () => {
+    const block = '```dsh-tool-call\n{"name":"read_file","arguments":{}}\n```\n'
+    const { adapter } = build(
+      { inference: () => replyLines(block + block) },
+      { toolCallMaxCalls: 1, toolCallRetries: 0 },
+    )
+    const finish = (await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))).at(-1)
+    expect(finish?.type === 'finish' && finish.reason.kind === 'error' && finish.reason.failure.message)
+      .toMatch(/more than 1 tool-call blocks/)
+  })
+
+  it('forwards arguments that break the tool schema without repairing them', async () => {
+    const { adapter } = build({
+      inference: () => replyLines('```dsh-tool-call\n{"name":"read_file","arguments":{"wrong":1}}\n```'),
+    })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    const call = chunks.find(chunk => chunk.type === 'tool-call-delta')
+    // The Harness tool layer owns schema conformance and reports the violation to the model itself.
+    expect(call?.type === 'tool-call-delta' && call.argumentsDelta).toBe('{"wrong":1}')
+  })
+
+  it('answers an emulated request that needs no tool as plain text', async () => {
+    const { adapter, records } = build({ inference: () => replyLines('Nothing to run.') })
+    const chunks = await collect(adapter.stream(request({ tools: TOOLS, sessionId: SESSION })))
+    expect(chunks.filter(chunk => chunk.type === 'text-delta').map(chunk => chunk.text))
+      .toEqual(['Nothing to run.'])
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: { kind: 'stop' } })
+    expect(records).toHaveLength(1)
+  })
+
+  it('hoists a loop-built system message into the CLI system prompt ahead of the preamble', async () => {
+    const { cli, adapter } = build({ inference: () => replyLines('ok') })
+    await collect(adapter.stream(request({
+      tools: TOOLS,
+      sessionId: SESSION,
+      messages: [createSystemMessage('You are DeepSeek Harness.'), user('hello')],
+    })))
+    const argv = cli.callsOf('inference')[0]?.spec.argv ?? []
+    const system = argv[argv.indexOf('--system-prompt') + 1] ?? ''
+    expect(system.startsWith('You are DeepSeek Harness.\n\n## Tool calls')).toBe(true)
+    const parsed = JSON.parse((cli.callsOf('inference')[0]?.stdin ?? '').trim()) as {
+      message: { content: { text: string }[] }
+    }
+    expect(parsed.message.content[0]?.text).toBe('hello')
+  })
+
+  it('logs nothing for a request that carries no session identity', async () => {
+    const { adapter, records } = build({ inference: () => replyLines('ok') })
+    await collect(adapter.stream(request({ tools: TOOLS })))
+    expect(records).toEqual([])
   })
 })

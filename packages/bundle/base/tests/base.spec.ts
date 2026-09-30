@@ -44,6 +44,13 @@ describe('dsh-base bundle', () => {
     expect(rows.find(row => row.id === 'web')?.config).toMatchObject({ fetchProvider: 'http' })
     expect(rows.find(row => row.id === 'web-fetch-http')).toBeDefined()
     expect(rows.find(row => row.id === 'tool-web')?.config).toMatchObject({ fetch: true })
+    // The subscription chat route ships present but off: nothing changes for a user who does not
+    // opt in, and enabling it is one id-targeted override away.
+    expect(rows.find(row => row.id === 'llm-claude-cli')).toEqual({
+      id: 'llm-claude-cli',
+      name: '@deepseek-ai/dsh-llm-claude-cli',
+      disabled: true,
+    })
     expect(manifest.dependencies).not.toHaveProperty('@deepseek-ai/dsh-subagent-codex')
     expect(manifest.dependencies).not.toHaveProperty('@deepseek-ai/dsh-subagent-claude-code')
     expect(manifest.dependencies).toHaveProperty('@deepseek-ai/dsh-web-fetch-http')
