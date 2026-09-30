@@ -428,6 +428,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         throws: ['when no account has this id.'],
       },
       {
+        signature: 'abstract checkStatus(): Promise<AiAccountsView>',
+        description: 'Run every registered account\'s official CLI status command now and record each conclusive answer in `AiAccountView.status`, emitting `ai-account/status-changed` once per transition. A call while a check runs joins that check instead of starting another.',
+        parameters: [],
+        returns: 'the snapshot after the check settles.',
+      },
+      {
         signature: 'abstract watch(signal: AbortSignal): AsyncIterable<AiAccountsView>',
         description: 'Subscribe to complete snapshots, starting with the current one.',
         parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels a sign-in.' }],
@@ -4070,6 +4076,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'kind', description: 'account kind whose default changed.' }],
   },
   {
+    name: 'ai-account/status-changed',
+    mode: 'emit',
+    signature: '\'ai-account/status-changed\'(change: AiAccountStatusChange): void',
+    summary: 'A status check changed one registered account\'s sign-in status.',
+    description: 'A status check changed one registered account\'s sign-in status. Emitted once per transition, never for a check that confirms the previous status or answers inconclusively.',
+    parameters: [{ name: 'change', description: 'account, previous status, and the new status view.' }],
+  },
+  {
     name: 'api-session/activity',
     mode: 'emit',
     signature: '\'api-session/activity\'(sessionId: SessionId, updatedAt: number): void',
@@ -4742,12 +4756,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface AiAccountSignInView {\n    readonly id: AiAccountSignInId;\n    readonly kind: AiAccountKind;\n    readonly phase: AiAccountSignInPhase;\n    readonly url: string | null;\n    readonly userCode: string | null;\n    readonly awaitingCode: boolean;\n    readonly errorCode: AiAccountSignInError | null;\n}',
   },
   {
+    name: 'AiAccountStatus',
+    declaration: 'export type AiAccountStatus = \'signedIn\' | \'signedOut\' | \'unknown\';',
+  },
+  {
+    name: 'AiAccountStatusChange',
+    declaration: 'export interface AiAccountStatusChange {\n    readonly id: AiAccountId;\n    readonly kind: AiAccountKind;\n    readonly isDefault: boolean;\n    readonly previous: AiAccountStatus;\n    readonly current: AiAccountStatusView;\n}',
+  },
+  {
+    name: 'AiAccountStatusView',
+    declaration: 'export interface AiAccountStatusView {\n    readonly status: AiAccountStatus;\n    readonly checkedAt: number | null;\n    readonly message: string | null;\n}',
+  },
+  {
     name: 'AiAccountsView',
     declaration: 'export interface AiAccountsView {\n    readonly accounts: readonly AiAccountView[];\n    readonly signIn: AiAccountSignInView | null;\n}',
   },
   {
     name: 'AiAccountView',
-    declaration: 'export interface AiAccountView {\n    readonly id: AiAccountId;\n    readonly kind: AiAccountKind;\n    readonly email: string | null;\n    readonly plan: string | null;\n    readonly createdAt: number;\n    readonly isDefault: boolean;\n}',
+    declaration: 'export interface AiAccountView {\n    readonly id: AiAccountId;\n    readonly kind: AiAccountKind;\n    readonly email: string | null;\n    readonly plan: string | null;\n    readonly createdAt: number;\n    readonly isDefault: boolean;\n    readonly status: AiAccountStatusView;\n}',
   },
   {
     name: 'ApiKeyRecord',

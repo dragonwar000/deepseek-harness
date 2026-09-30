@@ -125,6 +125,14 @@ abstract setDefault(id: AiAccountId): Promise<AiAccountsView>
 abstract remove(id: AiAccountId): Promise<AiAccountsView>
 
 /**
+ * Run every registered account's official CLI status command now and record each conclusive
+ * answer in `AiAccountView.status`, emitting `ai-account/status-changed` once per transition.
+ * A call while a check runs joins that check instead of starting another.
+ * @returns the snapshot after the check settles.
+ */
+abstract checkStatus(): Promise<AiAccountsView>
+
+/**
  * Subscribe to complete snapshots, starting with the current one.
  * @param signal - subscription lifetime; ending it never cancels a sign-in.
  * @returns snapshots as accounts or the attempt change.
@@ -555,6 +563,24 @@ The default account of one kind changed, including to no default.
  * @param kind - account kind whose default changed.
  */
 'ai-account/default-changed'(kind: AiAccountKind): void
+```
+
+Source: [`packages/credentials/ai-account/src/types.ts`](../../packages/credentials/ai-account/src/types.ts)
+
+<a id="ai-accountstatus-changed--emit"></a>
+
+#### `ai-account/status-changed` — emit
+
+A status check changed one registered account's sign-in status. Emitted once per transition, never for a check that confirms the previous status or answers inconclusively.
+
+```ts cordis-catalog
+/**
+ * A status check changed one registered account's sign-in status. Emitted once per
+ * transition, never for a check that confirms the previous status or answers inconclusively.
+ * @mode emit
+ * @param change - account, previous status, and the new status view.
+ */
+'ai-account/status-changed'(change: AiAccountStatusChange): void
 ```
 
 Source: [`packages/credentials/ai-account/src/types.ts`](../../packages/credentials/ai-account/src/types.ts)
