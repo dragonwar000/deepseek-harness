@@ -216,14 +216,30 @@ describe('ClaudeCliAdapter.stream', () => {
   })
 
   it('caps concurrent CLI children at maxConcurrent', async () => {
-    const { cli, adapter } = build({ hang: ['inference'] }, { maxConcurrent: 1 })
-    const first = collect(adapter.stream(request())).catch(() => [])
-    const second = collect(adapter.stream(request())).catch(() => [])
-    await first
-    await second
-    expect(cli.callsOf('inference')).toHaveLength(2)
-    // With a limit of one, the two runs never overlapped.
-    expect(cli.callsOf('inference')[0]?.terminateCalls).toBe(1)
+    const { cli, adapter } = build({}, { maxConcurrent: 1 })
+    // Warm the catalog so the counted spawns are only inference children.
+    await adapter.listModels('claude-cli')
+    const runs = [request(), request(), request()].map(async (options) => {
+      for await (const chunk of adapter.stream(options)) {
+        // With a limit of one, no other inference child may be alive while this one streams.
+        expect(cli.callsOf('inference').filter(spawn => spawn.terminateCalls === 0)).toHaveLength(1)
+        expect(chunk.type.length).toBeGreaterThan(0)
+      }
+    })
+    await Promise.all(runs)
+    expect(cli.callsOf('inference')).toHaveLength(3)
+  })
+
+  it('never lets the slot count dip while it hands a slot to a waiter', async () => {
+    const { cli, adapter } = build({}, { maxConcurrent: 1 })
+    await adapter.listModels('claude-cli')
+    // A run started in the same turn as another finishing must still wait for the slot.
+    const first = collect(adapter.stream(request()))
+    const second = collect(adapter.stream(request()))
+    const third = collect(adapter.stream(request()))
+    await Promise.all([first, second, third])
+    expect(cli.callsOf('inference')).toHaveLength(3)
+    for (const spawn of cli.callsOf('inference')) expect(spawn.terminateCalls).toBe(1)
   })
 
   it('ends the run, names the truncation, and joins the child when the deadline elapses', async () => {

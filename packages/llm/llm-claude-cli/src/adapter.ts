@@ -63,14 +63,19 @@ class Concurrency {
       this.active += 1
       return
     }
+    // The count is not raised on this side: `release` hands this waiter the slot it already holds,
+    // so the total never dips between the release and the woken continuation.
     await new Promise<void>((resolve) => { this.waiting.push(resolve) })
-    this.active += 1
   }
 
-  /** Release a slot, waking the longest waiter. */
+  /** Hand the slot to the longest waiter, or give it up when none is waiting. */
   release(): void {
-    this.active -= 1
-    this.waiting.shift()?.()
+    const next = this.waiting.shift()
+    if (next === undefined) {
+      this.active -= 1
+      return
+    }
+    next()
   }
 }
 
