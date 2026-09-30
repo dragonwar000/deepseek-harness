@@ -1,6 +1,6 @@
 /**
  * MSAL process edges shared by the main sign-in and the Microsoft 365 connectors: cancellation, loopback release,
- * error labels, and snapshot streams.
+ * error labels, serialized cache mutations, single-account cache pruning, and snapshot streams.
  */
 import type {
   AccountInfo, AuthenticationResult, InteractiveRequest, SilentFlowRequest,
@@ -63,6 +63,41 @@ export async function releaseLoopback(redirectUri: string): Promise<void> {
     await response.body?.cancel()
   } catch (error) {
     console.info('[coteccons-sso] loopback release failed', { error: failureLabel(error) })
+  }
+}
+
+/** Runs operations one at a time in submission order; a rejected operation does not stop later ones. */
+export class SerialQueue {
+  private tail: Promise<unknown> = Promise.resolve()
+
+  /**
+   * Run one operation after every operation submitted before it has settled.
+   * @param operation - work to run alone.
+   * @returns the operation's result or rejection.
+   */
+  run<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.tail.then(operation)
+    this.tail = result.catch((_reported: unknown) => undefined)
+    return result
+  }
+
+  /**
+   * Wait for the operations submitted so far.
+   * @returns a promise that resolves once they have all settled.
+   */
+  idle(): Promise<unknown> {
+    return this.tail
+  }
+}
+
+/**
+ * Remove every other account from the client's token cache.
+ * @param client - MSAL client whose cache is pruned.
+ * @param account - the account to keep.
+ */
+export async function keepOnlyAccount(client: MsalClient, account: AccountInfo): Promise<void> {
+  for (const other of await client.getAllAccounts()) {
+    if (other.homeAccountId !== account.homeAccountId) await client.getTokenCache().removeAccount(other)
   }
 }
 

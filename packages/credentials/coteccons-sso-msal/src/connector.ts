@@ -10,7 +10,7 @@ import {
 } from '@deepseek-ai/dsh-coteccons-sso'
 import { credentialKey, type CredentialKey, type CredentialProvider } from '@deepseek-ai/dsh-credentials'
 import { credentialCachePlugin } from './cache.ts'
-import { abortable, failureLabel, releaseLoopback, type MsalClient } from './util.ts'
+import { abortable, failureLabel, keepOnlyAccount, releaseLoopback, SerialQueue, type MsalClient } from './util.ts'
 
 const SUCCESS_PAGE = '<!doctype html><meta charset="utf-8"><title>CTD Core</title><p>Microsoft 365 connected. You can close this window and return to CTD Core.</p>'
 const ERROR_PAGE = '<!doctype html><meta charset="utf-8"><title>CTD Core</title><p>Microsoft 365 was not connected. Return to CTD Core for the reason.</p>'
@@ -64,7 +64,7 @@ export class M365Connector {
   private account: AccountInfo | undefined
   private attempt: Attempt | undefined
   private error: M365ConnectorError | undefined
-  private queue: Promise<unknown> = Promise.resolve()
+  private readonly queue = new SerialQueue()
 
   /** @param options - registration, scopes, and process edges. */
   constructor(private readonly options: ConnectorOptions) {
@@ -84,7 +84,11 @@ export class M365Connector {
     }
   }
 
-  /** @returns the connector's token-free state. */
+  /**
+   * Report what the settings UI shows for this connector. An active attempt takes precedence over a stored
+   * account, and a stored account over an Entra ID refusal.
+   * @returns the connector's state without token material.
+   */
   view(): M365ConnectorView {
     const id = this.options.id
     if (this.client === undefined) return { id, status: 'not-configured' }
@@ -123,7 +127,7 @@ export class M365Connector {
     const attempt = this.attempt
     attempt?.controller.abort()
     await attempt?.done
-    await this.exclusive(async () => {
+    await this.queue.run(async () => {
       await this.forget()
       this.error = undefined
       this.options.changed()
@@ -149,7 +153,7 @@ export class M365Connector {
       if (classified === 'failed' && !(error instanceof InteractionRequiredAuthError)) throw error
       const blocked = classified === 'failed' ? 'revoked' : classified
       console.info('[coteccons-sso] Microsoft 365 access refused by Entra ID', { connector: id, reason: blocked, error: failureLabel(error) })
-      await this.exclusive(async () => {
+      await this.queue.run(async () => {
         if (this.account !== account) return
         await this.forget()
         this.error = blocked
@@ -163,7 +167,7 @@ export class M365Connector {
   async close(): Promise<void> {
     this.attempt?.controller.abort()
     await this.attempt?.done
-    await this.queue
+    await this.queue.idle()
   }
 
   private newClient(registration: { readonly clientId: string; readonly authority: string }): MsalClient {
@@ -175,12 +179,6 @@ export class M365Connector {
         }),
       },
     })
-  }
-
-  private exclusive<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.queue.then(operation)
-    this.queue = result.catch((_reported: unknown) => undefined)
-    return result
   }
 
   /** Delete this connector's stored cache and drop MSAL's in-memory copy. */
@@ -221,13 +219,11 @@ export class M365Connector {
       })
       const account = result.account
       if (account === null || !this.options.allowed(account)) {
-        await this.exclusive(() => this.forget())
+        await this.queue.run(() => this.forget())
         outcome = 'failed'
       } else {
-        await this.exclusive(async () => {
-          for (const other of await client.getAllAccounts()) {
-            if (other.homeAccountId !== account.homeAccountId) await client.getTokenCache().removeAccount(other)
-          }
+        await this.queue.run(async () => {
+          await keepOnlyAccount(client, account)
           this.account = account
         })
       }

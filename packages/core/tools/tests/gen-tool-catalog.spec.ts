@@ -31,7 +31,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'graph_run', 'grep', 'history_read', 'interrupt_agent', 'interrupt_agent', 'job_kill', 'job_list', 'job_output',
       'knowledge_cite', 'knowledge_query', 'knowledge_read', 'knowledge_write', 'list_agents', 'list_agents',
       'list_mcp_resource_templates', 'list_mcp_resources', 'list_subagent_models', 'load_workspace_dependencies',
-      'lsp', 'memory_forget_session', 'memory_recall', 'memory_stats', 'plugin_manager', 'present', 'pwsh', 'pwsh', 'ralph', 'read', 'read_image', 'read_mcp_resource',
+      'lsp', 'm365_read_chat', 'm365_read_file', 'm365_read_mail', 'm365_search', 'memory_forget_session', 'memory_recall', 'memory_stats', 'plugin_manager', 'present', 'pwsh', 'pwsh', 'ralph', 'read', 'read_image', 'read_mcp_resource',
       'run_code', 'schedule_create', 'schedule_delete', 'schedule_list', 'schedule_update', 'send_message',
       'send_message', 'session_event_read', 'session_event_search', 'session_event_trace', 'session_search',
       'session_trace', 'skill', 'spawn_teammate', 'stagehand_act', 'stagehand_extract', 'stagehand_navigate',

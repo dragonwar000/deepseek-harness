@@ -827,7 +827,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-coteccons-sso-msal`
 
 - `inject`: `credentials`
-- `refs`: [`M365ConnectorId`](../packages/credentials/coteccons-sso/src/index.ts)
+- `refs`: [`M365ConnectorId`](subsystems/credentials.md)
 - `source`: [`packages/credentials/coteccons-sso-msal/src/index.ts:30`](../packages/credentials/coteccons-sso-msal/src/index.ts)
 
 ```ts config-catalog

@@ -16,7 +16,7 @@ import type {} from '@deepseek-ai/dsh-credentials'
 import open from 'open'
 import { credentialCachePlugin } from './cache.ts'
 import { M365Connector } from './connector.ts'
-import { abortable, failureLabel, releaseLoopback, watchSnapshots, type MsalClient } from './util.ts'
+import { abortable, failureLabel, keepOnlyAccount, releaseLoopback, SerialQueue, watchSnapshots, type MsalClient } from './util.ts'
 
 export type { MsalClient } from './util.ts'
 export { classifyEntraError } from './connector.ts'
@@ -198,7 +198,7 @@ export class MsalCotecconsSso extends CotecconsSso {
   private readonly listeners = new Set<() => void>()
   private readonly m365Listeners = new Set<() => void>()
   private readonly connectors: ReadonlyMap<M365ConnectorId, M365Connector>
-  private queue: Promise<unknown> = Promise.resolve()
+  private readonly queue = new SerialQueue()
   private closed = false
 
   /**
@@ -234,7 +234,7 @@ export class MsalCotecconsSso extends CotecconsSso {
       this.attempt?.controller.abort()
       await this.attempt?.done
       await Promise.all([...this.connectors.values()].map(connector => connector.close()))
-      await this.queue
+      await this.queue.idle()
       this.publish()
       this.publishM365()
     }, 'coteccons-sso: sign-in lifetime')
@@ -289,7 +289,7 @@ export class MsalCotecconsSso extends CotecconsSso {
     const attempt = this.attempt
     attempt?.controller.abort()
     await attempt?.done
-    return this.exclusive(async () => {
+    return this.queue.run(async () => {
       await this.forget()
       this.lastError = undefined
       this.publish()
@@ -354,7 +354,7 @@ export class MsalCotecconsSso extends CotecconsSso {
     } catch (error) {
       if (!(error instanceof InteractionRequiredAuthError)) throw error
       console.info('[coteccons-sso] silent refresh requires sign-in', { error: failureLabel(error) })
-      await this.exclusive(async () => {
+      await this.queue.run(async () => {
         if (this.account !== account) return
         await this.forget()
         this.lastError = 'session-expired'
@@ -404,12 +404,6 @@ export class MsalCotecconsSso extends CotecconsSso {
     for (const listener of this.listeners) listener()
   }
 
-  private exclusive<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.queue.then(operation)
-    this.queue = result.catch((_reported: unknown) => undefined)
-    return result
-  }
-
   /** Delete the stored cache and drop MSAL's in-memory copy of it. */
   private async forget(): Promise<void> {
     this.account = undefined
@@ -448,13 +442,11 @@ export class MsalCotecconsSso extends CotecconsSso {
       })
       const account = result.account
       if (account === null || !this.allowed(account)) {
-        await this.exclusive(() => this.forget())
+        await this.queue.run(() => this.forget())
         outcome = 'domain-not-allowed'
       } else {
-        await this.exclusive(async () => {
-          for (const other of await client.getAllAccounts()) {
-            if (other.homeAccountId !== account.homeAccountId) await client.getTokenCache().removeAccount(other)
-          }
+        await this.queue.run(async () => {
+          await keepOnlyAccount(client, account)
           this.account = account
         })
       }

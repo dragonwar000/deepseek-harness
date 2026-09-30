@@ -77,6 +77,7 @@ import McpResources from '@deepseek-ai/dsh-mcp-resources'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import { registerListSubagentModels } from '../packages/subagent/tool-subagent/src/list-models.ts'
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
+import * as ToolM365 from '@deepseek-ai/dsh-tool-m365'
 import WorkflowEngine from '@deepseek-ai/dsh-workflow'
 import type { WorkflowRun, WorkflowStartRequest } from '@deepseek-ai/dsh-workflow'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
@@ -744,6 +745,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-m365',
+    dir: 'tool-m365',
+    source: 'packages/web/tool-m365/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.cotecconsSso (execution time)'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // The SSO provider is read at each call, so the schema harvest mounts none.
+      await ctx.plugin(ToolM365)
+    },
+    note:
+      'Every m365_* tool reads with the signed-in user\'s delegated Microsoft Graph token; a connector IT has not granted returns a refusal naming the source instead of data.',
   },
 ]
 
