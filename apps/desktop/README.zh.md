@@ -253,6 +253,16 @@ Windows 安装器在启动时和选定目标目录后检查应用是否正在运
 
 解压失败时，安装器会把 7-Zip 的结果和完整错误输出写入更新缓存目录 `%LOCALAPPDATA%\<按包名派生>-updater\installer-logs\extract-failure-<时间戳>.log`（当前为 `@deepseek-aidsh-desktop-updater`），并在弹窗中显示首条错误行和 **复制错误信息** 按钮；静默安装只写入报告。未签名的 Windows 构建（`DSH_DESKTOP_UNSIGNED=1`）会将安装包命名为 `deepseek-harness-<版本>-win-x64-unsigned.exe`，以免被误当作发布产物。
 
+<a id="bundled-zeromem-executable"></a>
+
+### 自带的 zeromem 可执行文件
+
+`prepare:runtime` 以 [`scripts/zeromem-lock.json`](scripts/zeromem-lock.json) 中的修订版本，通过 `cargo install --locked --no-default-features` 为打包目标编译 zeromem 的 `zm`，检查其 Mach-O 或 PE 架构，并将其与 zeromem 的 MIT 许可证一起放入 `resources/runtime/zeromem/`；macOS 可执行文件约 4.5 MB。它位于 `primary-runtime` 之外，因此 electron-builder 像签名 `runtime/cli/link-entry` 一样以 hardened runtime 为其签名，公证覆盖它，已签名的 Windows 打包也将其与其他未签名 PE 文件一起签名。打包后的冒烟检查把它作为 MCP 服务器运行，并要求服务器名称为 `zeromem`；除非已签名的 Windows 打包推迟该检查，准备阶段也运行同样的检查。
+
+构建主机需要 cargo 和目标的 Rust 标准库：在 arm64 Mac 上构建 macOS x64 需要 `rustup target add x86_64-apple-darwin`，构建 Windows 需要带 MSVC 工具链的 Windows x64 主机。没有 cargo 的主机上准备阶段以 `ZeromemBuildError` 失败；设置 `DSH_DESKTOP_OMIT_ZEROMEM=1` 则构建不含 `zm` 的 Desktop。`pnpm run prepare:desktop:zeromem` 只为所选目标准备 `zm`。`dev:desktop` 与 `start:desktop` 运行同一步骤，失败时发出警告并继续。
+
+该文件存在时，除非继承的环境已设置该变量，Desktop 启动 Host 时以 `DSH_ZEROMEM_ZM` 指明它。[knowledge bundle](../../packages/experimental/knowledge-profile/README.zh.md) 的 `memory-zeromem` 行保持 `zmPath` 为空并使用 `embedder: hash`，因此启用该行无需安装；[插件 README](../../packages/experimental/memory-zeromem/README.zh.md#use-this-package) 负责解析顺序与词法召回限制。没有该文件时，该行需要 `PATH` 上的 `zm`，否则其加载以 `ZeromemExecutableError` 失败。
+
 <a id="upload-updates"></a>
 
 ### 上传更新

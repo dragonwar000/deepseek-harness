@@ -251,6 +251,16 @@ The Windows installer checks for a running application at startup and after dest
 
 When extraction fails, the installer writes a report with the 7-Zip result and its complete error output to the updater cache directory as `%LOCALAPPDATA%\<package-derived name>-updater\installer-logs\extract-failure-<timestamp>.log` (currently `@deepseek-aidsh-desktop-updater`) and shows the first error line with a **Copy error details** button; silent installs write only the report. Unsigned Windows builds (`DSH_DESKTOP_UNSIGNED=1`) name their installer `deepseek-harness-<version>-win-x64-unsigned.exe` so they cannot be mistaken for release artifacts.
 
+<a id="bundled-zeromem-executable"></a>
+
+### Bundled zeromem executable
+
+`prepare:runtime` compiles zeromem's `zm` for the packaging target with `cargo install --locked --no-default-features` at the revision in [`scripts/zeromem-lock.json`](scripts/zeromem-lock.json), checks its Mach-O or PE architecture, and places it with zeromem's MIT license in `resources/runtime/zeromem/`; the macOS executables are about 4.5 MB. It sits outside `primary-runtime`, so electron-builder signs it with the hardened runtime like `runtime/cli/link-entry`, notarization covers it, and signed Windows packaging signs it with the other unsigned PE files. The packaged smoke runs it as an MCP server and requires the server name `zeromem`; preparation runs the same check unless signed Windows packaging defers it.
+
+The build host needs cargo and the target's Rust standard library: `rustup target add x86_64-apple-darwin` for macOS x64 on an arm64 Mac, and a Windows x64 host with the MSVC toolchain for Windows. A host without cargo fails preparation with `ZeromemBuildError`; `DSH_DESKTOP_OMIT_ZEROMEM=1` builds Desktop without `zm` instead. `pnpm run prepare:desktop:zeromem` prepares only `zm` for the selected target. `dev:desktop` and `start:desktop` run the same step and continue with a warning when it fails.
+
+When the file exists, Desktop starts the Host with `DSH_ZEROMEM_ZM` naming it unless the inherited environment already sets that variable. The [knowledge bundle](../../packages/experimental/knowledge-profile/README.md)'s `memory-zeromem` row keeps `zmPath` empty and uses `embedder: hash`, so enabling the row needs no installation; the [plugin README](../../packages/experimental/memory-zeromem/README.md#use-this-package) owns the resolve order and the lexical-recall limitation. Without the file, the row needs `zm` on `PATH` or its load fails with `ZeromemExecutableError`.
+
 <a id="upload-updates"></a>
 
 ### Upload updates

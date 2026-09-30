@@ -45,8 +45,11 @@
   en: f461b255133384cc
   zh: 2b9db718f22fdd04
 /ctd-core-desktop/package/runtime-file-selection:
-  en: f0e345fd89868803
-  zh: fd2c775ad23fa2f0
+  en: c409637d93fd1941
+  zh: db6f6b6b8140f774
+/ctd-core-desktop/package/bundled-zeromem-executable:
+  en: 92c278463acbc27d
+  zh: 6d7e4eea4e3e70e3
 /ctd-core-desktop/package/upload-updates:
   en: 72073b2e72590067
   zh: 63b1f9790395c37d

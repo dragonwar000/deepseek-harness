@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/ptaranat/zeromem",
+  "rev": "eda212665a35cd01c188121e759de282728238d5",
+  "crate": "zeromem",
+  "version": "0.3.0",
+  "license": "MIT",
+  "licenseSha256": "3c8c50e35e6e033ef25651bf5bb22729859e7bd7d205396bef6e64372f98f45b"
+}

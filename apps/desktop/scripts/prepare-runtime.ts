@@ -1,4 +1,4 @@
-/** Prepare the target Electron distribution and pinned pnpm CLI. */
+/** Prepare the target Electron distribution, pinned pnpm CLI, primary runtime, and zeromem `zm`. */
 
 import { packagingStep } from './packaging-step.mjs'
 import { execFileSync } from 'node:child_process'
@@ -12,6 +12,7 @@ import { resolveDesktopBuildTarget, resolveDesktopTargetBuildPaths } from './des
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
 import { prepareDesktopCli } from './prepare-cli.ts'
 import { prepareCommandLink } from './prepare-command-link.ts'
+import { prepareDesktopZeromem } from './prepare-zeromem.ts'
 
 const BUILD_PATHS = resolveDesktopTargetBuildPaths()
 const RUNTIME_ROOT = BUILD_PATHS.runtime
@@ -62,6 +63,8 @@ async function main(): Promise<void> {
   cpSync(join(import.meta.dirname, 'command-path.ps1'), join(RUNTIME_ROOT, 'cli', 'command-path.ps1'))
   await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'prepare:primary-runtime',
     () => preparePrimaryRuntime({ deferSmoke: values['defer-primary-runtime-smoke'] }))
+  await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'prepare:zeromem',
+    () => prepareDesktopZeromem({ deferSmoke: values['defer-primary-runtime-smoke'] }))
 }
 
 await main()
