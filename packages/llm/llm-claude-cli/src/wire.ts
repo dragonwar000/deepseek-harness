@@ -16,7 +16,8 @@
  * than failing a run.
  */
 
-import type { ContentBlock, StreamChunk, TokenUsage } from '@deepseek-ai/dsh-llm'
+import { stripVTControlCharacters } from 'node:util'
+import type { ContentBlock, LlmFailure, StreamChunk, TokenUsage } from '@deepseek-ai/dsh-llm'
 import { z } from 'zod'
 import { CATALOG_REQUEST_ID } from './launch.ts'
 import { claudeCliModelId } from './types.ts'
@@ -57,7 +58,11 @@ const resultMessage = z.object({
   subtype: z.string(),
   is_error: z.boolean(),
   stop_reason: z.string().nullable().optional(),
-  result: z.string().optional(),
+  // The three fields below only refine how a failed run is described and classified, so a value of
+  // an unexpected type is ignored rather than making the whole result unreadable.
+  result: z.string().optional().catch(undefined),
+  errors: z.array(z.string()).optional().catch(undefined),
+  api_error_status: z.number().nullable().optional().catch(undefined),
   usage: z.object({
     input_tokens: z.number(),
     output_tokens: z.number(),
@@ -66,6 +71,78 @@ const resultMessage = z.object({
     output_tokens_details: z.object({ thinking_tokens: z.number().optional() }).optional(),
   }).optional(),
 })
+
+/**
+ * Characters of the CLI's failure text quoted in a failure message. The CLI's own failure texts
+ * are one or two sentences; the bound keeps a provider error body the CLI echoed from filling the
+ * turn's error notice.
+ */
+const FAILURE_TEXT_MAX_CHARS = 500
+
+/**
+ * The CLI's two texts for a run it could not authenticate: no credential at all, and a credential
+ * the API rejected. Matched only as whole phrases, because other failure texts mention `/login` as
+ * advice without the account being signed out.
+ */
+const SIGNED_OUT_TEXT = /\bnot logged in\b|\bplease run \/login\b/i
+
+/**
+ * Reduce CLI failure text to one bounded line with no terminal control sequences.
+ * @param text - text the CLI wrote in a result message.
+ * @returns the text on one line, at most {@link FAILURE_TEXT_MAX_CHARS} characters and an ellipsis.
+ */
+function failureText(text: string): string {
+  const line = stripVTControlCharacters(text).replace(/[\s\p{Cc}]+/gu, ' ').trim()
+  const characters = Array.from(line)
+  return characters.length <= FAILURE_TEXT_MAX_CHARS
+    ? line
+    : `${characters.slice(0, FAILURE_TEXT_MAX_CHARS).join('')}…`
+}
+
+/**
+ * Describe and classify a run the CLI's terminal `result` reported as failed.
+ *
+ * The classification reads three independent signals, because no single one is present on every
+ * failure: the error kind the CLI attaches to the assistant message that wraps an API error, the
+ * HTTP status on the result, and, for the signed-out state only, the CLI's text. `RATE_LIMIT` and
+ * `SERVER` are the retry policy's codes for a failure that can succeed when repeated; every other
+ * failure keeps `PROVIDER` and the CLI's own words.
+ * @param result - the decoded terminal `result` message.
+ * @param errorKind - the `error` value of the run's last assistant message, when it carried one.
+ * @param signedOut - the failure to report when the CLI could not authenticate the run.
+ * @returns the failure for the terminal `finish` chunk.
+ */
+function resultFailure(
+  result: z.infer<typeof resultMessage>,
+  errorKind: string | undefined,
+  signedOut: LlmFailure,
+): LlmFailure {
+  const text = failureText(result.result ?? '') || failureText((result.errors ?? []).join('; '))
+  const status = result.api_error_status ?? undefined
+  const http = status === undefined ? {} : { status }
+  if (errorKind === 'authentication_failed' || status === 401 || SIGNED_OUT_TEXT.test(text)) {
+    return {
+      ...signedOut,
+      message: text.length === 0 ? signedOut.message : `${signedOut.message} The CLI reported: ${text}`,
+      ...http,
+    }
+  }
+  const code = errorKind === 'rate_limit' || status === 429
+    ? 'RATE_LIMIT'
+    : errorKind === 'server_error' || errorKind === 'overloaded' || (status !== undefined && status >= 500)
+      ? 'SERVER'
+      : 'PROVIDER'
+  if (text.length > 0) return { message: `Claude Code CLI: ${text}`, code, ...http }
+  return {
+    // A failed run is reported with subtype `success` when it ended on an API error, so that
+    // subtype does not name the failure.
+    message: result.subtype === 'success'
+      ? 'the Claude Code CLI reported a failed run and gave no reason'
+      : `the Claude Code CLI ended the run with ${result.subtype}`,
+    code,
+    ...http,
+  }
+}
 
 /** Parse one line as JSON, or `undefined` when it is blank or not JSON. */
 function parseLine(line: string): unknown {
@@ -178,7 +255,8 @@ interface OpenBlock {
  * Usage is emitted once, from the terminal `result` message, after every `block-end` and before the
  * terminal `finish`, which is the order `StreamChunk` requires. A run that ends without a `result`
  * finishes with a named error rather than a clean stop, so a truncated child is never mistaken for
- * a complete answer.
+ * a complete answer. A `result` that reports a failed run finishes with the CLI's own text and a
+ * code the retry policy can route on.
  */
 export class ClaudeCliStreamDecoder {
   /** Whether the CLI's terminal `result` message has been seen. */
@@ -186,6 +264,19 @@ export class ClaudeCliStreamDecoder {
 
   /** Open blocks by the CLI's content-block index. */
   private readonly open = new Map<number, OpenBlock>()
+
+  /** The `error` kind of the run's last assistant message, which the CLI sets on an API error. */
+  private errorKind: string | undefined
+
+  private readonly signedOut: LlmFailure
+
+  /**
+   * @param signedOut - the failure to report when the CLI could not authenticate the run; the
+   *   caller owns its wording because it knows whether an account is registered.
+   */
+  constructor(signedOut: LlmFailure) {
+    this.signedOut = signedOut
+  }
 
   /**
    * Feed one line of stdout.
@@ -198,10 +289,17 @@ export class ClaudeCliStreamDecoder {
     const tag = (message as { type?: unknown }).type
     if (tag === 'result') return this.result(message)
     if (tag === 'stream_event') return this.streamEvent((message as { event?: unknown }).event)
-    // `system`, `assistant`, `user`, `rate_limit_event` and anything this build does not know:
-    // the CLI's message vocabulary is merge-extensible and owned by another product. Text and
-    // reasoning already arrive through `stream_event`, and usage through `result`, so nothing here
-    // carries harness meaning.
+    if (tag === 'assistant') {
+      // An assistant message contributes only its error kind: text and reasoning already arrive
+      // through `stream_event`.
+      const kind = (message as { error?: unknown }).error
+      this.errorKind = typeof kind === 'string' ? kind : undefined
+      return []
+    }
+    // `system`, `user`, `rate_limit_event` and anything this build does not know: the CLI's message
+    // vocabulary is merge-extensible and owned by another product. Text and reasoning already
+    // arrive through `stream_event`, and usage through `result`, so nothing here carries harness
+    // meaning.
     return []
   }
 
@@ -311,13 +409,7 @@ export class ClaudeCliStreamDecoder {
     if (failed) {
       chunks.push({
         type: 'finish',
-        reason: {
-          kind: 'error',
-          failure: {
-            message: `the Claude Code CLI ended the run with ${parsed.data.subtype}`,
-            code: 'PROVIDER',
-          },
-        },
+        reason: { kind: 'error', failure: resultFailure(parsed.data, this.errorKind, this.signedOut) },
       })
       return chunks
     }
