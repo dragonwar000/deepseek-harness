@@ -60,6 +60,7 @@ import { DesktopUpdateOverlays } from './update-overlay.ts'
 import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
+import { DesktopAiAccountAttention } from './ai-account-attention.ts'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -435,6 +436,8 @@ async function main(): Promise<void> {
   }
   const platformView = new DesktopPlatformView(join(app.getAppPath(), 'lib', 'preload-platform-account.cjs'),
     () => locale.id === 'zh-CN' ? 'zh_CN' : 'en_US', process.platform === 'win32' ? 'win32' : 'darwin')
+  // The shell cannot open a Settings section inside the Web UI, so a click shows and focuses the application.
+  const aiAccountAttention = new DesktopAiAccountAttention(() => locale, () => mainWindow, () => { focusPrimaryWindow() })
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
@@ -444,7 +447,7 @@ async function main(): Promise<void> {
         DSH_CLIENT_VERSION: desktopClientVersion(),
       }, onFailure,
       primaryRuntime,
-      resources, (next) => { platformView.setSession(next) })
+      resources, (next) => { platformView.setSession(next) }, (kind) => { aiAccountAttention.signedOut(kind) })
     return {
       start: async () => {
         const ready = await host.start()
@@ -1236,6 +1239,7 @@ async function main(): Promise<void> {
     updateJournal?.action('quit-requested')
     quitConfirmation.dispose()
     backgroundNotice?.dispose()
+    aiAccountAttention.dispose()
     tray?.dispose()
     stopSso?.()
     if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.hide()

@@ -238,3 +238,23 @@ it.each([undefined, '', 7])('rejects malformed Platform account identity %s on p
   expect(changed.mock.calls).toEqual([[null]])
   await host.stop()
 })
+
+it('reports each AI Account sign-out kind and refuses an unknown kind on private IPC', async () => {
+  const runtime = projectWithHost(HTTP_HOST.replace("process.send({ type: 'ready'",
+    "process.send({ type: 'ai-account-signed-out', kind: 'claude' }); process.send({ type: 'ai-account-signed-out', kind: 'chatgpt' }); process.send({ type: 'ready'"))
+  const signedOut = vi.fn()
+  const host = new DesktopHostProcess(process.execPath, runtime, runtime, undefined, process.env,
+    undefined, undefined, undefined, undefined, signedOut)
+  hosts.push(host)
+  await host.start()
+  expect(signedOut.mock.calls).toEqual([['claude'], ['chatgpt']])
+  await host.stop()
+  const refused = projectWithHost(HTTP_HOST.replace("process.send({ type: 'ready'",
+    "process.send({ type: 'ai-account-signed-out', kind: 'gemini' }); process.send({ type: 'ready'"))
+  const refusing = new DesktopHostProcess(process.execPath, refused, refused, undefined, process.env,
+    undefined, undefined, undefined, undefined, signedOut)
+  hosts.push(refusing)
+  await expect(refusing.start()).rejects.toThrow('invalid IPC event')
+  expect(signedOut).toHaveBeenCalledTimes(2)
+  await refusing.stop()
+})

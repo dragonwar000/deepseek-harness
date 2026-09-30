@@ -44,6 +44,10 @@ The confirmation is skipped when the installer restart already confirmed task in
 
 The tray renderer enlarges the mark by 20% around the tile center while preserving the background and aspect ratio; application and installer icons retain their original proportions.
 
+## AI Account sign-out notification
+
+When the Host's periodic status check finds a registered Claude or ChatGPT account signed out, the Host process sends the shell an `ai-account-signed-out` IPC message with the account kind, once per transition into signed out. If the main window is missing, hidden, minimized, or unfocused, the shell shows one operating-system notification, for example "Claude account signed out — Open Settings → AI Account to sign in again."; a later sign-out of the same kind replaces it, and shutdown closes it. With the window in front, no notification appears, because Settings → AI Account and the model picker already show the signed-out state. Clicking the notification shows and focuses the application; it cannot open the AI Account section, because the shell has no way to navigate the Web UI's settings.
+
 ## Key technical decisions
 
 The original artwork lives in `resources/icon.png` and `resources/icon.svg`; platform adaptations keep the same flat navy background and white Coteccons mark in `resources/icon-windows.*` and `resources/icon-macos.*`. Export each platform SVG as a transparent 1024×1024 PNG. Electron-builder generates the multi-size ICO for the Windows application, installer, and uninstaller ([Windows icon requirements](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-construction)). The installation pages use matching artwork in both themes; the uninstaller's welcome and finish pages share `installer/assets/uninstaller-sidebar.png`, converted to a 164×314 BMP during preparation.

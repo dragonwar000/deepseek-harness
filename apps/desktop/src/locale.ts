@@ -169,6 +169,9 @@ export const en = {
   mandatoryCopyFailed: 'Could not copy the link. Select and copy it below.',
   mandatoryAddress: 'Download link',
   mandatoryNotification: 'Return to the application to confirm installation and restart.',
+  aiAccountSignedOutClaude: 'Claude account signed out',
+  aiAccountSignedOutChatgpt: 'ChatGPT account signed out',
+  aiAccountSignedOutBody: 'Open Settings → AI Account to sign in again.',
 } as const
 
 /** Every Desktop locale supplies the complete English key set. */
@@ -343,6 +346,9 @@ export const zh = {
   mandatoryCopyFailed: '复制失败，请手动选择并复制下方链接。',
   mandatoryAddress: '下载链接',
   mandatoryNotification: '返回应用确认安装并重启。',
+  aiAccountSignedOutClaude: 'Claude 账号已退出登录',
+  aiAccountSignedOutChatgpt: 'ChatGPT 账号已退出登录',
+  aiAccountSignedOutBody: '打开「设置 → AI 账号」重新登录。',
 } as const satisfies DesktopMessages
 
 /** Locale payload exposed to the Desktop-owned renderer. */
