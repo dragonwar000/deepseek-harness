@@ -510,6 +510,72 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     await expect(fixture.service.checkStatus()).rejects.toThrow('provider closed')
   })
 
+  it('joins concurrent callers and runs at most the configured number of status commands at once', async () => {
+    const fixture = await mount({ root: seed(['claude', 'claude', 'chatgpt']).root, config: { statusCheckConcurrency: 2 } })
+    const runtime = fixture.ctx.get('subprocess')!
+    const spawn = runtime.spawn.bind(runtime)
+    let active = 0
+    let peak = 0
+    vi.spyOn(runtime, 'spawn').mockImplementation((request) => {
+      const handle = spawn(request)
+      peak = Math.max(peak, ++active)
+      void handle.done.then(() => { active-- }, () => { active-- })
+      return handle
+    })
+    const [first, joined] = await Promise.all([fixture.service.checkStatus(), fixture.service.checkStatus()])
+    expect(joined).toEqual(first)
+    expect(first.accounts.map(account => [account.kind, account.status.status])).toEqual([
+      ['claude', 'signedIn'], ['claude', 'signedIn'], ['chatgpt', 'signedIn'],
+    ])
+    expect(statusCalls(fixture.bin)).toBe(3)
+    expect(peak).toBe(2)
+  })
+
+  it('keeps the recorded status through inconclusive, failed, and timed-out checks', async () => {
+    const { root, ids: [id] } = seed(['claude'])
+    const fixture = await mount({ root, config: { statusCheckTimeoutMs: 1_000 } })
+    const recorded = (await fixture.service.checkStatus()).accounts[0]!.status
+    expect(recorded.status).toBe('signedIn')
+    // Any conclusive answer from here on would be `signedOut`.
+    rmSync(join(root, 'claude', id!, 'fake-signed-in'))
+    for (const behavior of ['status-garbage', 'status-hangs']) {
+      writeFileSync(join(fixture.bin, 'claude.behavior'), behavior)
+      expect((await fixture.service.checkStatus()).accounts[0]!.status, behavior).toEqual(recorded)
+    }
+    writeFileSync(join(fixture.bin, 'claude.behavior'), '')
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    cleanups.push(() => { info.mockRestore() })
+    const lookup = vi.spyOn(fixture.ctx.get('subprocess')!, 'resolveExecutable').mockRejectedValueOnce(new Error('lookup exploded'))
+    expect((await fixture.service.checkStatus()).accounts[0]!.status).toEqual(recorded)
+    expect(info).toHaveBeenCalledWith('[ai-account] status failed', { kind: 'claude', error: 'lookup exploded' })
+    lookup.mockRestore()
+    const missing = await mount({ bin: fixture.bin, root, config: { claudeCliPath: join(fixture.bin, 'absent-claude') } })
+    expect((await missing.service.checkStatus()).accounts[0]!.status.status).toBe('unknown')
+    expect(fixture.transitions).toHaveLength(1)
+    expect(missing.transitions).toEqual([])
+  })
+
+  it('drops the answer for an account removed during its check and stops a running check at unload', async () => {
+    const { root, ids: [removed, second, third] } = seed(['claude', 'claude', 'claude'])
+    const fixture = await mount({ root, config: { statusCheckConcurrency: 1 } })
+    writeFileSync(join(fixture.bin, 'claude.behavior'), 'status-slow')
+    const checking = fixture.service.checkStatus()
+    await vi.waitFor(() => { expect(statusCalls(fixture.bin)).toBe(1) })
+    await fixture.service.remove(removed!)
+    const checked = await checking
+    expect(checked.accounts.map(account => [account.id, account.status.status])).toEqual([[second, 'signedIn'], [third, 'signedIn']])
+    expect(fixture.transitions.map(change => change.id)).toEqual([second, third])
+
+    writeFileSync(join(fixture.bin, 'claude.behavior'), 'status-hangs')
+    const unloading = fixture.service.checkStatus()
+    await vi.waitFor(() => { expect(statusCalls(fixture.bin)).toBe(4) })
+    await fixture.ctx.fiber.dispose()
+    await unloading
+    // Unload stopped the hanging command and the check never started the remaining account's.
+    expect(statusCalls(fixture.bin)).toBe(4)
+    expect(fixture.transitions).toHaveLength(2)
+  })
+
   it('runs no periodic check when the interval is 0', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     cleanups.push(() => { vi.useRealTimers() })
