@@ -79,14 +79,15 @@ Every `knowledge_write` then asks the user and cites the session's reads of its 
 
 ### Turn on conversation memory
 
-`memory-zeromem` runs zeromem's `zm` executable. CTD Core Desktop carries one on macOS and Windows; other hosts need a `zm` on `PATH`, and [its README](../memory-zeromem/README.md#use-this-package) shows how to build one. Once enabled, it stores the text of user messages and final assistant replies, never tool output, in a per-workspace store under `<harness home>/zeromem`, and offers `memory_recall` and `memory_stats`. Enable it from your profile patch, restating the row config:
+`memory-zeromem` runs zeromem's `zm` executable with the bge-small-en-v1.5 embedding model. CTD Core Desktop carries both on macOS and Windows; other hosts need a `zm` on `PATH` and the model directory, and [its README](../memory-zeromem/README.md#use-this-package) shows how to provide them. Once enabled, it stores the text of user messages and final assistant replies, never tool output, in a per-workspace store under `<harness home>/zeromem`, and offers `memory_recall` and `memory_stats`. Enable it from your profile patch, restating the row config:
 
 ```yaml
 - id: memory-zeromem
   disabled: false
   config:
     zmPath: ''
-    embedder: hash
+    embedder: default
+    modelDir: ''
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -100,7 +101,7 @@ Every `knowledge_write` then asks the user and cites the session's reads of its 
     maxConcurrent: 1
 ```
 
-Empty `zmPath` runs the `zm` named by `DSH_ZEROMEM_ZM`, which Desktop sets to the `zm` it carries, and otherwise `zm` on `PATH`; set an absolute path to run another build. `embedder: hash` matches Desktop's `zm`, which is built without the fastembed feature; use `embedder: default` with a `zm` that has it.
+Empty `zmPath` runs the `zm` named by `DSH_ZEROMEM_ZM`, and otherwise `zm` on `PATH`; empty `modelDir` reads the model from `DSH_ZEROMEM_MODELS`, and otherwise from `<harness home>/zeromem/models`. Desktop sets both variables to what it carries. With `embedder: default` the row fails to load when the model directory is incomplete, and recall fails when `zm` was built without the fastembed feature; `embedder: hash` needs neither and ranks stored turns by shared words only, so a paraphrase can miss them.
 
 -----
 

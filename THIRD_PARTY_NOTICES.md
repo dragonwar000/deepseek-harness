@@ -285,13 +285,15 @@ The [shared runtime lock](scripts/primary-runtime/lock.json) records each distri
 | [`tzdata`](https://github.com/python/tzdata) | 2025.2 | Apache-2.0 |
 | [`xlsxwriter`](https://github.com/jmcnamara/XlsxWriter) | 3.2.9 | BSD-2-Clause |
 
-## Bundled executables
+## Bundled executables and models
 
-CTD Core Desktop compiles zeromem's `zm` from source during packaging and carries it with its license text under `resources/runtime/zeromem/`. The [Desktop zeromem lock](apps/desktop/scripts/zeromem-lock.json) pins the source revision; cargo builds it with the revision's own `Cargo.lock` and without default features. The crates it links are recorded in that `Cargo.lock`.
+CTD Core Desktop compiles zeromem's `zm` from source during packaging and carries it, the embedding model it loads, and their license texts under `resources/runtime/zeromem/`. The [Desktop zeromem lock](apps/desktop/scripts/zeromem-lock.json) pins each input: cargo builds the zeromem revision with its own `Cargo.lock` and default features against the static onnxruntime archive the lock pins by URL and SHA-256, and the lock pins each model file by SHA-256. The crates `zm` links are recorded in that `Cargo.lock`; onnxruntime's own third-party notices ship beside `zm` as `onnxruntime-ThirdPartyNotices.txt`.
 
-| Executable | Source | Pinned revision | License |
+| Component | Source | Pinned revision | License |
 | --- | --- | --- | --- |
 | `zm` (`zeromem` 0.3.0) | [ptaranat/zeromem](https://github.com/ptaranat/zeromem) | `eda212665a35cd01c188121e759de282728238d5` | MIT |
+| onnxruntime 1.20.0, statically linked into `zm` | [microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) | `c4fb724e810bb496165b9015c77f402727392933` | MIT |
+| bge-small-en-v1.5 model | [Xenova/bge-small-en-v1.5](https://huggingface.co/Xenova/bge-small-en-v1.5) | `ea104dacec62c0de699686887e3f920caeb4f3e3` | MIT |
 
 ## First-party native packages
 

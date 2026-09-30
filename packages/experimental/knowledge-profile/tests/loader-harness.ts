@@ -168,6 +168,25 @@ export async function recallRoundTrip(ctx: Context, workspace: string): Promise<
 }
 
 /**
+ * A model directory holding empty stand-ins for every file `zm` reads, removed by {@link cleanup}.
+ * @returns its path.
+ */
+export function fakeModel(): string {
+  const directory = mkdtempSync(join(tmpdir(), 'dsh-knowledge-profile-model-'))
+  roots.push(directory)
+  const revision = 'ea104dacec62c0de699686887e3f920caeb4f3e3'
+  const folder = join(directory, MemoryZeromem.ZEROMEM_MODEL_FOLDER)
+  for (const file of MemoryZeromem.ZEROMEM_MODEL_FILES) {
+    const path = join(folder, 'snapshots', revision, ...file.split('/'))
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, '')
+  }
+  mkdirSync(join(folder, 'refs'))
+  writeFileSync(join(folder, 'refs', 'main'), revision)
+  return directory
+}
+
+/**
  * A temporary store root removed by {@link cleanup}.
  * @returns its path.
  */
