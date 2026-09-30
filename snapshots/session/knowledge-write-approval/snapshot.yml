@@ -1,0 +1,9 @@
+version: 1
+scenario: knowledge-write-approval
+profile: headless
+composition: knowledge-write-approval
+recording: live
+header:
+  class: knowledge-write-approval
+  pin: true
+  systemPromptSource: text-turn
