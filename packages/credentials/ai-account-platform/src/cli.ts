@@ -14,8 +14,8 @@ export interface CliIdentity {
  * reported to the user as a sign-out.
  */
 export type CliStatus =
-  | { readonly state: 'signed-in'; readonly identity: CliIdentity }
-  | { readonly state: 'signed-out'; readonly message: string }
+  | { readonly state: 'signedIn'; readonly identity: CliIdentity }
+  | { readonly state: 'signedOut'; readonly message: string }
   | { readonly state: 'inconclusive' }
 
 /** Characters kept from the CLI line quoted with a signed-out answer. */
@@ -31,7 +31,8 @@ function firstLine(stdout: string, stderr: string): string {
   return `${stderr}\n${stdout}`.trim().replace(/\s*\n[\s\S]*$/, '').slice(0, MESSAGE_LIMIT_CHARS)
 }
 
-const INCONCLUSIVE: CliStatus = { state: 'inconclusive' }
+/** The status answer for output that states no sign-in status. */
+export const INCONCLUSIVE: CliStatus = { state: 'inconclusive' }
 
 /** How one account kind's official CLI signs in, identifies, and signs out against one configuration directory. */
 export interface KindCli {
@@ -93,9 +94,9 @@ export const CLI: Readonly<Record<AiAccountKind, KindCli>> = {
       const parsed = claudeStatus.safeParse(raw)
       if (!parsed.success) return INCONCLUSIVE
       // `claude auth status --json` exits 1 with `loggedIn: false`; a signed-in answer must also exit 0.
-      if (!parsed.data.loggedIn) return { state: 'signed-out', message: firstLine(stdout, stderr) }
+      if (!parsed.data.loggedIn) return { state: 'signedOut', message: firstLine(stdout, stderr) }
       if (exitCode !== 0) return INCONCLUSIVE
-      return { state: 'signed-in', identity: { email: parsed.data.email ?? null, plan: parsed.data.subscriptionType ?? null } }
+      return { state: 'signedIn', identity: { email: parsed.data.email ?? null, plan: parsed.data.subscriptionType ?? null } }
     },
   },
   chatgpt: {
@@ -109,9 +110,9 @@ export const CLI: Readonly<Record<AiAccountKind, KindCli>> = {
     awaitsCode: false,
     parseStatus(exitCode, stdout, stderr) {
       const text = `${stdout}\n${stderr}`
-      if (/not logged in/i.test(text)) return { state: 'signed-out', message: firstLine(stdout, stderr) }
+      if (/not logged in/i.test(text)) return { state: 'signedOut', message: firstLine(stdout, stderr) }
       if (exitCode !== 0 || !/logged in/i.test(text)) return INCONCLUSIVE
-      return { state: 'signed-in', identity: { email: EMAIL.exec(text)?.[0] ?? null, plan: null } }
+      return { state: 'signedIn', identity: { email: EMAIL.exec(text)?.[0] ?? null, plan: null } }
     },
   },
 }

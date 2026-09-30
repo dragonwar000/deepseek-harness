@@ -84,11 +84,16 @@ if (args === 'auth login --claudeai' || args === 'login --device-auth') {
     process.stdout.write('not json\n')
     process.exit(0)
   }
-  const loggedIn = existsSync(signedIn)
-  process.stdout.write(JSON.stringify(loggedIn
-    ? { loggedIn: true, authMethod: 'claude.ai', email: 'claude-user@example.com', subscriptionType: 'max' }
-    : { loggedIn: false, authMethod: 'none' }))
-  process.exit(loggedIn ? 0 : 1)
+  // `status-slow` answers late enough for a test to act while the command runs;
+  // `status-hangs` prints its answer and then never exits.
+  setTimeout(() => {
+    const loggedIn = existsSync(signedIn)
+    process.stdout.write(JSON.stringify(loggedIn
+      ? { loggedIn: true, authMethod: 'claude.ai', email: 'claude-user@example.com', subscriptionType: 'max' }
+      : { loggedIn: false, authMethod: 'none' }))
+    if (behavior === 'status-hangs') setInterval(() => undefined, 1_000)
+    else process.exit(loggedIn ? 0 : 1)
+  }, behavior === 'status-slow' ? 500 : 0)
 } else if (args === 'login status') {
   if (!existsSync(signedIn)) {
     process.stderr.write('Not logged in\n')

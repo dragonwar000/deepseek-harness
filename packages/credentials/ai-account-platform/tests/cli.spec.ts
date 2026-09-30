@@ -7,13 +7,13 @@ const inconclusive = { state: 'inconclusive' }
 it('reads the Claude login state only from its JSON status', () => {
   const parse: KindCli['parseStatus'] = (...args) => CLI.claude.parseStatus(...args)
   expect(parse(0, JSON.stringify({ loggedIn: true, email: 'a@example.com', subscriptionType: 'pro' }), ''))
-    .toEqual({ state: 'signed-in', identity: { email: 'a@example.com', plan: 'pro' } })
-  expect(parse(0, JSON.stringify({ loggedIn: true }), '')).toEqual({ state: 'signed-in', identity: { email: null, plan: null } })
+    .toEqual({ state: 'signedIn', identity: { email: 'a@example.com', plan: 'pro' } })
+  expect(parse(0, JSON.stringify({ loggedIn: true }), '')).toEqual({ state: 'signedIn', identity: { email: null, plan: null } })
   // The shape the CLI printed when the user's account lapsed.
   const lapsed = JSON.stringify({ loggedIn: false, authMethod: 'none' })
-  expect(parse(1, lapsed, '')).toEqual({ state: 'signed-out', message: lapsed })
-  expect(parse(1, lapsed, '\n  Not logged in · Please run /login  \n')).toEqual({ state: 'signed-out', message: 'Not logged in · Please run /login' })
-  expect(parse(1, lapsed, 'x'.repeat(500))).toEqual({ state: 'signed-out', message: 'x'.repeat(240) })
+  expect(parse(1, lapsed, '')).toEqual({ state: 'signedOut', message: lapsed })
+  expect(parse(1, lapsed, '\n  Not logged in · Please run /login  \n')).toEqual({ state: 'signedOut', message: 'Not logged in · Please run /login' })
+  expect(parse(1, lapsed, 'x'.repeat(500))).toEqual({ state: 'signedOut', message: 'x'.repeat(240) })
   expect(parse(0, JSON.stringify({ email: 'a@example.com' }), '')).toEqual(inconclusive)
   expect(parse(0, 'Logged in', '')).toEqual(inconclusive)
   expect(parse(1, JSON.stringify({ loggedIn: true }), '')).toEqual(inconclusive)
@@ -21,9 +21,9 @@ it('reads the Claude login state only from its JSON status', () => {
 
 it('reads the Codex login state from its status text on either stream', () => {
   const parse: KindCli['parseStatus'] = (...args) => CLI.chatgpt.parseStatus(...args)
-  expect(parse(0, '', 'Logged in using ChatGPT')).toEqual({ state: 'signed-in', identity: { email: null, plan: null } })
-  expect(parse(0, 'Logged in using ChatGPT (me@example.org)', '')).toEqual({ state: 'signed-in', identity: { email: 'me@example.org', plan: null } })
-  expect(parse(1, '', 'Not logged in')).toEqual({ state: 'signed-out', message: 'Not logged in' })
+  expect(parse(0, '', 'Logged in using ChatGPT')).toEqual({ state: 'signedIn', identity: { email: null, plan: null } })
+  expect(parse(0, 'Logged in using ChatGPT (me@example.org)', '')).toEqual({ state: 'signedIn', identity: { email: 'me@example.org', plan: null } })
+  expect(parse(1, '', 'Not logged in')).toEqual({ state: 'signedOut', message: 'Not logged in' })
   expect(parse(1, '', '')).toEqual(inconclusive)
   expect(parse(0, '', 'Not signed in')).toEqual(inconclusive)
 })

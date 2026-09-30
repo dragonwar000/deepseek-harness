@@ -1,11 +1,12 @@
 /** Official-CLI account sign-in, identity, default selection, removal, and persistence against fake executables. */
+import { randomUUID } from 'node:crypto'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import type { AiAccountId, AiAccountKind, AiAccountSignInId, AiAccountsView } from '@deepseek-ai/dsh-ai-account'
+import type { AiAccountId, AiAccountKind, AiAccountSignInId, AiAccountStatusChange, AiAccountsView } from '@deepseek-ai/dsh-ai-account'
 import type { SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PlatformAiAccount, { resolveConfig, type Config } from '../src/index.ts'
@@ -22,6 +23,7 @@ interface Fixture {
   readonly bin: string
   readonly root: string
   readonly changes: AiAccountKind[]
+  readonly transitions: AiAccountStatusChange[]
 }
 
 /** @returns a temporary directory holding fake `claude` and `codex` executables. */
@@ -44,9 +46,14 @@ async function mount(options: { bin?: string; root?: string; config?: Config } =
   await ctx.plugin(LocalSubprocessRuntime)
   const changes: AiAccountKind[] = []
   ctx.on('ai-account/default-changed', (kind) => { changes.push(kind) })
-  const config: Config = Object.assign({ root, claudeCliPath: join(bin, 'claude'), codexCliPath: join(bin, 'codex') }, options.config)
+  const transitions: AiAccountStatusChange[] = []
+  ctx.on('ai-account/status-changed', (change) => { transitions.push(change) })
+  // Periodic checks stay off unless a test enables them, so status commands appear only where a test expects them.
+  const config: Config = Object.assign(
+    { root, claudeCliPath: join(bin, 'claude'), codexCliPath: join(bin, 'codex'), statusCheckIntervalMs: 0 }, options.config,
+  )
   await ctx.plugin(PlatformAiAccount, config)
-  return { ctx, service: ctx.get('aiAccount') as PlatformAiAccount, bin, root, changes }
+  return { ctx, service: ctx.get('aiAccount') as PlatformAiAccount, bin, root, changes, transitions }
 }
 
 /** Resolve with the first watched snapshot that satisfies the predicate. */
@@ -66,6 +73,29 @@ function calls(bin: string): Call[] {
   const log = join(bin, 'calls.log')
   return existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line) as Call) : []
 }
+
+function statusCalls(bin: string): number {
+  return calls(bin).filter(call => call.args === 'auth status --json' || call.args === 'login status').length
+}
+
+/** @returns an account root whose stored accounts are signed in; the first account of each kind is its default. */
+function seed(kinds: readonly AiAccountKind[]): { root: string; ids: AiAccountId[] } {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-ai-account-seeded-'))
+  cleanups.push(() => { rmSync(root, { recursive: true, force: true }) })
+  const accounts = kinds.map((kind, index) => ({ id: randomUUID() as AiAccountId, kind, email: null, plan: null, createdAt: index + 1 }))
+  const defaults: Partial<Record<AiAccountKind, AiAccountId>> = {}
+  for (const account of accounts) {
+    defaults[account.kind] ??= account.id
+    const home = join(root, account.kind === 'claude' ? 'claude' : 'codex', account.id)
+    mkdirSync(home, { recursive: true })
+    writeFileSync(join(home, 'fake-signed-in'), 'yes')
+  }
+  writeFileSync(join(root, 'accounts.json'), JSON.stringify({ version: 1, accounts, defaults }))
+  return { root, ids: accounts.map(account => account.id) }
+}
+
+/** Let settled checks run their completion handlers; only interval timers are ever faked here. */
+const settle = (): Promise<void> => new Promise((resolve) => { setImmediate(resolve) })
 
 /**
  * Authorize the waiting login the way its own flow does: Claude reads the code the
@@ -446,6 +476,51 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     await expect(service.setDefault(id)).rejects.toThrow('provider closed')
   })
 
+  it('checks sign-in status at start and on each interval, emitting once per transition, until unload', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    cleanups.push(() => { vi.useRealTimers() })
+    const { root, ids: [id] } = seed(['claude'])
+    const signedIn = join(root, 'claude', id!, 'fake-signed-in')
+    const fixture = await mount({ root, config: { statusCheckIntervalMs: 30_000 } })
+    const status = (view: AiAccountsView) => view.accounts[0]!.status
+    const started = await until(fixture.service, view => status(view).status === 'signedIn')
+    await settle()
+    expect(status(started)).toEqual({ status: 'signedIn', checkedAt: expect.any(Number), message: null })
+    expect(fixture.transitions).toEqual([{ id, kind: 'claude', isDefault: true, previous: 'unknown', current: status(started) }])
+
+    rmSync(signedIn)
+    vi.advanceTimersByTime(30_000)
+    // A caller during the interval's check joins it instead of starting another.
+    const out = await fixture.service.checkStatus()
+    expect(status(out)).toEqual({ status: 'signedOut', checkedAt: expect.any(Number), message: '{"loggedIn":false,"authMethod":"none"}' })
+    vi.advanceTimersByTime(30_000)
+    expect(status(await fixture.service.checkStatus()).status).toBe('signedOut')
+    writeFileSync(signedIn, 'yes')
+    expect(status(await fixture.service.checkStatus()).status).toBe('signedIn')
+    expect(statusCalls(fixture.bin)).toBe(4)
+    expect(fixture.transitions.map(change => [change.previous, change.current.status])).toEqual([
+      ['unknown', 'signedIn'], ['signedIn', 'signedOut'], ['signedOut', 'signedIn'],
+    ])
+
+    await fixture.ctx.fiber.dispose()
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(300_000)
+    await settle()
+    expect(statusCalls(fixture.bin)).toBe(4)
+    await expect(fixture.service.checkStatus()).rejects.toThrow('provider closed')
+  })
+
+  it('runs no periodic check when the interval is 0', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    cleanups.push(() => { vi.useRealTimers() })
+    const fixture = await mount({ root: seed(['claude']).root, config: { statusCheckIntervalMs: 0 } })
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(86_400_000)
+    await settle()
+    expect(statusCalls(fixture.bin)).toBe(0)
+    expect((await fixture.service.getState()).accounts[0]!.status).toEqual({ status: 'unknown', checkedAt: null, message: null })
+  })
+
   it('ends a watch when its subscriber aborts', async () => {
     const fixture = await mount()
     const lifetime = new AbortController()
@@ -470,6 +545,9 @@ it('defaults the account root to the Harness home and applies documented default
       loginRows: 40,
       loginCols: 200,
       loginTerminalType: 'xterm-256color',
+      statusCheckIntervalMs: 300_000,
+      statusCheckTimeoutMs: 15_000,
+      statusCheckConcurrency: 2,
     })
   } finally {
     if (previous === undefined) delete process.env.DSH_HOME
@@ -482,4 +560,15 @@ it('defaults the account root to the Harness home and applies documented default
   expect(resolveConfig({ loginRows: 24, loginCols: 80, loginTerminalType: 'vt100' })).toMatchObject({
     loginRows: 24, loginCols: 80, loginTerminalType: 'vt100',
   })
+})
+
+it('validates the sign-in status check settings and resolves 0 to disabled periodic checks', () => {
+  expect(resolveConfig({ root: '/r', statusCheckIntervalMs: 0 }).statusCheckIntervalMs).toBeNull()
+  expect(resolveConfig({ root: '/r', statusCheckIntervalMs: 30_000, statusCheckTimeoutMs: 1_000, statusCheckConcurrency: 8 }))
+    .toMatchObject({ statusCheckIntervalMs: 30_000, statusCheckTimeoutMs: 1_000, statusCheckConcurrency: 8 })
+  for (const invalid of [
+    { statusCheckIntervalMs: 29_999 }, { statusCheckIntervalMs: -1 }, { statusCheckIntervalMs: 40_000.5 },
+    { statusCheckTimeoutMs: 999 }, { statusCheckTimeoutMs: 120_001 },
+    { statusCheckConcurrency: 0 }, { statusCheckConcurrency: 9 }, { statusCheckConcurrency: 1.5 },
+  ]) expect(() => resolveConfig({ root: '/r', ...invalid }), JSON.stringify(invalid)).toThrow()
 })

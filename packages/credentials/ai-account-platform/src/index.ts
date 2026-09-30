@@ -9,12 +9,12 @@ import { dirname, join } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import {
-  AiAccount, type AiAccountId, type AiAccountKind, type AiAccountSignInId, type AiAccountSignInView, type AiAccountView,
-  type AiAccountsView,
+  AiAccount, type AiAccountId, type AiAccountKind, type AiAccountSignInId, type AiAccountSignInView, type AiAccountStatusView,
+  type AiAccountView, type AiAccountsView,
 } from '@deepseek-ai/dsh-ai-account'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { SubprocessExecutableNotFoundError, type SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
-import { CLI, LoginOutput, type CliIdentity } from './cli.ts'
+import { CLI, INCONCLUSIVE, LoginOutput, type CliIdentity, type CliStatus } from './cli.ts'
 import { EMPTY_ACCOUNT_FILE, readAccountFile, writeAccountFile, type AccountFile, type AccountRecord } from './store.ts'
 
 /** Deployment choices for the account root, CLI executables, and command deadlines. */
@@ -37,6 +37,12 @@ export interface Config {
   loginCols?: number
   /** Terminal type advertised to the login command through `TERM`; the Host must have its terminfo entry. */
   loginTerminalType?: string
+  /** Interval between periodic sign-in status checks of every account, in milliseconds; `0` disables periodic checks. */
+  statusCheckIntervalMs?: number
+  /** Deadline for one account's status command during a sign-in status check, in milliseconds. */
+  statusCheckTimeoutMs?: number
+  /** Accounts whose status commands one sign-in status check runs at the same time. */
+  statusCheckConcurrency?: number
 }
 
 /** Validated configuration: every field except `root` carries its default. */
@@ -53,6 +59,9 @@ export const Config: Schema<Config, ValidConfig> = Schema.object({
   loginRows: Schema.number().min(1).max(1_000).default(40),
   loginCols: Schema.number().min(40).max(1_000).default(200),
   loginTerminalType: Schema.string().min(1).default('xterm-256color'),
+  statusCheckIntervalMs: Schema.union([Schema.const(0), Schema.natural().min(30_000).max(86_400_000)]).default(300_000),
+  statusCheckTimeoutMs: Schema.natural().min(1_000).max(120_000).default(15_000),
+  statusCheckConcurrency: Schema.natural().min(1).max(8).default(2),
 })
 
 /** Configuration with every default applied. */
@@ -65,6 +74,10 @@ export interface ResolvedConfig {
   readonly loginRows: number
   readonly loginCols: number
   readonly loginTerminalType: string
+  /** Interval between periodic sign-in status checks; `null` when periodic checks are disabled. */
+  readonly statusCheckIntervalMs: number | null
+  readonly statusCheckTimeoutMs: number
+  readonly statusCheckConcurrency: number
 }
 
 /**
@@ -83,6 +96,9 @@ export function resolveConfig(config: Config): ResolvedConfig {
     loginRows: valid.loginRows,
     loginCols: valid.loginCols,
     loginTerminalType: valid.loginTerminalType,
+    statusCheckIntervalMs: valid.statusCheckIntervalMs === 0 ? null : valid.statusCheckIntervalMs,
+    statusCheckTimeoutMs: valid.statusCheckTimeoutMs,
+    statusCheckConcurrency: valid.statusCheckConcurrency,
   }
 }
 
@@ -90,6 +106,7 @@ export function resolveConfig(config: Config): ResolvedConfig {
 const OUTPUT_LIMIT_BYTES = 16 * 1024
 const KIND_ORDER: readonly AiAccountKind[] = ['claude', 'chatgpt']
 const ACTIVE_PHASES = new Set<AiAccountSignInView['phase']>(['starting', 'waiting-browser', 'waiting-device-code', 'verifying'])
+const UNKNOWN_STATUS: AiAccountStatusView = { status: 'unknown', checkedAt: null, message: null }
 
 interface Attempt {
   view: AiAccountSignInView
@@ -123,6 +140,12 @@ export class PlatformAiAccount extends AiAccount {
   private readonly listeners = new Set<() => void>()
   private queue: Promise<unknown> = Promise.resolve()
   private closed = false
+  /** Latest conclusive status per account; held in memory only, so every account starts `unknown`. */
+  private readonly statuses = new Map<AiAccountId, AiAccountStatusView>()
+  /** The running sign-in status check, joined by every caller until it settles. */
+  private checking: Promise<void> | undefined
+  /** Aborted at unload so a running status check stops its CLI commands. */
+  private readonly lifetime = new AbortController()
 
   /**
    * @param ctx - context providing the subprocess seam.
@@ -133,7 +156,9 @@ export class PlatformAiAccount extends AiAccount {
     this.config = resolveConfig(config)
     ctx.effect(() => async () => {
       this.closed = true
+      this.lifetime.abort()
       this.attempt?.controller.abort()
+      await this.checking
       await this.attempt?.done
       await this.queue
       this.publish()
@@ -142,6 +167,13 @@ export class PlatformAiAccount extends AiAccount {
 
   async [Service.init](): Promise<void> {
     this.file = await readAccountFile(this.filePath())
+    const interval = this.config.statusCheckIntervalMs
+    if (interval === null) return
+    this.ctx.effect(() => {
+      void this.check()
+      const timer = setInterval(() => { void this.check() }, interval)
+      return () => clearInterval(timer)
+    }, 'ai-account: periodic sign-in status checks')
   }
 
   override getState(): Promise<AiAccountsView> {
@@ -216,9 +248,16 @@ export class PlatformAiAccount extends AiAccount {
         .toSorted((left, right) => left.createdAt - right.createdAt)[0]
       const defaults = wasDefault ? { ...this.file.defaults, [account.kind]: successor?.id } : this.file.defaults
       await this.commit({ ...this.file, accounts, defaults })
+      this.statuses.delete(id)
       if (wasDefault) this.ctx.emit('ai-account/default-changed', account.kind)
       return this.snapshot()
     })
+  }
+
+  override async checkStatus(): Promise<AiAccountsView> {
+    if (this.closed) throw new Error('ai-account: provider closed')
+    await this.check()
+    return this.snapshot()
   }
 
   /* jscpd:ignore-start -- the coalescing snapshot stream follows the account providers' shared watch semantics
@@ -267,7 +306,11 @@ export class PlatformAiAccount extends AiAccount {
   private snapshot(): AiAccountsView {
     const accounts: AiAccountView[] = this.file.accounts
       .toSorted((left, right) => KIND_ORDER.indexOf(left.kind) - KIND_ORDER.indexOf(right.kind) || left.createdAt - right.createdAt)
-      .map(account => ({ ...account, isDefault: this.file.defaults[account.kind] === account.id }))
+      .map(account => ({
+        ...account,
+        isDefault: this.file.defaults[account.kind] === account.id,
+        status: this.statuses.get(account.id) ?? UNKNOWN_STATUS,
+      }))
     return { accounts, signIn: this.attempt?.view ?? null }
   }
 
@@ -396,6 +439,8 @@ export class PlatformAiAccount extends AiAccount {
       await this.exclusive(async () => {
         const record: AccountRecord = { id: attempt.accountId, kind, ...identity, createdAt: Date.now() }
         const promoted = this.file.defaults[kind] === undefined
+        // The identity read that preceded registration is a conclusive status answer.
+        this.statuses.set(record.id, { status: 'signedIn', checkedAt: Date.now(), message: null })
         await this.commit({
           ...this.file,
           accounts: [...this.file.accounts, record],
@@ -424,14 +469,14 @@ export class PlatformAiAccount extends AiAccount {
     }
   }
 
-  private async run(kind: AiAccountKind, home: string, args: readonly string[], executable: string) {
+  private async run(kind: AiAccountKind, home: string, args: readonly string[], executable: string, signal: AbortSignal) {
     const handle = this.ctx.subprocess.spawn({
       argv: [executable, ...args],
       cwd: home,
       env: { [CLI[kind].homeEnv]: home },
       stdio: { stdin: 'ignore', stdout: { maxBytes: OUTPUT_LIMIT_BYTES }, stderr: { maxBytes: OUTPUT_LIMIT_BYTES } },
       graceMs: this.config.graceMs,
-      signal: AbortSignal.timeout(this.config.commandTimeoutMs),
+      signal,
     })
     const { exitCode } = await handle.done
     /* v8 ignore next -- collect-mode stdio always creates both readers; the optional type covers other dispositions. */
@@ -440,13 +485,60 @@ export class PlatformAiAccount extends AiAccount {
   }
 
   private async identify(kind: AiAccountKind, home: string, executable: string): Promise<CliIdentity | undefined> {
+    const answer = await this.status(kind, home, executable, AbortSignal.timeout(this.config.commandTimeoutMs))
+    return answer.state === 'signedIn' ? answer.identity : undefined
+  }
+
+  /** Run one directory's status command; a command that fails to run is `inconclusive`. */
+  private async status(kind: AiAccountKind, home: string, executable: string, signal: AbortSignal): Promise<CliStatus> {
     try {
-      const { exitCode, stdout, stderr } = await this.run(kind, home, CLI[kind].statusArgs, executable)
-      return CLI[kind].parseIdentity(exitCode, stdout, stderr)
+      const { exitCode, stdout, stderr } = await this.run(kind, home, CLI[kind].statusArgs, executable, signal)
+      return CLI[kind].parseStatus(exitCode, stdout, stderr)
     } catch (error) {
       console.info('[ai-account] status failed', { kind, error: errorText(error) })
-      return undefined
+      return INCONCLUSIVE
     }
+  }
+
+  /** Join the running sign-in status check or start one; never rejects. */
+  private check(): Promise<void> {
+    this.checking ??= this.checkAll().finally(() => { this.checking = undefined })
+    return this.checking
+  }
+
+  /** Check the accounts registered when the check starts, at most `statusCheckConcurrency` at a time. */
+  private async checkAll(): Promise<void> {
+    const pending = [...this.file.accounts]
+    const worker = async (): Promise<void> => {
+      for (let account = pending.shift(); account !== undefined; account = pending.shift()) await this.checkOne(account)
+    }
+    await Promise.all(Array.from({ length: Math.min(this.config.statusCheckConcurrency, pending.length) }, worker))
+  }
+
+  /** Record one account's conclusive status answer and emit `ai-account/status-changed` on a transition. */
+  private async checkOne(account: AccountRecord): Promise<void> {
+    if (this.lifetime.signal.aborted) return
+    const signal = AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(this.config.statusCheckTimeoutMs)])
+    let executable: string | undefined
+    try {
+      executable = await this.executable(account.kind, signal)
+    } catch (error) {
+      console.info('[ai-account] status failed', { kind: account.kind, error: errorText(error) })
+      return
+    }
+    if (executable === undefined) return
+    const answer = await this.status(account.kind, this.homeOf(account.kind, account.id), executable, signal)
+    // Output cut short by the deadline or unload is not an answer, and a removed account has no status.
+    if (answer.state === 'inconclusive' || signal.aborted || !this.file.accounts.some(({ id }) => id === account.id)) return
+    const current: AiAccountStatusView = answer.state === 'signedIn'
+      ? { status: 'signedIn', checkedAt: Date.now(), message: null }
+      : { status: 'signedOut', checkedAt: Date.now(), message: answer.message }
+    const previous = (this.statuses.get(account.id) ?? UNKNOWN_STATUS).status
+    this.statuses.set(account.id, current)
+    this.publish()
+    if (previous === current.status) return
+    const isDefault = this.file.defaults[account.kind] === account.id
+    this.ctx.emit('ai-account/status-changed', { id: account.id, kind: account.kind, isDefault, previous, current })
   }
 
   /** Revoke the CLI's stored login for one directory; failures are logged because the directory is deleted next. */
@@ -454,7 +546,7 @@ export class PlatformAiAccount extends AiAccount {
     try {
       const executable = await this.executable(kind)
       if (executable === undefined) return
-      const { exitCode } = await this.run(kind, home, CLI[kind].logoutArgs, executable)
+      const { exitCode } = await this.run(kind, home, CLI[kind].logoutArgs, executable, AbortSignal.timeout(this.config.commandTimeoutMs))
       if (exitCode !== 0) console.info('[ai-account] logout failed', { kind, exitCode })
     } catch (error) {
       console.info('[ai-account] logout failed', { kind, error: errorText(error) })
