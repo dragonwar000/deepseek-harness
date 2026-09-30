@@ -44,6 +44,7 @@ import {
   stabilizeFixtureMessageIds,
   stabilizeRefreshLog,
   tokenizeSessionFixtureCwd,
+  tokenizeWorkspaceSnapshot,
   writesCurrentSessionFixtures,
   type HarvestedLog,
   type NormalizeContext,
@@ -1298,7 +1299,11 @@ describe('headless recorded-session snapshots', () => {
       }
       if (scenario.manifest.workspace?.final === true) {
         const expectedWorkspace = await captureExpectedWorkspaceSnapshot(join(scenario.dir, 'workspace.expected'))
-        expect(finalWorkspace, `${scenario.name}: complete final workspace`).toEqual(expectedWorkspace)
+        const tokens = scenario.manifest.workspace.tokens === true
+        expect(
+          tokens ? tokenizeWorkspaceSnapshot(finalWorkspace, actualContext) : finalWorkspace,
+          `${scenario.name}: complete final workspace`,
+        ).toEqual(tokens ? tokenizeWorkspaceSnapshot(expectedWorkspace, actualContext) : expectedWorkspace)
       } else {
         expect(finalWorkspace, `${scenario.name}: a changed workspace requires workspace.final`).toEqual(initialWorkspace)
       }

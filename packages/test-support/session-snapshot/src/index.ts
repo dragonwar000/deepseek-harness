@@ -110,10 +110,12 @@ export {
   captureExpectedWorkspaceSnapshot,
   captureWorkspaceSnapshot,
   EMPTY_WORKSPACE_MARKER,
+  tokenizeWorkspaceSnapshot,
   type CaptureWorkspaceSnapshotOptions,
   type WorkspaceBinaryFileSnapshot,
   type WorkspaceEmptyDirectorySnapshot,
   type WorkspaceSnapshotEntry,
   type WorkspaceSymlinkSnapshot,
   type WorkspaceTextFileSnapshot,
+  type WorkspaceTokenContext,
 } from './workspace.ts'
