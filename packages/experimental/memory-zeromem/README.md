@@ -27,15 +27,19 @@ This package gives the agent recall of earlier conversations through [zeromem](h
 
 ### Get a zm executable
 
-The plugin needs zeromem's `zm` CLI. [CTD Core Desktop](../../../apps/desktop/README.md#bundled-zeromem-executable) carries one on macOS and Windows and names it in `DSH_ZEROMEM_ZM`, so Desktop needs no installation. Elsewhere, build it from a zeromem checkout:
+The plugin needs zeromem's `zm` CLI. [CTD Core Desktop](../../../apps/desktop/README.md#bundled-zeromem-executable) carries one built with zeromem's default fastembed feature on macOS and Windows, together with its embedding model, and names them in `DSH_ZEROMEM_ZM` and `DSH_ZEROMEM_MODELS`, so Desktop needs no installation. Elsewhere, build it from a zeromem checkout:
 
 ```sh
 git clone https://github.com/ptaranat/zeromem && cd zeromem
-cargo install --path crates/zeromem                                   # zm on PATH, semantic embedder
-cargo build --release --no-default-features -p zeromem                # or: target/release/zm, hash embedder, offline
+cargo install --locked --path crates/zeromem                          # zm on PATH, fastembed embedder
+cargo build --release --locked --no-default-features -p zeromem       # or: target/release/zm, hash embedder only
 ```
 
-The default build embeds text with bge-small-en-v1.5 through fastembed and downloads the model (about 130 MB) on first use into the `models` directory of the store root. The `--no-default-features` build has only zeromem's lexical hash embedder and makes no network access; pair it with `embedder: hash`.
+The default build statically links onnxruntime, which the `ort-sys` build script downloads and checks against a SHA-256 in its own crate; the `--no-default-features` build has only zeromem's lexical hash embedder, so pair it with `embedder: hash`. In a repository checkout, `pnpm run prepare:desktop:zeromem` builds the Desktop `zm` and its model instead, from the inputs the [Desktop zeromem lock](../../../apps/desktop/scripts/zeromem-lock.json) pins, under `apps/desktop/.desktop-build/targets/<target>/runtime/zeromem/`.
+
+### Provide the embedding model
+
+With `embedder: default`, `zm` embeds text with bge-small-en-v1.5 from the Hugging Face repository `Xenova/bge-small-en-v1.5`: five files, 134 MB, read from a model directory in the Hugging Face cache layout. The explicit `resolveModelDir` step selects that directory: a non-empty `modelDir`; otherwise a non-empty `DSH_ZEROMEM_MODELS`, which must be an absolute path; otherwise `<storeRoot>/models`. Each store's `models` entry links to it. At load and before every operation the plugin checks that `models--Xenova--bge-small-en-v1.5/refs/main` holds a commit id with no line terminator and that `snapshots/<commit id>/` holds `onnx/model.onnx`, `tokenizer.json`, `config.json`, `special_tokens_map.json`, and `tokenizer_config.json`. A missing file fails with `ZeromemModelError` before `zm` runs, because `zm` would download it from huggingface.co at the repository's latest revision. To prepare the directory by hand, download those files at the revision the Desktop zeromem lock pins, from `https://huggingface.co/Xenova/bge-small-en-v1.5/resolve/<revision>/<file>`, compare each with the SHA-256 recorded there, and write the revision to `refs/main`.
 
 ### Enable the row
 
@@ -46,7 +50,8 @@ The knowledge bundle inserts the row `memory-zeromem` with `disabled: true`. Ena
   disabled: false
   config:
     zmPath: ''
-    embedder: hash
+    embedder: default
+    modelDir: ''
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -66,7 +71,8 @@ Outside the bundle, mount `@deepseek-ai/dsh-experimental-memory-zeromem` after t
 |---|---|---|
 | `zmPath` | empty | `zm` executable: a name on `PATH` or an absolute path; empty selects `DSH_ZEROMEM_ZM`, then `zm` on `PATH` |
 | `zmArgs` | none | Arguments placed before zeromem's own, for a `zm` run through an interpreter |
-| `embedder` | `default` | `default` lets `zm` choose its embedder; `hash` passes `--no-model`, zeromem's lexical hash embedder |
+| `embedder` | `default` | `default` runs bge-small-en-v1.5 from the model directory and needs a `zm` built with zeromem's fastembed feature; `hash` passes `--no-model`, zeromem's lexical hash embedder |
+| `modelDir` | empty | Absolute directory, or one starting with `~`, that holds the embedding model; empty selects `DSH_ZEROMEM_MODELS`, then `<storeRoot>/models` |
 | `scope` | `workspace` | `workspace` keeps one store per session working directory; `global` shares one store across workspaces |
 | `storeRoot` | empty | Absolute directory, or one starting with `~`, that holds the stores; empty selects `<harness home>/zeromem` |
 | `excludeCurrentSession` | `true` | Leave the calling session's turns out of `memory_recall` results |
@@ -80,13 +86,13 @@ Outside the bundle, mount `@deepseek-ai/dsh-experimental-memory-zeromem` after t
 | `graceMs` | `2000` | Grace before a terminated `zm` is killed |
 | `maxConcurrent` | `1` | Concurrent `zm` processes |
 
-The explicit `resolveZm` step selects the executable in this order: a non-empty `zmPath`; otherwise a non-empty `DSH_ZEROMEM_ZM`, which must be an absolute path; otherwise `zm` on `PATH`. The bundle row keeps `zmPath` empty and sets `embedder: hash` to match Desktop's `zm`, which is built without fastembed; set `embedder: default` for a fastembed build.
+The explicit `resolveZm` step selects the executable in this order: a non-empty `zmPath`; otherwise a non-empty `DSH_ZEROMEM_ZM`, which must be an absolute path; otherwise `zm` on `PATH`. The bundle row keeps `zmPath` and `modelDir` empty with `embedder: default`, so Desktop runs the `zm` and model it carries; set `embedder: hash` for a `zm` built without fastembed or to run without the model.
 
-Loading fails with a named error when the selected `zm` cannot be found (`ZeromemExecutableError`, which names `zmPath`, `DSH_ZEROMEM_ZM`, or `PATH` and says how to install zeromem), when `storeRoot` is not absolute, or when `defaultResults` exceeds `maxResults`. A `zm` that fails, times out, or answers as another program makes the tool call fail with a `ZeromemProcessError` carrying the `zm` stderr tail; recall never falls back to an empty result. When `zm` reports its lexical fallback embedder while `embedder` is `default`, the plugin logs one warning.
+Loading fails with a named error when the selected `zm` cannot be found (`ZeromemExecutableError`, which names `zmPath`, `DSH_ZEROMEM_ZM`, or `PATH` and says how to install zeromem), when `embedder` is `default` and the model directory is incomplete (`ZeromemModelError`, which names the directory and the first missing file), when `storeRoot` or `modelDir` is not absolute, or when `defaultResults` exceeds `maxResults`. A `zm` that fails, times out, or answers as another program makes the tool call fail with a `ZeromemProcessError` carrying the `zm` stderr tail; recall never falls back to an empty result. When `embedder` is `default` and `zm` reports its hash embedder, because it was built without fastembed or could not load onnxruntime or the model, `memory_recall` and `memory_stats` fail with a `ZeromemEmbedderError` carrying the `zm` stderr instead of returning lexical results.
 
 ### What is stored, and where
 
-The plugin stores, verbatim and unencrypted, the text of each human user message and of the last assistant message of each completed turn, each cut to `maxIngestChars` characters. It never stores tool calls, tool results, reasoning, injected context, or subagent sessions (unless `ingestSubagentSessions`). With the `workspace` scope, a session's store is `<storeRoot>/workspaces/<first 16 hex digits of the SHA-256 of its working directory>`; with the `global` scope it is `<storeRoot>/global`. Each store holds `zeromem.db` (SQLite, written by `zm`), `spool/` (turn files waiting for ingestion), `dsh-forgotten/` (sessions deleted by `memory_forget_session`), and a `models` link to the shared model cache. The plugin creates directories owner-only and spool files with mode `0600`. A user message can contain secrets the user typed; delete a store directory to delete its memory. Sessions without a working directory are not stored under the `workspace` scope, with one warning per session.
+The plugin stores, verbatim and unencrypted, the text of each human user message and of the last assistant message of each completed turn, each cut to `maxIngestChars` characters. It never stores tool calls, tool results, reasoning, injected context, or subagent sessions (unless `ingestSubagentSessions`). With the `workspace` scope, a session's store is `<storeRoot>/workspaces/<first 16 hex digits of the SHA-256 of its working directory>`; with the `global` scope it is `<storeRoot>/global`. Each store holds `zeromem.db` (SQLite, written by `zm`), `spool/` (turn files waiting for ingestion), `dsh-forgotten/` (sessions deleted by `memory_forget_session`), and a `models` link to the model directory. The plugin creates directories owner-only and spool files with mode `0600`. A user message can contain secrets the user typed; delete a store directory to delete its memory. Sessions without a working directory are not stored under the `workspace` scope, with one warning per session.
 
 -----
 
@@ -104,7 +110,7 @@ Each plugin instance keeps the number of the last turn it spooled per session. O
 
 ### Store operations
 
-Each tool call starts one `zm [--no-model] mcp --home <store>` process through `ctx.subprocess` in the store directory, sends MCP `initialize`, `notifications/initialized`, and one `tools/call` (`zeromem_recall`, `zeromem_stats`, or `zeromem_forget_session`), closes stdin, and reads the answers. The plugin verifies that the server names itself `zeromem`, waits for spool writes queued before the call, and bounds the process by `timeoutMs`, the call's cancellation, and plugin disposal; at most `maxConcurrent` processes run at once. `memory_recall` passes the calling session's id as `exclude_session` when `excludeCurrentSession` is on. `memory_forget_session` refuses the calling session, asks the user through `tools/pre-execute` as the outermost listener, and marks the deleted session forgotten after `zm` reports the deletion.
+Each tool call starts one `zm [--no-model] mcp --home <store>` process through `ctx.subprocess` in the store directory, sends MCP `initialize`, `notifications/initialized`, and one `tools/call` (`zeromem_recall`, `zeromem_stats`, or `zeromem_forget_session`), closes stdin, and reads the answers. With `embedder: default` it first checks the model directory, and it refuses a result computed on the hash embedder. The plugin verifies that the server names itself `zeromem`, waits for spool writes queued before the call, and bounds the process by `timeoutMs`, the call's cancellation, and plugin disposal; at most `maxConcurrent` processes run at once. `memory_recall` passes the calling session's id as `exclude_session` when `excludeCurrentSession` is on. `memory_forget_session` refuses the calling session, asks the user through `tools/pre-execute` as the outermost listener, and marks the deleted session forgotten after `zm` reports the deletion.
 
 ### Design notes
 
@@ -118,11 +124,12 @@ Each tool call starts one `zm [--no-model] mcp --home <store>` process through `
 
 | File | Role |
 |---|---|
-| [`src/index.ts`](src/index.ts) | `Config`, load-time `zm` lookup, the ingestion listener, the tools, and the forget approval |
+| [`src/index.ts`](src/index.ts) | `Config`, load-time `zm` and model lookup, the ingestion listener, the tools, and the forget approval |
 | [`src/fold.ts`](src/fold.ts) | The `zeromemTurn` projection fold |
 | [`src/store.ts`](src/store.ts) | Store resolution, directory preparation, spool files, and forgotten markers |
 | [`src/zm.ts`](src/zm.ts) | One `zm mcp` operation through the subprocess seam |
 | [`src/results.ts`](src/results.ts) | Validation and conversion of zeromem results |
+| [`src/model.ts`](src/model.ts) | Model directory resolution, the model check, and the model and embedder errors |
 
 </details>
 
@@ -205,9 +212,9 @@ The tool definition joins the stable tool prefix once, when the plugin loads; re
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **External executable** — the user installs `zm`; the harness neither ships nor downloads it, and a missing `zm` fails the row at load.
+- **External executable outside Desktop** — outside CTD Core Desktop the user installs `zm` and, for `embedder: default`, the model; the plugin downloads nothing, and a missing `zm` or model fails the row at load.
 - **Spool format coupling** — ingestion writes zeromem's internal spool files, which zeromem does not document as a stable interface; the real-binary test (`tests/real-zm.e2e.ts`, run with `DSH_ZEROMEM_ZM` set to a `zm` path) checks compatibility with a given zeromem build.
-- **Lexical recall with the Desktop `zm`** — Desktop carries a `zm` built without fastembed, whose hash embedder ranks stored turns by shared words. A query phrased differently from the stored turn, with synonyms, a paraphrase, or another language, can miss it where bge-small-en-v1.5 embeddings would match. Setting `zmPath` to a fastembed build with `embedder: default` restores semantic recall and downloads a 130 MB model on first use.
+- **Embedding cost and language** — `embedder: default` loads onnxruntime and the 134 MB model in every `zm` process: on an Apple M-series host an operation on a small store took about 1.3 s with a cold file cache and 0.1 s warm, against 10 ms with the hash embedder; and bge-small-en-v1.5 is trained on English, so recall across other languages is weaker. `embedder: hash` needs no model but ranks stored turns by shared words: a paraphrase or synonym of the stored turn can miss it, as `tests/real-zm.e2e.ts` shows.
 - **Plain-text store** — stored turns are raw, unencrypted text on disk; the only deletions are `memory_forget_session` and removing the store directory.
 - **Index rebuilt per call** — each operation starts `zm`, which rebuilds its index from `zeromem.db`, and with the default embedder loads the model; calls on a large store take longer than a resident server would.
 - **Pending turns count on the next call** — turns spooled since the last operation are ingested by the next `zm` process, so the first call after many turns also pays their ingestion within `timeoutMs`.

@@ -7,7 +7,9 @@
  * `memory_recall` and `memory_stats`, and with `allowForget` deletes one
  * earlier session through the approval-gated `memory_forget_session`. Every
  * store operation runs one `zm mcp` process through `ctx.subprocess`, which
- * first ingests the pending spool files.
+ * first ingests the pending spool files. With the default embedder every
+ * operation first checks that the model directory holds the embedding model,
+ * and fails when `zm` answers on its hash embedder.
  * @module @deepseek-ai/dsh-experimental-memory-zeromem
  */
 
@@ -26,8 +28,9 @@ import type { TurnText, ZeromemTurnState } from './fold.ts'
 import { deletedTurnsOf, recallOf, statsOf } from './results.ts'
 import { isForgotten, markForgotten, prepareStore, resolveStore, resolveStoreRoot, sourceUuid, spoolTurns } from './store.ts'
 import type { SpoolTurn, StoreScope } from './store.ts'
+import { checkZeromemModel, resolveModelDir, ZeromemEmbedderError, ZM_MODELS_ENV } from './model.ts'
 import { callZeromem } from './zm.ts'
-import type { ZeromemTool, ZmOperationSpec } from './zm.ts'
+import type { ZeromemTool, ZmAnswer, ZmOperationSpec } from './zm.ts'
 
 export { applyZeromemTurn, emptyZeromemTurn, zeromemTurnStateSchema } from './fold.ts'
 export type { TurnText, TurnTexts, ZeromemTurnState } from './fold.ts'
@@ -36,7 +39,8 @@ export type { MemoryStats, Recall, RecalledTurn } from './results.ts'
 export { isForgotten, markForgotten, prepareStore, resolveStore, resolveStoreRoot, sourceUuid, spoolTurns, ZeromemStoreError } from './store.ts'
 export type { SpoolTurn, StoreRequest, StoreScope, StoreSpec, ZeromemSourceUuid } from './store.ts'
 export { callZeromem, zmArgv, ZeromemProcessError, ZeromemToolError } from './zm.ts'
-export type { SpawnChild, ZeromemTool, ZmOperationSpec } from './zm.ts'
+export type { SpawnChild, ZeromemTool, ZmAnswer, ZmOperationSpec } from './zm.ts'
+export { checkZeromemModel, resolveModelDir, ZEROMEM_MODEL_FILES, ZEROMEM_MODEL_FOLDER, ZeromemEmbedderError, ZeromemModelError, ZM_MODELS_ENV } from './model.ts'
 
 /** Cordis plugin name. */
 export const name = 'memory-zeromem'
@@ -49,8 +53,13 @@ export interface Config {
   zmPath?: string
   /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
   zmArgs?: string[]
-  /** `default` lets `zm` pick its embedder (fastembed when compiled in); `hash` passes `--no-model` (default `default`). */
+  /**
+   * `default` runs bge-small-en-v1.5 from `modelDir` and needs a `zm` built with zeromem's fastembed feature;
+   * `hash` passes `--no-model` for lexical recall (default `default`).
+   */
   embedder?: 'default' | 'hash'
+  /** Absolute directory holding the embedding model; empty selects `DSH_ZEROMEM_MODELS`, then `<store root>/models` (default empty). */
+  modelDir?: string
   /** `workspace` keeps one store per session working directory; `global` shares one store (default `workspace`). */
   scope?: StoreScope
   /** Absolute directory holding the stores; empty selects `<harness home>/zeromem` (default empty). */
@@ -85,6 +94,7 @@ export const Config: z<Config, ValidConfig> = z.object({
   zmPath: z.string().default(''),
   zmArgs: z.array(z.string()).default([]),
   embedder: z.union(['default', 'hash'] as const).default('default'),
+  modelDir: z.string().default(''),
   scope: z.union(['workspace', 'global'] as const).default('workspace'),
   storeRoot: z.string().default(''),
   excludeCurrentSession: z.boolean().default(true),
@@ -116,9 +126,6 @@ export const MEMORY_STATS_DESCRIPTION = 'Count the stored turns and sessions tha
 
 /** Model-facing description of `memory_forget_session`. */
 export const MEMORY_FORGET_SESSION_DESCRIPTION = 'Permanently delete every stored turn of one earlier session, named by the session id memory_recall returned. Use only when the user asks to forget that session; the user approves every deletion. The current session cannot be deleted, and later turns of a deleted session are not stored.'
-
-/** Warning logged once when `zm` answers on its lexical fallback embedder. */
-export const FALLBACK_EMBEDDER_WARNING = 'memory-zeromem: zm runs on its hash embedder (lexical similarity only), so recall quality is lower; use a zm built with the fastembed feature and embedder: default for semantic recall.'
 
 const RECALL_VALUE_SCHEMA = {
   type: 'object',
@@ -255,13 +262,16 @@ function gate(size: number): <T>(work: () => Promise<T>) => Promise<T> {
 }
 
 /**
- * Validate settings, resolve `zm` with {@link resolveZm}, and register the fold, the ingestion listener, and the tools.
+ * Validate settings, resolve `zm` with {@link resolveZm} and the model directory with {@link resolveModelDir}, and
+ * register the fold, the ingestion listener, and the tools.
  * @param ctx - plugin context; every registration disposes with it.
  * @param config - validated deployment settings.
- * @throws when a setting is invalid or `zm` cannot be found.
+ * @throws when a setting is invalid, `zm` cannot be found, or the default embedder's model is incomplete.
  */
 export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
   resolveStoreRoot(config.storeRoot)
+  const models = resolveModelDir({ modelDir: config.modelDir, storeRoot: config.storeRoot, environment: process.env[ZM_MODELS_ENV] })
+  const semantic = config.embedder === 'default'
   if (config.defaultResults > config.maxResults) throw new Error('memory-zeromem: defaultResults must not exceed maxResults')
   const zm = resolveZm({ zmPath: config.zmPath, environment: process.env[ZM_PATH_ENV] })
   let executable: string
@@ -270,6 +280,7 @@ export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
   } catch (error) {
     throw new ZeromemExecutableError(zm, { cause: error })
   }
+  if (semantic) await checkZeromemModel(models)
   const command = [executable, ...config.zmArgs]
   const disposal = new AbortController()
   const limited = gate(config.maxConcurrent)
@@ -302,29 +313,36 @@ export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
    * @param tool - the zeromem tool.
    * @param args - its arguments.
    * @param signal - the call's cancellation.
-   * @returns the parsed result.
+   * @returns the store directory and the answer.
+   * @throws ZeromemModelError when the default embedder's model left the model directory.
    */
   async function operate(
     cwd: string | undefined,
     tool: ZeromemTool,
     args: Record<string, unknown>,
     signal: AbortSignal,
-  ): Promise<{ home: string; value: unknown }> {
-    const store = resolveStore({ scope: config.scope, storeRoot: config.storeRoot, cwd })
+  ): Promise<{ home: string; answer: ZmAnswer }> {
+    const store = resolveStore({ scope: config.scope, storeRoot: config.storeRoot, cwd, models })
     await prepareStore(store)
+    // A missing file would make zm download it at its latest revision.
+    if (semantic) await checkZeromemModel(models)
     // Turns that ended before this call are spooled first, so zm ingests them before it answers.
     await writes
-    const spec: ZmOperationSpec = { command, hashEmbedder: config.embedder === 'hash', home: store.home, timeoutMs: config.timeoutMs, graceMs: config.graceMs }
+    const { timeoutMs, graceMs } = config
+    const spec: ZmOperationSpec = { command, hashEmbedder: !semantic, home: store.home, timeoutMs, graceMs }
     const spawn = (spawnSpec: Parameters<Context['subprocess']['spawn']>[0]) => ctx.subprocess.spawn(spawnSpec)
-    const value = await limited(() => callZeromem(spawn, spec, tool, args, AbortSignal.any([signal, disposal.signal])))
-    return { home: store.home, value }
+    const answer = await limited(() => callZeromem(spawn, spec, tool, args, AbortSignal.any([signal, disposal.signal])))
+    return { home: store.home, answer }
   }
 
-  let warnedFallback = false
-  const noteEmbedder = (fallback: boolean): void => {
-    if (!fallback || warnedFallback || config.embedder === 'hash') return
-    warnedFallback = true
-    ctx.logger.warn(FALLBACK_EMBEDDER_WARNING)
+  /**
+   * Refuse a result `zm` computed on its hash embedder when the default embedder was configured.
+   * @param fallback - whether zeromem reported its hash embedder.
+   * @param answer - the answer, whose stderr names the load failure.
+   * @throws ZeromemEmbedderError for a fallback under the default embedder.
+   */
+  const requireEmbedder = (fallback: boolean, answer: ZmAnswer): void => {
+    if (fallback && semantic) throw new ZeromemEmbedderError(executable, models, answer.stderr)
   }
 
   // Turn number of the last completed turn this process spooled, per session.
@@ -361,7 +379,7 @@ export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
     if (turns.length === 0) return
     const turn = completed.turn
     const write = writes.then(async () => {
-      const store = resolveStore({ scope: config.scope, storeRoot: config.storeRoot, cwd: session.header.cwd })
+      const store = resolveStore({ scope: config.scope, storeRoot: config.storeRoot, cwd: session.header.cwd, models })
       await prepareStore(store)
       if (await isForgotten(store.home, session.id)) return
       await spoolTurns(store.home, turns)
@@ -397,9 +415,9 @@ export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
       const spec = resolveRecall(args, config)
       const session = sessionOf(exec)
       const exclude = config.excludeCurrentSession && session !== undefined ? { exclude_session: session.id } : {}
-      const { value } = await operate(session?.header.cwd, 'zeromem_recall', { query: spec.query, top_k: spec.topK, ...exclude }, exec.signal)
-      const recall = recallOf(value, config.maxTurnChars)
-      noteEmbedder(recall.fallbackEmbedder)
+      const { answer } = await operate(session?.header.cwd, 'zeromem_recall', { query: spec.query, top_k: spec.topK, ...exclude }, exec.signal)
+      const recall = recallOf(answer.value, config.maxTurnChars)
+      requireEmbedder(recall.fallbackEmbedder, answer)
       return { turns: recall.turns }
     },
   }))
@@ -412,9 +430,9 @@ export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
     isConcurrencySafe: () => true,
     presentCall: () => ({ card: 'generic', title: 'Count stored sessions', kind: 'read' }),
     async execute(_args, exec): Promise<InferValue<typeof STATS_VALUE_SCHEMA>> {
-      const { value } = await operate(sessionOf(exec)?.header.cwd, 'zeromem_stats', {}, exec.signal)
-      const stats = statsOf(value)
-      noteEmbedder(stats.fallbackEmbedder)
+      const { answer } = await operate(sessionOf(exec)?.header.cwd, 'zeromem_stats', {}, exec.signal)
+      const stats = statsOf(answer.value)
+      requireEmbedder(stats.fallbackEmbedder, answer)
       return { turns: stats.turns, sessions: stats.sessions }
     },
   }))
@@ -434,9 +452,9 @@ export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
       const target = SessionId(args.session.trim())
       if (target === '') throw new Error('memory_forget_session: session must be a session id from a memory_recall result')
       if (target === current?.id) throw new Error('memory_forget_session: the current session cannot be deleted')
-      const { home, value } = await operate(current?.header.cwd, 'zeromem_forget_session', { session_id: target }, exec.signal)
+      const { home, answer } = await operate(current?.header.cwd, 'zeromem_forget_session', { session_id: target }, exec.signal)
       await markForgotten(home, target)
-      return { session: target, deletedTurns: deletedTurnsOf(value) }
+      return { session: target, deletedTurns: deletedTurnsOf(answer.value) }
     },
   }))
 

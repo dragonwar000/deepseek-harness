@@ -18,14 +18,17 @@
   en: bbff250eba0f1b89
   zh: 0a618f05cc88ee2b
 /deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/get-a-zm-executable:
-  en: 3d4beafff5854be9
-  zh: 562c191a105b33e9
+  en: 6ffd9480965280a0
+  zh: 5507f05e8f73b776
+/deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/provide-the-embedding-model:
+  en: 9cc0b4b968215596
+  zh: e6568f64e950c9cc
 /deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/enable-the-row:
-  en: aad6f978c0286dff
-  zh: e5d4d25d7372c290
+  en: 09caabb1dd8b8c99
+  zh: 114f21dcd7638b4c
 /deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/what-is-stored-and-where:
-  en: 78f977976e1fae35
-  zh: 4998a004da15614e
+  en: 52b03ce1a57f591c
+  zh: 2c3039780986dab4
 /deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation:
   en: 42b15ac6321706aa
   zh: c8011788e17a2cd6
@@ -33,14 +36,14 @@
   en: 5875c90267c2e8a9
   zh: 21fa74067ea98484
 /deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/store-operations:
-  en: dd1ec92db967fb56
-  zh: d64863ab80551716
+  en: 0e3615d266376264
+  zh: 904f898b8239c7e3
 /deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/design-notes:
   en: 12c6934458e51057
   zh: 5021e4db1d1b5fce
 /deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/source-map:
-  en: 48cc6b600ee64f67
-  zh: bc5a1de316adbef7
+  en: bdc174aae93f1192
+  zh: e4e629815857223e
 /deepseek-ai-dsh-experimental-memory-zeromem/further-exploration:
   en: 1aa955c462426b97
   zh: 6ca93297e8af79a5
@@ -93,8 +96,8 @@
   en: 17a63238826eea08
   zh: 067318110b2beb6b
 /deepseek-ai-dsh-experimental-memory-zeromem/known-limitations-and-deferred-work:
-  en: 9313235daeb16622
-  zh: de4b9ddb43408d55
+  en: f3e3679bc84a3443
+  zh: e1feefa9bf19a7e5
 /deepseek-ai-dsh-experimental-memory-zeromem/known-limitations-and-deferred-work/dev-note:
   en: e231ec9124a00f3c
   zh: ffa2209809660ea1

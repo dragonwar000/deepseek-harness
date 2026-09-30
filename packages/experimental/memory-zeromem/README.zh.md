@@ -27,15 +27,19 @@ kind: "package-reference"
 
 ### 获取 zm 可执行文件
 
-插件需要 zeromem 的 `zm` 命令行。[CTD Core Desktop](../../../apps/desktop/README.zh.md#bundled-zeromem-executable) 在 macOS 与 Windows 上自带一个，并通过 `DSH_ZEROMEM_ZM` 指明其路径，因此 Desktop 无需安装。其他环境下，在 zeromem 检出目录中构建：
+插件需要 zeromem 的 `zm` 命令行。[CTD Core Desktop](../../../apps/desktop/README.zh.md#bundled-zeromem-executable) 在 macOS 与 Windows 上自带一个以 zeromem 默认 fastembed 特性构建的 `zm` 及其嵌入模型，并通过 `DSH_ZEROMEM_ZM` 与 `DSH_ZEROMEM_MODELS` 指明其路径，因此 Desktop 无需安装。其他环境下，在 zeromem 检出目录中构建：
 
 ```sh
 git clone https://github.com/ptaranat/zeromem && cd zeromem
-cargo install --path crates/zeromem                                   # zm on PATH, semantic embedder
-cargo build --release --no-default-features -p zeromem                # or: target/release/zm, hash embedder, offline
+cargo install --locked --path crates/zeromem                          # zm on PATH, fastembed embedder
+cargo build --release --locked --no-default-features -p zeromem       # or: target/release/zm, hash embedder only
 ```
 
-默认构建通过 fastembed 使用 bge-small-en-v1.5 嵌入文本，首次使用时把模型（约 130 MB）下载到存储根目录的 `models` 目录。`--no-default-features` 构建只含 zeromem 的词法哈希嵌入器，不访问网络；请搭配 `embedder: hash` 使用。
+默认构建静态链接 onnxruntime，由 `ort-sys` 构建脚本下载，并按其 crate 内记录的 SHA-256 校验；`--no-default-features` 构建只含 zeromem 的词法哈希嵌入器，请搭配 `embedder: hash` 使用。在仓库检出目录中，`pnpm run prepare:desktop:zeromem` 会改为按 [Desktop zeromem 锁文件](../../../apps/desktop/scripts/zeromem-lock.json) 固定的输入构建 Desktop 的 `zm` 及其模型，放在 `apps/desktop/.desktop-build/targets/<target>/runtime/zeromem/` 下。
+
+### 提供嵌入模型
+
+使用 `embedder: default` 时，`zm` 用 Hugging Face 仓库 `Xenova/bge-small-en-v1.5` 中的 bge-small-en-v1.5 嵌入文本：共五个文件、134 MB，从 Hugging Face 缓存布局的模型目录读取。显式的 `resolveModelDir` 步骤选择该目录：非空的 `modelDir`；否则为非空的 `DSH_ZEROMEM_MODELS`，它必须是绝对路径；否则为 `<storeRoot>/models`。每个存储的 `models` 条目链接到该目录。插件在加载时以及每次操作之前检查：`models--Xenova--bge-small-en-v1.5/refs/main` 含有不带行结束符的提交 id，且 `snapshots/<提交 id>/` 中有 `onnx/model.onnx`、`tokenizer.json`、`config.json`、`special_tokens_map.json` 和 `tokenizer_config.json`。缺少任一文件时，在运行 `zm` 之前以 `ZeromemModelError` 失败，因为 `zm` 会从 huggingface.co 按仓库的最新修订下载它。手动准备该目录时，从 `https://huggingface.co/Xenova/bge-small-en-v1.5/resolve/<修订>/<文件>` 下载 Desktop zeromem 锁文件固定的修订下的这些文件，逐一与其中记录的 SHA-256 比较，再把该修订写入 `refs/main`。
 
 ### 启用该行
 
@@ -46,7 +50,8 @@ cargo build --release --no-default-features -p zeromem                # or: targ
   disabled: false
   config:
     zmPath: ''
-    embedder: hash
+    embedder: default
+    modelDir: ''
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -66,7 +71,8 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 |---|---|---|
 | `zmPath` | 空 | `zm` 可执行文件：`PATH` 上的名称或绝对路径；为空时选择 `DSH_ZEROMEM_ZM`，其次选择 `PATH` 上的 `zm` |
 | `zmArgs` | 无 | 放在 zeromem 自身参数之前的参数，用于通过解释器运行的 `zm` |
-| `embedder` | `default` | `default` 由 `zm` 选择嵌入器；`hash` 传入 `--no-model`，即 zeromem 的词法哈希嵌入器 |
+| `embedder` | `default` | `default` 从模型目录运行 bge-small-en-v1.5，需要以 zeromem 的 fastembed 特性构建的 `zm`；`hash` 传入 `--no-model`，即 zeromem 的词法哈希嵌入器 |
+| `modelDir` | 空 | 存放嵌入模型的绝对目录，或以 `~` 开头的目录；为空时选择 `DSH_ZEROMEM_MODELS`，其次选择 `<storeRoot>/models` |
 | `scope` | `workspace` | `workspace` 为每个会话工作目录保留一个存储；`global` 在所有工作区间共享一个存储 |
 | `storeRoot` | 空 | 存放各存储的绝对目录，或以 `~` 开头的目录；为空时选择 `<harness home>/zeromem` |
 | `excludeCurrentSession` | `true` | `memory_recall` 结果中排除调用方会话的轮次 |
@@ -80,13 +86,13 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 | `graceMs` | `2000` | 终止 `zm` 后到强制结束前的宽限时间 |
 | `maxConcurrent` | `1` | 并发 `zm` 进程数 |
 
-显式的 `resolveZm` 步骤按以下顺序选择可执行文件：非空的 `zmPath`；否则为非空的 `DSH_ZEROMEM_ZM`，它必须是绝对路径；否则为 `PATH` 上的 `zm`。bundle 行保持 `zmPath` 为空并设置 `embedder: hash`，以匹配 Desktop 自带的 `zm`，后者构建时不含 fastembed；对 fastembed 构建设置 `embedder: default`。
+显式的 `resolveZm` 步骤按以下顺序选择可执行文件：非空的 `zmPath`；否则为非空的 `DSH_ZEROMEM_ZM`，它必须是绝对路径；否则为 `PATH` 上的 `zm`。bundle 行保持 `zmPath` 与 `modelDir` 为空并设置 `embedder: default`，因此 Desktop 运行其自带的 `zm` 与模型；对不含 fastembed 的 `zm` 构建，或要在没有模型的情况下运行时，设置 `embedder: hash`。
 
-找不到所选的 `zm` 时（`ZeromemExecutableError`，其中指明 `zmPath`、`DSH_ZEROMEM_ZM` 或 `PATH`，并说明如何安装 zeromem）、`storeRoot` 不是绝对路径时，或 `defaultResults` 超过 `maxResults` 时，加载以具名错误失败。`zm` 失败、超时或以其他程序身份应答时，工具调用以携带 `zm` stderr 末尾的 `ZeromemProcessError` 失败；召回从不退化为空结果。`embedder` 为 `default` 而 `zm` 报告其词法回退嵌入器时，插件记录一次警告。
+找不到所选的 `zm` 时（`ZeromemExecutableError`，其中指明 `zmPath`、`DSH_ZEROMEM_ZM` 或 `PATH`，并说明如何安装 zeromem）、`embedder` 为 `default` 而模型目录不完整时（`ZeromemModelError`，其中指明该目录与第一个缺失的文件）、`storeRoot` 或 `modelDir` 不是绝对路径时，或 `defaultResults` 超过 `maxResults` 时，加载以具名错误失败。`zm` 失败、超时或以其他程序身份应答时，工具调用以携带 `zm` stderr 末尾的 `ZeromemProcessError` 失败；召回从不退化为空结果。`embedder` 为 `default` 而 `zm` 报告其哈希嵌入器时（因为它构建时不含 fastembed，或无法加载 onnxruntime 或模型），`memory_recall` 与 `memory_stats` 以携带 `zm` stderr 的 `ZeromemEmbedderError` 失败，而不返回词法结果。
 
 ### 存储什么、存在哪里
 
-插件逐字、不加密地存储每条人类用户消息的文本，以及每个已完成轮次最后一条助手消息的文本，每条截断到 `maxIngestChars` 个字符。它从不存储工具调用、工具结果、推理、注入的上下文或子智能体会话（除非开启 `ingestSubagentSessions`）。在 `workspace` 范围下，会话的存储为 `<storeRoot>/workspaces/<其工作目录 SHA-256 的前 16 个十六进制数字>`；在 `global` 范围下为 `<storeRoot>/global`。每个存储包含 `zeromem.db`（SQLite，由 `zm` 写入）、`spool/`（等待摄取的轮次文件）、`dsh-forgotten/`（被 `memory_forget_session` 删除的会话）以及指向共享模型缓存的 `models` 链接。插件以仅所有者可访问的权限创建目录，spool 文件的模式为 `0600`。用户消息可能包含用户输入的机密；删除存储目录即可删除其记忆。在 `workspace` 范围下，没有工作目录的会话不会被存储，每个会话记录一次警告。
+插件逐字、不加密地存储每条人类用户消息的文本，以及每个已完成轮次最后一条助手消息的文本，每条截断到 `maxIngestChars` 个字符。它从不存储工具调用、工具结果、推理、注入的上下文或子智能体会话（除非开启 `ingestSubagentSessions`）。在 `workspace` 范围下，会话的存储为 `<storeRoot>/workspaces/<其工作目录 SHA-256 的前 16 个十六进制数字>`；在 `global` 范围下为 `<storeRoot>/global`。每个存储包含 `zeromem.db`（SQLite，由 `zm` 写入）、`spool/`（等待摄取的轮次文件）、`dsh-forgotten/`（被 `memory_forget_session` 删除的会话）以及指向模型目录的 `models` 链接。插件以仅所有者可访问的权限创建目录，spool 文件的模式为 `0600`。用户消息可能包含用户输入的机密；删除存储目录即可删除其记忆。在 `workspace` 范围下，没有工作目录的会话不会被存储，每个会话记录一次警告。
 
 -----
 
@@ -104,7 +110,7 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 
 ### 存储操作
 
-每次工具调用都通过 `ctx.subprocess` 在存储目录中启动一个 `zm [--no-model] mcp --home <store>` 进程，发送 MCP `initialize`、`notifications/initialized` 和一个 `tools/call`（`zeromem_recall`、`zeromem_stats` 或 `zeromem_forget_session`），关闭 stdin 并读取应答。插件校验服务器自称 `zeromem`，等待调用前排队的 spool 写入完成，并以 `timeoutMs`、调用的取消和插件卸载约束该进程；同时最多运行 `maxConcurrent` 个进程。开启 `excludeCurrentSession` 时，`memory_recall` 把调用方会话的 id 作为 `exclude_session` 传入。`memory_forget_session` 拒绝删除调用方会话，作为最外层监听器通过 `tools/pre-execute` 询问用户，并在 `zm` 报告删除后把该会话标记为已遗忘。
+每次工具调用都通过 `ctx.subprocess` 在存储目录中启动一个 `zm [--no-model] mcp --home <store>` 进程，发送 MCP `initialize`、`notifications/initialized` 和一个 `tools/call`（`zeromem_recall`、`zeromem_stats` 或 `zeromem_forget_session`），关闭 stdin 并读取应答。使用 `embedder: default` 时，它先检查模型目录，并拒绝以哈希嵌入器算出的结果。插件校验服务器自称 `zeromem`，等待调用前排队的 spool 写入完成，并以 `timeoutMs`、调用的取消和插件卸载约束该进程；同时最多运行 `maxConcurrent` 个进程。开启 `excludeCurrentSession` 时，`memory_recall` 把调用方会话的 id 作为 `exclude_session` 传入。`memory_forget_session` 拒绝删除调用方会话，作为最外层监听器通过 `tools/pre-execute` 询问用户，并在 `zm` 报告删除后把该会话标记为已遗忘。
 
 ### 设计说明
 
@@ -118,11 +124,12 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 
 | 文件 | 作用 |
 |---|---|
-| [`src/index.ts`](src/index.ts) | `Config`、加载时查找 `zm`、摄取监听器、工具以及遗忘审批 |
+| [`src/index.ts`](src/index.ts) | `Config`、加载时查找 `zm` 与模型、摄取监听器、工具以及遗忘审批 |
 | [`src/fold.ts`](src/fold.ts) | `zeromemTurn` 投影折叠 |
 | [`src/store.ts`](src/store.ts) | 存储解析、目录准备、spool 文件与遗忘标记 |
 | [`src/zm.ts`](src/zm.ts) | 通过子进程 seam 执行的一次 `zm mcp` 操作 |
 | [`src/results.ts`](src/results.ts) | zeromem 结果的校验与转换 |
+| [`src/model.ts`](src/model.ts) | 模型目录解析、模型检查，以及模型与嵌入器错误 |
 
 </details>
 
@@ -205,9 +212,9 @@ Permanently delete every stored turn of one earlier session, named by the sessio
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **外部可执行文件** — 由用户安装 `zm`；harness 既不附带也不下载它，缺少 `zm` 时该行在加载时失败。
+- **Desktop 之外的外部可执行文件** — 在 CTD Core Desktop 之外，由用户安装 `zm`，并在使用 `embedder: default` 时安装模型；插件不下载任何内容，缺少 `zm` 或模型时该行在加载时失败。
 - **与 spool 格式耦合** — 摄取写入的是 zeromem 内部的 spool 文件，zeromem 并未将其作为稳定接口记录；真实二进制测试（`tests/real-zm.e2e.ts`，设置 `DSH_ZEROMEM_ZM` 为 `zm` 路径后运行）检查与特定 zeromem 构建的兼容性。
-- **Desktop 自带 `zm` 的召回为词法召回** — Desktop 自带的 `zm` 构建时不含 fastembed，其哈希嵌入器按共有词语为已存储的轮次排序。与已存储轮次措辞不同的查询（同义词、改写或其他语言）可能错过它，而 bge-small-en-v1.5 嵌入可以匹配。把 `zmPath` 设为 fastembed 构建并设置 `embedder: default` 可恢复语义召回，首次使用时下载 130 MB 模型。
+- **嵌入开销与语言** — `embedder: default` 在每个 `zm` 进程中加载 onnxruntime 与 134 MB 的模型：在 Apple M 系列主机上，对小型存储的一次操作在文件缓存为冷时约需 1.3 秒、为热时约需 0.1 秒，哈希嵌入器约需 10 毫秒；且 bge-small-en-v1.5 以英文训练，跨其他语言的召回较弱。`embedder: hash` 不需要模型，但按共有词语为已存储的轮次排序：已存储轮次的改写或同义表述可能错过它，`tests/real-zm.e2e.ts` 展示了这一点。
 - **明文存储** — 存储的轮次是磁盘上未加密的原始文本；只能通过 `memory_forget_session` 或删除存储目录来删除。
 - **每次调用重建索引** — 每次操作都启动 `zm`，它从 `zeromem.db` 重建索引，使用默认嵌入器时还要加载模型；在大型存储上，调用比常驻服务器更慢。
 - **待处理轮次计入下一次调用** — 自上次操作以来 spool 的轮次由下一个 `zm` 进程摄取，因此多轮之后的第一次调用还要在 `timeoutMs` 内承担它们的摄取。
