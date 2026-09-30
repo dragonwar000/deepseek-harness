@@ -27,7 +27,7 @@ kind: "package-reference"
 
 ### 获取 zm 可执行文件
 
-插件需要 zeromem 的 `zm` 命令行。在 zeromem 检出目录中构建：
+插件需要 zeromem 的 `zm` 命令行。[CTD Core Desktop](../../../apps/desktop/README.zh.md#bundled-zeromem-executable) 在 macOS 与 Windows 上自带一个，并通过 `DSH_ZEROMEM_ZM` 指明其路径，因此 Desktop 无需安装。其他环境下，在 zeromem 检出目录中构建：
 
 ```sh
 git clone https://github.com/ptaranat/zeromem && cd zeromem
@@ -45,8 +45,8 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 - id: memory-zeromem
   disabled: false
   config:
-    zmPath: zm
-    embedder: default
+    zmPath: ''
+    embedder: hash
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -64,7 +64,7 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
-| `zmPath` | `zm` | `zm` 可执行文件：`PATH` 上的名称或绝对路径 |
+| `zmPath` | 空 | `zm` 可执行文件：`PATH` 上的名称或绝对路径；为空时选择 `DSH_ZEROMEM_ZM`，其次选择 `PATH` 上的 `zm` |
 | `zmArgs` | 无 | 放在 zeromem 自身参数之前的参数，用于通过解释器运行的 `zm` |
 | `embedder` | `default` | `default` 由 `zm` 选择嵌入器；`hash` 传入 `--no-model`，即 zeromem 的词法哈希嵌入器 |
 | `scope` | `workspace` | `workspace` 为每个会话工作目录保留一个存储；`global` 在所有工作区间共享一个存储 |
@@ -80,7 +80,9 @@ cargo build --release --no-default-features -p zeromem                # or: targ
 | `graceMs` | `2000` | 终止 `zm` 后到强制结束前的宽限时间 |
 | `maxConcurrent` | `1` | 并发 `zm` 进程数 |
 
-找不到 `zm` 时（`ZeromemExecutableError`，其中说明如何安装 zeromem）、`storeRoot` 不是绝对路径时，或 `defaultResults` 超过 `maxResults` 时，加载以具名错误失败。`zm` 失败、超时或以其他程序身份应答时，工具调用以携带 `zm` stderr 末尾的 `ZeromemProcessError` 失败；召回从不退化为空结果。`embedder` 为 `default` 而 `zm` 报告其词法回退嵌入器时，插件记录一次警告。
+显式的 `resolveZm` 步骤按以下顺序选择可执行文件：非空的 `zmPath`；否则为非空的 `DSH_ZEROMEM_ZM`，它必须是绝对路径；否则为 `PATH` 上的 `zm`。bundle 行保持 `zmPath` 为空并设置 `embedder: hash`，以匹配 Desktop 自带的 `zm`，后者构建时不含 fastembed；对 fastembed 构建设置 `embedder: default`。
+
+找不到所选的 `zm` 时（`ZeromemExecutableError`，其中指明 `zmPath`、`DSH_ZEROMEM_ZM` 或 `PATH`，并说明如何安装 zeromem）、`storeRoot` 不是绝对路径时，或 `defaultResults` 超过 `maxResults` 时，加载以具名错误失败。`zm` 失败、超时或以其他程序身份应答时，工具调用以携带 `zm` stderr 末尾的 `ZeromemProcessError` 失败；召回从不退化为空结果。`embedder` 为 `default` 而 `zm` 报告其词法回退嵌入器时，插件记录一次警告。
 
 ### 存储什么、存在哪里
 
@@ -205,6 +207,7 @@ Permanently delete every stored turn of one earlier session, named by the sessio
 
 - **外部可执行文件** — 由用户安装 `zm`；harness 既不附带也不下载它，缺少 `zm` 时该行在加载时失败。
 - **与 spool 格式耦合** — 摄取写入的是 zeromem 内部的 spool 文件，zeromem 并未将其作为稳定接口记录；真实二进制测试（`tests/real-zm.e2e.ts`，设置 `DSH_ZEROMEM_ZM` 为 `zm` 路径后运行）检查与特定 zeromem 构建的兼容性。
+- **Desktop 自带 `zm` 的召回为词法召回** — Desktop 自带的 `zm` 构建时不含 fastembed，其哈希嵌入器按共有词语为已存储的轮次排序。与已存储轮次措辞不同的查询（同义词、改写或其他语言）可能错过它，而 bge-small-en-v1.5 嵌入可以匹配。把 `zmPath` 设为 fastembed 构建并设置 `embedder: default` 可恢复语义召回，首次使用时下载 130 MB 模型。
 - **明文存储** — 存储的轮次是磁盘上未加密的原始文本；只能通过 `memory_forget_session` 或删除存储目录来删除。
 - **每次调用重建索引** — 每次操作都启动 `zm`，它从 `zeromem.db` 重建索引，使用默认嵌入器时还要加载模型；在大型存储上，调用比常驻服务器更慢。
 - **待处理轮次计入下一次调用** — 自上次操作以来 spool 的轮次由下一个 `zm` 进程摄取，因此多轮之后的第一次调用还要在 `timeoutMs` 内承担它们的摄取。

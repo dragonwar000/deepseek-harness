@@ -27,7 +27,7 @@ This package gives the agent recall of earlier conversations through [zeromem](h
 
 ### Get a zm executable
 
-The plugin needs zeromem's `zm` CLI. Build it from a zeromem checkout:
+The plugin needs zeromem's `zm` CLI. [CTD Core Desktop](../../../apps/desktop/README.md#bundled-zeromem-executable) carries one on macOS and Windows and names it in `DSH_ZEROMEM_ZM`, so Desktop needs no installation. Elsewhere, build it from a zeromem checkout:
 
 ```sh
 git clone https://github.com/ptaranat/zeromem && cd zeromem
@@ -45,8 +45,8 @@ The knowledge bundle inserts the row `memory-zeromem` with `disabled: true`. Ena
 - id: memory-zeromem
   disabled: false
   config:
-    zmPath: zm
-    embedder: default
+    zmPath: ''
+    embedder: hash
     scope: workspace
     excludeCurrentSession: true
     ingestSubagentSessions: false
@@ -64,7 +64,7 @@ Outside the bundle, mount `@deepseek-ai/dsh-experimental-memory-zeromem` after t
 
 | Field | Default | Meaning |
 |---|---|---|
-| `zmPath` | `zm` | `zm` executable: a name on `PATH` or an absolute path |
+| `zmPath` | empty | `zm` executable: a name on `PATH` or an absolute path; empty selects `DSH_ZEROMEM_ZM`, then `zm` on `PATH` |
 | `zmArgs` | none | Arguments placed before zeromem's own, for a `zm` run through an interpreter |
 | `embedder` | `default` | `default` lets `zm` choose its embedder; `hash` passes `--no-model`, zeromem's lexical hash embedder |
 | `scope` | `workspace` | `workspace` keeps one store per session working directory; `global` shares one store across workspaces |
@@ -80,7 +80,9 @@ Outside the bundle, mount `@deepseek-ai/dsh-experimental-memory-zeromem` after t
 | `graceMs` | `2000` | Grace before a terminated `zm` is killed |
 | `maxConcurrent` | `1` | Concurrent `zm` processes |
 
-Loading fails with a named error when `zm` cannot be found (`ZeromemExecutableError`, which says how to install zeromem), when `storeRoot` is not absolute, or when `defaultResults` exceeds `maxResults`. A `zm` that fails, times out, or answers as another program makes the tool call fail with a `ZeromemProcessError` carrying the `zm` stderr tail; recall never falls back to an empty result. When `zm` reports its lexical fallback embedder while `embedder` is `default`, the plugin logs one warning.
+The explicit `resolveZm` step selects the executable in this order: a non-empty `zmPath`; otherwise a non-empty `DSH_ZEROMEM_ZM`, which must be an absolute path; otherwise `zm` on `PATH`. The bundle row keeps `zmPath` empty and sets `embedder: hash` to match Desktop's `zm`, which is built without fastembed; set `embedder: default` for a fastembed build.
+
+Loading fails with a named error when the selected `zm` cannot be found (`ZeromemExecutableError`, which names `zmPath`, `DSH_ZEROMEM_ZM`, or `PATH` and says how to install zeromem), when `storeRoot` is not absolute, or when `defaultResults` exceeds `maxResults`. A `zm` that fails, times out, or answers as another program makes the tool call fail with a `ZeromemProcessError` carrying the `zm` stderr tail; recall never falls back to an empty result. When `zm` reports its lexical fallback embedder while `embedder` is `default`, the plugin logs one warning.
 
 ### What is stored, and where
 
@@ -205,6 +207,7 @@ The tool definition joins the stable tool prefix once, when the plugin loads; re
 
 - **External executable** — the user installs `zm`; the harness neither ships nor downloads it, and a missing `zm` fails the row at load.
 - **Spool format coupling** — ingestion writes zeromem's internal spool files, which zeromem does not document as a stable interface; the real-binary test (`tests/real-zm.e2e.ts`, run with `DSH_ZEROMEM_ZM` set to a `zm` path) checks compatibility with a given zeromem build.
+- **Lexical recall with the Desktop `zm`** — Desktop carries a `zm` built without fastembed, whose hash embedder ranks stored turns by shared words. A query phrased differently from the stored turn, with synonyms, a paraphrase, or another language, can miss it where bge-small-en-v1.5 embeddings would match. Setting `zmPath` to a fastembed build with `embedder: default` restores semantic recall and downloads a 130 MB model on first use.
 - **Plain-text store** — stored turns are raw, unencrypted text on disk; the only deletions are `memory_forget_session` and removing the store directory.
 - **Index rebuilt per call** — each operation starts `zm`, which rebuilds its index from `zeromem.db`, and with the default embedder loads the model; calls on a large store take longer than a resident server would.
 - **Pending turns count on the next call** — turns spooled since the last operation are ingested by the next `zm` process, so the first call after many turns also pays their ingestion within `timeoutMs`.

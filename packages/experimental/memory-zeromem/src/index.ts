@@ -11,6 +11,7 @@
  * @module @deepseek-ai/dsh-experimental-memory-zeromem
  */
 
+import { isAbsolute } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-agent'
@@ -44,7 +45,7 @@ export const inject = ['tools', 'subprocess', 'sessionProjections']
 
 /** Deployment settings. Invalid values fail plugin load. */
 export interface Config {
-  /** `zm` executable: a name on `PATH` or an absolute path (default `zm`). */
+  /** `zm` executable: a name on `PATH` or an absolute path; empty selects `DSH_ZEROMEM_ZM`, then `zm` on `PATH` (default empty). */
   zmPath?: string
   /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
   zmArgs?: string[]
@@ -81,7 +82,7 @@ type ValidConfig = Required<Config>
 
 /** Schemastery validator for {@link Config}. */
 export const Config: z<Config, ValidConfig> = z.object({
-  zmPath: z.string().min(1).default('zm'),
+  zmPath: z.string().default(''),
   zmArgs: z.array(z.string()).default([]),
   embedder: z.union(['default', 'hash'] as const).default('default'),
   scope: z.union(['workspace', 'global'] as const).default('workspace'),
@@ -184,14 +185,49 @@ export function resolveRecall(
   return { query, topK }
 }
 
-/** The configured `zm` could not be found. */
+/** Environment variable naming an absolute `zm` path; Desktop sets it to the `zm` it carries. */
+export const ZM_PATH_ENV = 'DSH_ZEROMEM_ZM'
+
+/** Where the resolved `zm` came from. */
+export type ZmSource = 'config' | 'environment' | 'path'
+
+/** The `zm` to run and the setting that selected it. */
+export interface ZmSpec {
+  /** Absolute path, or a command name looked up on `PATH`. */
+  readonly zmPath: string
+  readonly source: ZmSource
+}
+
+/**
+ * Select the `zm` executable: a non-empty `zmPath`, then a non-empty {@link ZM_PATH_ENV}, then `zm` on `PATH`.
+ * @param request - the configured `zmPath` (empty when unset) and the value of {@link ZM_PATH_ENV}.
+ * @returns the selected executable and its source.
+ * @throws ZeromemExecutableError when {@link ZM_PATH_ENV} is set to a relative path.
+ */
+export function resolveZm(request: { readonly zmPath: string; readonly environment: string | undefined }): ZmSpec {
+  if (request.zmPath !== '') return { zmPath: request.zmPath, source: 'config' }
+  const environment = request.environment ?? ''
+  if (environment === '') return { zmPath: 'zm', source: 'path' }
+  const spec: ZmSpec = { zmPath: environment, source: 'environment' }
+  if (!isAbsolute(environment)) throw new ZeromemExecutableError(spec, { cause: new Error(`${ZM_PATH_ENV} must be an absolute path`) })
+  return spec
+}
+
+const INSTALL_HINT = 'build zeromem (cargo install --git https://github.com/ptaranat/zeromem --locked zeromem) or set zmPath to the absolute path of zm'
+
+/** The selected `zm` could not be found. */
 export class ZeromemExecutableError extends Error {
   /**
-   * @param zmPath - the configured executable.
+   * @param spec - the selected executable and its source.
    * @param options - the lookup failure.
    */
-  constructor(zmPath: string, options: ErrorOptions) {
-    super(`memory-zeromem: the zm executable ${zmPath} was not found; install zeromem (cargo install --path crates/zeromem from https://github.com/ptaranat/zeromem) or set zmPath to the absolute path of zm`, options)
+  constructor(spec: ZmSpec, options: ErrorOptions) {
+    const what = spec.source === 'config'
+      ? `the zm executable ${spec.zmPath} set by zmPath was not found`
+      : spec.source === 'environment'
+        ? `the zm executable ${spec.zmPath} named by ${ZM_PATH_ENV} is not an absolute path to an existing file`
+        : `no zm executable is on PATH, and neither zmPath nor ${ZM_PATH_ENV} is set (CTD Core Desktop sets ${ZM_PATH_ENV} only on platforms whose build carries zm)`
+    super(`memory-zeromem: ${what}; ${INSTALL_HINT}`, options)
     this.name = 'ZeromemExecutableError'
   }
 }
@@ -219,7 +255,7 @@ function gate(size: number): <T>(work: () => Promise<T>) => Promise<T> {
 }
 
 /**
- * Validate settings, resolve `zm`, and register the fold, the ingestion listener, and the tools.
+ * Validate settings, resolve `zm` with {@link resolveZm}, and register the fold, the ingestion listener, and the tools.
  * @param ctx - plugin context; every registration disposes with it.
  * @param config - validated deployment settings.
  * @throws when a setting is invalid or `zm` cannot be found.
@@ -227,11 +263,12 @@ function gate(size: number): <T>(work: () => Promise<T>) => Promise<T> {
 export async function apply(ctx: Context, config: ValidConfig): Promise<void> {
   resolveStoreRoot(config.storeRoot)
   if (config.defaultResults > config.maxResults) throw new Error('memory-zeromem: defaultResults must not exceed maxResults')
+  const zm = resolveZm({ zmPath: config.zmPath, environment: process.env[ZM_PATH_ENV] })
   let executable: string
   try {
-    executable = await ctx.subprocess.resolveExecutable(config.zmPath)
+    executable = await ctx.subprocess.resolveExecutable(zm.zmPath)
   } catch (error) {
-    throw new ZeromemExecutableError(config.zmPath, { cause: error })
+    throw new ZeromemExecutableError(zm, { cause: error })
   }
   const command = [executable, ...config.zmArgs]
   const disposal = new AbortController()

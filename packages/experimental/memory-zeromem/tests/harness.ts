@@ -32,6 +32,7 @@ export async function cleanup(): Promise<void> {
   await Promise.all(contexts.splice(0).map(async ctx => ctx.fiber.dispose()))
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 }
 
 /** Harness options. */

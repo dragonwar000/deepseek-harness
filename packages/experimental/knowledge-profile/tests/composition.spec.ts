@@ -8,134 +8,20 @@
  * scripted zm.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import * as yaml from 'js-yaml'
-import { Context } from '@deepseek-ai/cordis'
-import Include, { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
-import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import type { ModuleLoaderV2 } from '@deepseek-ai/cordis-plugin-loader'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import * as ContextKnowledge from '@deepseek-ai/dsh-experimental-context-knowledge'
-import * as ContextKnowledgeInvariant from '@deepseek-ai/dsh-experimental-context-knowledge/invariant'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
-import * as KnowledgeInvariant from '@deepseek-ai/dsh-experimental-knowledge/invariant'
-import * as KnowledgeRules from '@deepseek-ai/dsh-experimental-knowledge-rules'
 import { STORE_WRITE_REASON } from '@deepseek-ai/dsh-experimental-knowledge-rules'
-import WikiFilesystemKnowledge from '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
-import * as MemoryDistill from '@deepseek-ai/dsh-experimental-memory-distill'
-import * as MemoryZeromem from '@deepseek-ai/dsh-experimental-memory-zeromem'
-import * as ToolKnowledge from '@deepseek-ai/dsh-experimental-tool-knowledge'
-import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
-import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
-import InvariantService from '@deepseek-ai/dsh-invariants'
-import LlmRuntime, { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
+import { boot, cleanup, FAKE_ZM, recallRoundTrip, storeRoot } from './loader-harness.ts'
 
-const BASE_ROWS = new Map<string, unknown>([
-  ['@deepseek-ai/dsh-invariants', InvariantService],
-  ['@deepseek-ai/dsh-llm', LlmRuntime],
-  ['@deepseek-ai/dsh-session', SessionStore],
-  ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
-  ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
-  ['@deepseek-ai/dsh-tools', ToolRuntime],
-  ['@deepseek-ai/dsh-agent', AgentRegistry],
-  ['@deepseek-ai/dsh-agent-loop', AgentLoop],
-  ['@deepseek-ai/dsh-fs-local', LocalFileSystem],
-  ['@deepseek-ai/dsh-fs-observation-policy', FsPolicy],
-  ['@deepseek-ai/dsh-tool-fs', ToolFs],
-  ['@deepseek-ai/dsh-subprocess-local', LocalSubprocessRuntime],
-  ['@deepseek-ai/dsh-experimental-knowledge/invariant', KnowledgeInvariant],
-  ['@deepseek-ai/dsh-experimental-context-knowledge/invariant', ContextKnowledgeInvariant],
-])
-
-const BUNDLE_ROWS = new Map<string, unknown>([
-  ['@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem', WikiFilesystemKnowledge],
-  ['@deepseek-ai/dsh-experimental-knowledge-rules', KnowledgeRules],
-  ['@deepseek-ai/dsh-experimental-tool-knowledge', ToolKnowledge],
-  ['@deepseek-ai/dsh-experimental-context-knowledge', ContextKnowledge],
-  ['@deepseek-ai/dsh-experimental-memory-distill', MemoryDistill],
-  ['@deepseek-ai/dsh-experimental-memory-zeromem', MemoryZeromem],
-])
-
-/** Scripted stand-in for zeromem's zm, owned by the memory-zeromem package tests. */
-const FAKE_ZM = fileURLToPath(new URL('../../memory-zeromem/tests/fake-zm.mjs', import.meta.url))
-
-const PAGE = '---\ntype: concept\ntitle: Retry policy\nupdated: 2026-09-20T10:00:00.000Z\n---\n\n# Retry policy\n\nRequests retry three times.\n\n## Origin\n\n- Seeded by the composition test.\n'
-
-const roots: string[] = []
-const contexts: Context[] = []
 afterEach(async () => {
-  await Promise.all(contexts.splice(0).map(async ctx => ctx.fiber.dispose()))
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+  vi.unstubAllEnvs()
+  await cleanup()
 })
-
-/**
- * A Loader module source that serves only the fixture modules.
- * @param modules - specifier to module.
- * @returns the loader.
- */
-function fixtureModules(modules: ReadonlyMap<string, unknown>): ModuleLoaderV2 {
-  return {
-    version: 'v2',
-    import: (specifier: string) => {
-      if (!modules.has(specifier)) throw new Error(`Unexpected Loader import: ${specifier}`)
-      return Promise.resolve(modules.get(specifier))
-    },
-    loadCache: new Map(),
-    register(): never { throw new Error('unexpected module hook registration') },
-    getOrCreateModuleJob(): never { throw new Error('unexpected module job creation') },
-    resolveSync(): never { throw new Error('unexpected synchronous module resolution') },
-    load(): never { throw new Error('unexpected module load') },
-  }
-}
-
-/**
- * Boot the base rows through the Loader with the shipped bundle patch applied.
- * @returns the context and the session working directory.
- */
-async function boot(
-  extraRows: ReadonlyMap<string, unknown> = new Map(),
-  profilePatches: readonly PatchOptions[] = [],
-): Promise<{ ctx: Context; workspace: string; root: string }> {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-knowledge-profile-'))
-  roots.push(root)
-  const workspace = join(root, 'workspace')
-  mkdirSync(dirname(join(workspace, 'knowledge/concepts/retry.md')), { recursive: true })
-  writeFileSync(join(workspace, 'knowledge/concepts/retry.md'), PAGE)
-  const configPath = join(root, 'cordis.yml')
-  const baseRows = new Map([...BASE_ROWS, ...extraRows])
-  writeFileSync(configPath, JSON.stringify([...baseRows.keys()].map(name => ({
-    name,
-    config: name === '@deepseek-ai/dsh-invariants'
-      ? { enabled: true }
-      : name === '@deepseek-ai/dsh-agent-loop' ? { agents: [] } : name === '@deepseek-ai/dsh-fs-local' ? { cwd: workspace } : {},
-  }))))
-  const manifest = JSON.parse(readFileSync(resolve(fileURLToPath(new URL('..', import.meta.url)), 'package.json'), 'utf8')) as { dsh: { bundle: { patch: string } } }
-  const patchPath = resolve(fileURLToPath(new URL('..', import.meta.url)), manifest.dsh.bundle.patch)
-  const patches = [...yaml.load(readFileSync(patchPath, 'utf8'), { schema: entryListSchema }) as PatchOptions[], ...profilePatches]
-  const ctx = new Context()
-  contexts.push(ctx)
-  ctx.baseUrl = pathToFileURL(root).href + '/'
-  await ctx.plugin(Loader)
-  ctx.loader.builtins.include = Include
-  ctx.loader.internal = fixtureModules(new Map([...baseRows, ...BUNDLE_ROWS]))
-  await ctx.loader.create({ name: 'cordis:include', config: { path: pathToFileURL(configPath).href, patches } })
-  await ctx.loader.await()
-  for (const entry of ctx.loader.entries()) await entry.fiber?.await()
-  return { ctx, workspace, root }
-}
 
 describe('knowledge bundle Loader composition', () => {
   it('offers the read tools, adds the index to the first request, and refuses a direct store write', async () => {
@@ -188,29 +74,27 @@ describe('knowledge bundle Loader composition', () => {
   })
 
   it('stores a completed turn and recalls it from a later session once a profile patch enables memory-zeromem', async () => {
-    const stores = mkdtempSync(join(tmpdir(), 'dsh-knowledge-profile-zeromem-'))
-    roots.push(stores)
     const { ctx, workspace } = await boot(new Map(), [{
       id: 'memory-zeromem',
       disabled: false,
-      config: { zmPath: process.execPath, zmArgs: [FAKE_ZM], embedder: 'hash', storeRoot: stores },
+      config: { zmPath: process.execPath, zmArgs: [FAKE_ZM], embedder: 'hash', storeRoot: storeRoot() },
     }])
-    const first = new MockAdapter([textResponse('Noted: retries use jittered backoff.')])
-    ctx.llm.registerAdapter(['first'], first)
-    const earlier = await ctx.agentLoop.create(SessionId('earlier'), { provider: 'first', model: 'mock' }, { cwd: workspace })
-    earlier.followup(createUserMessage({ content: [{ type: 'text', text: 'Our retries use jittered backoff.' }], source: { kind: 'user' } }))
-    await earlier.whenIdle()
-    expect((first.requests[0]?.tools ?? []).map(tool => tool.name)).toEqual(expect.arrayContaining(['memory_recall', 'memory_stats']))
+    const trip = await recallRoundTrip(ctx, workspace)
+    expect(trip.tools).toEqual(expect.arrayContaining(['memory_recall', 'memory_stats']))
+    expect(trip.recall).toContain('earlier')
+    expect(trip.recall).toContain('Our retries use jittered backoff.')
+    expect(trip.recall).not.toContain('What did we decide')
+  })
 
-    const second = new MockAdapter([toolCallResponse('r1', 'memory_recall', { query: 'jittered backoff retries' }), textResponse('done')])
-    ctx.llm.registerAdapter(['second'], second)
-    const later = await ctx.agentLoop.create(SessionId('later'), { provider: 'second', model: 'mock' }, { cwd: workspace })
-    later.followup(createUserMessage({ content: [{ type: 'text', text: 'What did we decide about retries?' }], source: { kind: 'user' } }))
-    await later.whenIdle()
-    const result = later.session.snapshotEvents().find(event => event.type === 'tool/result')
-    const text = result?.type === 'tool/result' ? JSON.stringify(result.data.message.content) : ''
-    expect(text).toContain('earlier')
-    expect(text).toContain('Our retries use jittered backoff.')
-    expect(text).not.toContain('What did we decide')
+  it('runs the zm named by DSH_ZEROMEM_ZM when the patch keeps the row\'s empty zmPath', async () => {
+    vi.stubEnv('DSH_ZEROMEM_ZM', process.execPath)
+    const { ctx, workspace } = await boot(new Map(), [{
+      id: 'memory-zeromem',
+      disabled: false,
+      config: { zmPath: '', zmArgs: [FAKE_ZM], embedder: 'hash', storeRoot: storeRoot() },
+    }])
+    const trip = await recallRoundTrip(ctx, workspace)
+    expect(trip.isError).toBe(false)
+    expect(trip.recall).toContain('Our retries use jittered backoff.')
   })
 })
