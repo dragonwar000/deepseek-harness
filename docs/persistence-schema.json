@@ -13585,6 +13585,106 @@
       }
     },
     {
+      "key": "event:llm/cli-tool-emulation-reply",
+      "kind": "event",
+      "event": "llm/cli-tool-emulation-reply",
+      "surface": false,
+      "digest": "36c5f0056bdb4ff6b82ef7bbc2ea21069f8f66e8473b42d0b8c903dde5cdbbac",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 4,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 5,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "attempt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "calls",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "discardedChars",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "lenientCalls",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "model",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "provider",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "rejection",
+                "type": 3,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "llm/cli-tool-emulation-reply"
+          }
+        ]
+      }
+    },
+    {
       "key": "event:llm/retry",
       "kind": "event",
       "event": "llm/retry",
@@ -28458,6 +28558,11 @@
       "sources": []
     },
     {
+      "digest": "36c5f0056bdb4ff6b82ef7bbc2ea21069f8f66e8473b42d0b8c903dde5cdbbac",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "36d6a9a871d949ea4f3edd919d81d66aa69218bebef38899d2a1282c39420a1f",
       "names": [],
       "sources": []
@@ -31004,6 +31109,15 @@
       "sources": []
     },
     {
+      "digest": "ad4c082db11171441e0fb9a69ec4e29809cee409865ba29f3aec1335df33b92a",
+      "names": [
+        "packages/llm/llm-claude-cli/src/types.ts#CliToolEmulationReply"
+      ],
+      "sources": [
+        "packages/llm/llm-claude-cli/src/types.ts:122"
+      ]
+    },
+    {
       "digest": "ad8ab7a29e5dc0b409ccb622038971ee408aace79e767e0101f24b1792b19018",
       "names": [
         "packages/experimental/stationarity-guard/src/types.ts#StationarityAction"
@@ -32388,6 +32502,11 @@
       "sources": [
         "packages/context/session-reference/src/types.ts:13"
       ]
+    },
+    {
+      "digest": "f56e4d84999309adf2ec56d64205d4e413f4a085b0dd6e443868ae34e54c75fc",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "f5fe6bb67ac73df04ced9ba56a75e179a7ff753a3c13856d11f97ceca749cf31",

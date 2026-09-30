@@ -19,7 +19,6 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import { ClaudeCliAdapter, EMULATION_NOT_LOGGABLE } from './adapter.ts'
 import type { EmulationRecorder } from './adapter.ts'
 import { ClaudeCliCatalog } from './catalog.ts'
-import type { CliToolEmulation } from './types.ts'
 
 export {
   ClaudeCliAdapter,
@@ -36,6 +35,7 @@ export {
   TOOL_CALL_MALFORMED,
   TOOL_CALL_TOO_LARGE,
   TOOL_CALL_TRUNCATED,
+  TOOL_CALL_UNFENCED,
   TOOL_CALL_UNKNOWN_TOOL,
 } from './emulate.ts'
 export type {
@@ -44,6 +44,7 @@ export type {
   ClaudeCliModelRow,
   CliToolEmulation,
   CliToolEmulationCorrection,
+  CliToolEmulationReply,
 } from './types.ts'
 
 /** Plugin name, and the settings namespace fallback when the row declares no id. */
@@ -89,8 +90,16 @@ export interface Config {
   toolCallMaxCalls?: number
   /** Bytes accepted inside one tool-call block; the preamble states this number. */
   toolCallMaxBytes?: number
-  /** Correction runs allowed after a rejected reply that produced no output yet. */
+  /** Correction runs allowed after a rejected reply that handed over no answer text yet. */
   toolCallRetries?: number
+  /**
+   * Accept a call the model wrote in one of three near-miss forms instead of rejecting it. Two are
+   * JSON: a block opened with `json` or no info string, and a bare object followed by a closing
+   * fence, either holding exactly `name` and `arguments` with object `arguments`. The third is a
+   * complete XML `<invoke>` element each of whose parameters the tool declares one type for. All
+   * three must name a declared tool; `false` rejects them as `TOOL_CALL_UNFENCED`.
+   */
+  toolCallLenient?: boolean
 }
 
 /** Config with every default applied. */
@@ -112,6 +121,7 @@ export const Config: z<Config, ValidConfig> = z.object({
   toolCallMaxCalls: z.natural().min(1).default(4),
   toolCallMaxBytes: z.natural().min(1).default(32_768),
   toolCallRetries: z.natural().default(1),
+  toolCallLenient: z.boolean().default(true),
 })
 
 /**
@@ -131,10 +141,11 @@ function declaredRoutes(ctx: Context): ReadonlySet<string> {
  * needs a log. A request that names a session the store cannot reach fails loud, because the
  * emulation preamble is model-visible input and the Harness requires it to be in the log.
  * @param ctx - the plugin context.
- * @returns a recorder that appends one `llm/cli-tool-emulation` event.
+ * @returns a recorder that appends one `llm/cli-tool-emulation` event before each run and one
+ *   `llm/cli-tool-emulation-reply` event after it.
  */
 function recorder(ctx: Context): EmulationRecorder {
-  return (sessionId: SessionId, record: CliToolEmulation): void => {
+  const reach = (sessionId: SessionId) => {
     const session = ctx.get('sessions')?.get(sessionId)
     if (session === undefined) {
       throw new LlmError(
@@ -142,7 +153,11 @@ function recorder(ctx: Context): EmulationRecorder {
         EMULATION_NOT_LOGGABLE,
       )
     }
-    session.append('llm/cli-tool-emulation', record)
+    return session
+  }
+  return {
+    run: (sessionId, record) => { reach(sessionId).append('llm/cli-tool-emulation', record) },
+    reply: (sessionId, record) => { reach(sessionId).append('llm/cli-tool-emulation-reply', record) },
   }
 }
 
@@ -182,6 +197,7 @@ export function apply(ctx: Context, config: ValidConfig): void {
     toolCallMaxCalls: config.toolCallMaxCalls,
     toolCallMaxBytes: config.toolCallMaxBytes,
     toolCallRetries: config.toolCallRetries,
+    toolCallLenient: config.toolCallLenient,
     recordEmulation: recorder(ctx),
   })
 

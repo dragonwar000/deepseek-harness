@@ -45,6 +45,7 @@ import type {
   ClaudeCliModelRow,
   CliToolEmulation,
   CliToolEmulationCorrection,
+  CliToolEmulationReply,
 } from './types.ts'
 import { ClaudeCliStreamDecoder } from './wire.ts'
 
@@ -59,13 +60,26 @@ export const EMULATION_NOT_LOGGABLE = 'EMULATION_NOT_LOGGABLE'
 type PromptPlan = Extract<ToolPlan, { kind: 'prompt' }>
 
 /**
- * Records one emulated CLI run in the session log before that run happens.
+ * Records the emulated CLI runs of a request in the session log.
  *
- * The plugin binds this to the session store. It throws a named {@link LlmError} rather than
- * skipping the record, because the preamble is model-visible input and the Harness requires every
- * model-visible input to be reconstructable from the log.
+ * The plugin binds this to the session store. Either method throws a named {@link LlmError} rather
+ * than skipping the record, because the preamble is model-visible input and the Harness requires
+ * every model-visible input to be reconstructable from the log.
  */
-export type EmulationRecorder = (sessionId: Branded<'SessionId'>, record: CliToolEmulation) => void
+export interface EmulationRecorder {
+  /**
+   * Record one run before it happens, so its preamble and correction notice are logged first.
+   * @param sessionId - the session the request belongs to.
+   * @param record - the run's model-visible additions.
+   */
+  run(sessionId: Branded<'SessionId'>, record: CliToolEmulation): void
+  /**
+   * Record how one run's reply was read, after the run.
+   * @param sessionId - the session the request belongs to.
+   * @param record - the calls accepted, the text dropped, and the rejection if there was one.
+   */
+  reply(sessionId: Branded<'SessionId'>, record: CliToolEmulationReply): void
+}
 
 /** Everything the adapter needs; each value is a validated `Config` field upstream. */
 export interface ClaudeCliAdapterDeps {
@@ -87,16 +101,21 @@ export interface ClaudeCliAdapterDeps {
   readonly toolCallMaxCalls: number
   /** Bytes accepted inside one tool-call block. */
   readonly toolCallMaxBytes: number
-  /** Correction runs allowed after a rejected reply that produced no output yet. */
+  /** Correction runs allowed after a rejected reply that handed over no answer text yet. */
   readonly toolCallRetries: number
+  /** Whether a call in one of the three unambiguous near-miss forms is accepted rather than rejected. */
+  readonly toolCallLenient: boolean
   readonly recordEmulation: EmulationRecorder
 }
 
-/** What one CLI run of an emulated request produced. */
+/** How one emulated reply was read; absent for a request that declared no tools. */
+type ReplyReading = Pick<CliToolEmulationReply, 'calls' | 'lenientCalls' | 'discardedChars' | 'rejection'>
+
+/** What one CLI run produced. */
 type AttemptOutcome =
-  | { readonly kind: 'done' }
+  | { readonly kind: 'done'; readonly reading: ReplyReading | undefined }
   /** The reply was rejected before anything reached the consumer, so it can be replaced. */
-  | { readonly kind: 'retry'; readonly failure: EmulationFailure }
+  | { readonly kind: 'retry'; readonly failure: EmulationFailure; readonly reading: ReplyReading }
 
 /** A counting gate over concurrent CLI children, so a busy session cannot fork a process per turn. */
 class Concurrency {
@@ -216,9 +235,10 @@ export class ClaudeCliAdapter extends LlmAdapter {
   /**
    * Serve one request, retrying a rejected emulated reply while nothing has reached the consumer.
    *
-   * A correction run is only possible before the first text or tool-call chunk is handed over:
-   * afterwards the consumer has seen output that a second run would contradict, so a rejection can
-   * only be a named terminal failure.
+   * A correction run is only possible before the first text chunk is handed over: afterwards the
+   * consumer has seen answer text that a second run would contradict, so a rejection can only be a
+   * named terminal failure. A reply that has produced only tool calls is held back until it ends,
+   * so a rejection later in the same reply replaces it whole and none of its calls run.
    */
   private async *run(options: GenerateOptions, plan: ToolPlan): AsyncGenerator<StreamChunk> {
     const prompt = plan.kind === 'prompt' ? plan : undefined
@@ -237,6 +257,7 @@ export class ClaudeCliAdapter extends LlmAdapter {
           correction?.text,
         )
         const outcome = yield* this.attempt(launch, options, projected, prompt)
+        this.recordReply(options, attempt, outcome.reading)
         if (outcome.kind === 'done') return
         if (attempt >= runs) {
           yield { type: 'finish', reason: { kind: 'error', failure: outcome.failure } }
@@ -279,7 +300,7 @@ export class ClaudeCliAdapter extends LlmAdapter {
       for await (const line of run.lines()) {
         take(decoder.push(line))
         if (emulator?.failure !== undefined && !emulator.committed) {
-          return { kind: 'retry', failure: emulator.failure }
+          return { kind: 'retry', failure: emulator.failure, reading: reading(emulator) }
         }
         if (emulator === undefined || emulator.committed) yield* pending.splice(0)
         // The CLI emits one result per user turn and this run writes exactly one, so the first
@@ -290,9 +311,10 @@ export class ClaudeCliAdapter extends LlmAdapter {
         const tail = run.stderrTail().trim()
         take(decoder.finish().map(chunk => withStderrTail(chunk, tail)))
       }
-      // A reply that handed over nothing — reasoning only, say — still has to reach the consumer.
+      // A reply that handed over no answer text — tool calls only, or reasoning only — reaches the
+      // consumer here, once it has ended without a rejection.
       yield* pending.splice(0)
-      return { kind: 'done' }
+      return { kind: 'done', reading: emulator === undefined ? undefined : reading(emulator) }
     }
     finally {
       await run.dispose()
@@ -313,7 +335,7 @@ export class ClaudeCliAdapter extends LlmAdapter {
     // A request with no session identity has no session log; its one-shot caller owns whatever
     // record it keeps, exactly as it does for the messages it assembled.
     if (sessionId === undefined) return
-    this.deps.recordEmulation(sessionId, {
+    this.deps.recordEmulation.run(sessionId, {
       provider: options.provider,
       model: options.model,
       template: PREAMBLE_TEMPLATE,
@@ -322,6 +344,31 @@ export class ClaudeCliAdapter extends LlmAdapter {
       attempt,
       ...(correction === undefined ? {} : { correction }),
     })
+  }
+
+  /**
+   * Log how one emulated run's reply was read, after the run.
+   * @throws LlmError `EMULATION_NOT_LOGGABLE` when the request names a session the log cannot reach.
+   */
+  private recordReply(options: GenerateOptions, attempt: number, read: ReplyReading | undefined): void {
+    const sessionId = options.sessionId
+    if (read === undefined || sessionId === undefined) return
+    this.deps.recordEmulation.reply(sessionId, {
+      provider: options.provider,
+      model: options.model,
+      attempt,
+      ...read,
+    })
+  }
+}
+
+/** Read the counts and the rejection off the emulator that finished reading one reply. */
+function reading(emulator: ToolCallEmulator): ReplyReading {
+  return {
+    calls: emulator.calls,
+    lenientCalls: emulator.lenientCalls,
+    discardedChars: emulator.discardedChars,
+    ...(emulator.failure === undefined ? {} : { rejection: emulator.failure.code }),
   }
 }
 
