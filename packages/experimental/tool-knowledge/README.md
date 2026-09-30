@@ -65,6 +65,7 @@ Loading fails with a `tool-knowledge:` error when `evidenceTools` is empty or ha
 - **Always asked.** A `tools/pre-execute` listener registered with `prepend: true` calls `next()` first and turns an `allow` for `knowledge_write` into `ask`, so no earlier listener's `allow` skips the question. Without an approval provider the registry denies the call. Child sessions reject every approval, so `knowledge_write` in a subagent or a graph node is always denied.
 - **Every attempt is logged.** A write that reaches the store appends one `knowledge/write` record with the cited seqs and files, whether the store wrote or refused the page; the `@deepseek-ai/dsh-experimental-knowledge` invariant checks the citations of every applied record.
 - **Not a session search.** `knowledge_query` ranks store pages only; earlier sessions are searched with the session query tools.
+- **Retrieval floor.** [`tests/retrieval-eval.spec.ts`](tests/retrieval-eval.spec.ts) runs `knowledge_query` with `limit: 3` over a 20-page fixture wiki and 20 held-out questions ([`tests/retrieval-fixture.ts`](tests/retrieval-fixture.ts)) and requires a mean recall@3 of at least 0.8; the wiki filesystem ranking measured 0.825 when the floor was set. It calls no model. A ranking change that lowers recall below the floor fails the unit tests; raise the floor when ranking improves.
 - **No `./invariant` companion.** No invariant companion is published because every record it writes is a knowledge/write whose citations the @deepseek-ai/dsh-experimental-knowledge invariant checks.
 
 ### Source map

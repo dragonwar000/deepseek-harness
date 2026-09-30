@@ -65,6 +65,7 @@ kind: "package-reference"
 - **总是询问。** 以 `prepend: true` 注册的 `tools/pre-execute` 监听器先调用 `next()`，再把 `knowledge_write` 的 `allow` 改为 `ask`，因此更早的监听器返回的 `allow` 无法跳过询问。没有审批提供方时，注册表会拒绝调用。子会话会拒绝所有审批，因此子代理或 graph 节点中的 `knowledge_write` 总是被拒绝。
 - **每次尝试都记录。** 到达知识库的写入会追加一条带被引用 seq 与文件的 `knowledge/write` 记录，无论知识库写入还是拒绝了该页面；`@deepseek-ai/dsh-experimental-knowledge` 不变量检查每条已应用记录的引用。
 - **不是会话搜索。** `knowledge_query` 只对知识库页面排序；搜索之前的会话使用会话查询工具。
+- **检索下限。** [`tests/retrieval-eval.spec.ts`](tests/retrieval-eval.spec.ts) 以 `limit: 3` 在 20 页的夹具 wiki 与 20 个留出问题（[`tests/retrieval-fixture.ts`](tests/retrieval-fixture.ts)）上运行 `knowledge_query`，并要求平均 recall@3 至少为 0.8；设定该下限时，wiki 文件系统排序的实测值为 0.825。它不调用模型。使召回低于下限的排序改动会让单元测试失败；排序改进后应提高下限。
 - **没有 `./invariant` 伴随插件。** 本包不发布不变量伴随插件，因为它写入的每条记录都是 knowledge/write，其出处由 @deepseek-ai/dsh-experimental-knowledge 不变量检查。
 
 ### 源码地图
