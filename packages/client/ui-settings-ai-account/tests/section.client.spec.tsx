@@ -15,13 +15,17 @@ const claudeOther = { id: 'c2' as AiAccountId, kind: 'claude' as const, email: '
 const chatgpt = { id: 'g1' as AiAccountId, kind: 'chatgpt' as const, email: null, plan: null, createdAt: 3, isDefault: true }
 
 function attempt(value: Partial<AiAccountSignInView>): AiAccountSignInView {
-  return { id: 'attempt' as AiAccountSignInId, kind: 'claude', phase: 'starting', url: null, userCode: null, errorCode: null, ...value }
+  return {
+    id: 'attempt' as AiAccountSignInId, kind: 'claude', phase: 'starting', url: null, userCode: null,
+    awaitingCode: false, errorCode: null, ...value,
+  }
 }
 
 function mount(view: AiAccountsView | null, copy: Record<AiAccountLocaleKey, string> = en, failed = false) {
   const operations = {
     startSignIn: vi.fn<AiAccountSectionInjected['startSignIn']>(() => Promise.resolve()),
     cancelSignIn: vi.fn<AiAccountSectionInjected['cancelSignIn']>(() => Promise.resolve()),
+    submitSignInCode: vi.fn<AiAccountSectionInjected['submitSignInCode']>(() => Promise.resolve()),
     setDefault: vi.fn<AiAccountSectionInjected['setDefault']>(() => Promise.resolve()),
     remove: vi.fn<AiAccountSectionInjected['remove']>(() => Promise.resolve()),
   }
@@ -129,6 +133,43 @@ it('shows the Claude browser link while waiting and cancels the attempt', async 
   expect(operations.cancelSignIn).toHaveBeenCalledWith('attempt')
 })
 
+it('takes the authorization code the browser showed and hands it to the waiting login command', async () => {
+  const url = 'https://claude.ai/oauth/authorize?state=x'
+  const operations = mount({ accounts: [], signIn: attempt({ phase: 'waiting-browser', url, awaitingCode: true }) })
+  const card = within(screen.getByRole('status'))
+  expect(card.getByText(en.codeHint)).toBeTruthy()
+  const field = card.getByRole('textbox', { name: en.codeLabel })
+  // An empty or blank code is never sent: the CLI would consume the prompt and fail the sign-in.
+  expect(card.getByRole('button', { name: en.codeSubmit }).hasAttribute('disabled')).toBe(true)
+  await act(async () => { fireEvent.change(field, { target: { value: '   ' } }) })
+  expect(card.getByRole('button', { name: en.codeSubmit }).hasAttribute('disabled')).toBe(true)
+  await act(async () => { fireEvent.change(field, { target: { value: '  pasted-code  ' } }) })
+  await act(async () => { fireEvent.click(card.getByRole('button', { name: en.codeSubmit })) })
+  expect(operations.submitSignInCode).toHaveBeenCalledWith('attempt', 'pasted-code')
+  expect((field as HTMLInputElement).value).toBe('')
+  // Enter submits, because a pasted code ends in one.
+  await act(async () => { fireEvent.change(field, { target: { value: 'second-code' } }) })
+  await act(async () => { fireEvent.keyDown(field, { key: 'Enter' }) })
+  expect(operations.submitSignInCode).toHaveBeenLastCalledWith('attempt', 'second-code')
+  await act(async () => { fireEvent.keyDown(field, { key: 'Enter' }) })
+  expect(operations.submitSignInCode).toHaveBeenCalledTimes(2)
+  await act(async () => { fireEvent.change(field, { target: { value: 'third' } }) })
+  await act(async () => { fireEvent.keyDown(field, { key: 'a' }) })
+  expect(operations.submitSignInCode).toHaveBeenCalledTimes(2)
+})
+
+it('offers no code field to a ChatGPT attempt or a Claude attempt that reads none', () => {
+  mount({ accounts: [], signIn: attempt({ kind: 'chatgpt', phase: 'waiting-device-code', userCode: 'ABCD-EFGHI' }) })
+  expect(screen.queryByRole('textbox')).toBeNull()
+  cleanup()
+  mount({ accounts: [], signIn: attempt({ phase: 'verifying' }) }, zh)
+  expect(screen.queryByRole('textbox')).toBeNull()
+  cleanup()
+  mount({ accounts: [], signIn: attempt({ phase: 'waiting-browser', awaitingCode: true }) }, zh)
+  expect(screen.getByRole('textbox', { name: zh.codeLabel })).toBeTruthy()
+  expect(screen.getByText(zh.codeHint)).toBeTruthy()
+})
+
 it('shows the ChatGPT verification link and one-time code, and progress phases without links', () => {
   const url = 'https://auth.openai.com/codex/device'
   const waiting = mount({ accounts: [], signIn: attempt({ kind: 'chatgpt', phase: 'waiting-device-code', url, userCode: null }) })
@@ -159,6 +200,7 @@ it('explains each sign-in failure and hides finished attempts', () => {
     [{ errorCode: 'login-failed' }, en.errorLoginFailed],
     [{ errorCode: 'timeout' }, en.errorTimeout],
     [{ errorCode: 'identity-unavailable' }, en.errorIdentity],
+    [{ errorCode: 'store-failed' }, en.errorStoreFailed],
     [{ errorCode: null }, en.errorLoginFailed],
   ]
   for (const [value, message] of cases) {

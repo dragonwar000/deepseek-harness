@@ -29,12 +29,13 @@ Account consumers list Claude and ChatGPT subscription accounts, add one through
 | `getState()` | Complete `AiAccountsView`: accounts ordered by kind, then registration time, plus the latest sign-in attempt |
 | `startSignIn(kind)` | Joins the active attempt, or starts the official CLI login for a new account; returns before the user authorizes |
 | `cancelSignIn(id)` | Cancels the named attempt and discards its unfinished directory; a stale id changes nothing |
+| `submitSignInCode(id, code)` | Hands the authorization code the vendor's browser page displayed to a login command reading one; a stale id or an attempt reading none changes nothing |
 | `setDefault(id)` | Makes one account the default of its kind |
 | `remove(id)` | Signs the account out through its CLI, deletes its directory, and forgets it; removing the default promotes the oldest remaining account of that kind |
 | `watch(signal)` | Complete snapshots starting with the current one; ending the subscription never cancels a sign-in |
 | `defaultHome(kind)` | Host-only absolute directory of the default account, or `undefined` when the kind has none |
 
-An attempt moves through `starting`, then `waiting-browser` (Claude) or `waiting-device-code` (ChatGPT), then `verifying`, and ends as `succeeded`, `cancelled`, or `failed` with an `errorCode` of `executable-missing`, `login-failed`, `timeout`, or `identity-unavailable`. `url` carries the browser or verification URL the CLI printed and `userCode` the Codex one-time code. The first account of a kind becomes its default. Every default change, including to none, emits `ai-account/default-changed` with the kind after the change is stored.
+An attempt moves through `starting`, then `waiting-browser` (Claude) or `waiting-device-code` (ChatGPT), then `verifying`, and ends as `succeeded`, `cancelled`, or `failed` with an `errorCode` of `executable-missing`, `login-failed`, `timeout`, `identity-unavailable`, or `store-failed`. `login-failed` is the CLI's own refusal; `store-failed` means the CLI signed in but the account could not be recorded, so it was signed back out. `url` carries the browser or verification URL the CLI printed and `userCode` the Codex one-time code. `awaitingCode` is set while the login command reads an authorization code from its terminal, which is the channel `submitSignInCode` answers; the Claude browser page ends on such a code, while ChatGPT polls and never reads one. The first account of a kind becomes its default. Every default change, including to none, emits `ai-account/default-changed` with the kind after the change is stored.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation

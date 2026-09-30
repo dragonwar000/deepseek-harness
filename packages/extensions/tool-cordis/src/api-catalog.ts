@@ -408,6 +408,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the snapshot after the attempt settles.',
       },
       {
+        signature: 'abstract submitSignInCode(id: AiAccountSignInId, code: string): Promise<AiAccountsView>',
+        description: 'Deliver the authorization code the vendor\'s browser page displayed to the login command that is reading one, completing the attempt. Implementations pass the code to the official CLI and never store or inspect it.',
+        parameters: [{ name: 'id', description: 'attempt identity from this Host; any other id, or an attempt whose `awaitingCode` is false, leaves state unchanged.' }, { name: 'code', description: 'code the user copied from the vendor\'s page.' }],
+        returns: 'the snapshot after the code is delivered, without waiting for the CLI to finish.',
+      },
+      {
         signature: 'abstract setDefault(id: AiAccountId): Promise<AiAccountsView>',
         description: 'Make one account the default of its kind.',
         parameters: [{ name: 'id', description: 'registered account.' }],
@@ -4684,7 +4690,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AiAccountSignInError',
-    declaration: 'export type AiAccountSignInError = \'executable-missing\' | \'login-failed\' | \'timeout\' | \'identity-unavailable\';',
+    declaration: 'export type AiAccountSignInError = \'executable-missing\' | \'login-failed\' | \'timeout\' | \'identity-unavailable\' | \'store-failed\';',
   },
   {
     name: 'AiAccountSignInId',
@@ -4696,7 +4702,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'AiAccountSignInView',
-    declaration: 'export interface AiAccountSignInView {\n    readonly id: AiAccountSignInId;\n    readonly kind: AiAccountKind;\n    readonly phase: AiAccountSignInPhase;\n    readonly url: string | null;\n    readonly userCode: string | null;\n    readonly errorCode: AiAccountSignInError | null;\n}',
+    declaration: 'export interface AiAccountSignInView {\n    readonly id: AiAccountSignInId;\n    readonly kind: AiAccountKind;\n    readonly phase: AiAccountSignInPhase;\n    readonly url: string | null;\n    readonly userCode: string | null;\n    readonly awaitingCode: boolean;\n    readonly errorCode: AiAccountSignInError | null;\n}',
   },
   {
     name: 'AiAccountsView',

@@ -116,3 +116,21 @@
 .cancel {
   align-self: flex-start;
 }
+
+.codeForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.codeEntry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The Input primitive owns its wrapper element, so the entry row stretches it from here. */
+.codeEntry > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}

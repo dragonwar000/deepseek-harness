@@ -22,6 +22,13 @@ export interface KindCli {
   /** Whether the login output carries a one-time device code. */
   readonly deviceCode: boolean
   /**
+   * Whether the login command reads an authorization code from its terminal. This is a
+   * per-kind fact rather than a match against the CLI's prompt text, so a reworded prompt
+   * cannot hide the field the user needs. Claude's browser page ends on a code the user
+   * copies back; Codex polls for authorization and reads nothing.
+   */
+  readonly awaitsCode: boolean
+  /**
    * Read the signed-in identity from a finished status command.
    * @param exitCode - status command exit code.
    * @param stdout - collected standard output.
@@ -50,6 +57,7 @@ export const CLI: Readonly<Record<AiAccountKind, KindCli>> = {
     logoutArgs: ['auth', 'logout'],
     waitingPhase: 'waiting-browser',
     deviceCode: false,
+    awaitsCode: true,
     parseIdentity(exitCode, stdout) {
       if (exitCode !== 0) return undefined
       let raw: unknown
@@ -71,6 +79,7 @@ export const CLI: Readonly<Record<AiAccountKind, KindCli>> = {
     logoutArgs: ['logout'],
     waitingPhase: 'waiting-device-code',
     deviceCode: true,
+    awaitsCode: false,
     parseIdentity(exitCode, stdout, stderr) {
       const text = `${stdout}\n${stderr}`
       if (exitCode !== 0 || !/logged in/i.test(text)) return undefined

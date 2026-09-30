@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import type { AiAccountId, AiAccountKind, AiAccountSignInId, AiAccountsView } from '@deepseek-ai/dsh-ai-account'
+import type { SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PlatformAiAccount, { resolveConfig, type Config } from '../src/index.ts'
 
@@ -66,13 +67,22 @@ function calls(bin: string): Call[] {
   return existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line) as Call) : []
 }
 
+/**
+ * Authorize the waiting login the way its own flow does: Claude reads the code the
+ * browser page showed from its terminal, and Codex polls the authorization service.
+ */
+async function authorize(fixture: Fixture, kind: AiAccountKind, id: AiAccountSignInId, code = 'browser-code'): Promise<void> {
+  if (kind === 'claude') await fixture.service.submitSignInCode(id, code)
+  else writeFileSync(join(fixture.bin, 'codex.approve'), '')
+}
+
 async function addAccount(fixture: Fixture, kind: AiAccountKind): Promise<AiAccountId> {
   const before = new Set((await fixture.service.getState()).accounts.map(account => account.id))
   const started = await fixture.service.startSignIn(kind)
-  const attempt = started.signIn?.id
+  const attempt = started.signIn!.id
   await until(fixture.service, view => view.signIn !== null && view.signIn.id === attempt && view.signIn.url !== null
     && (kind === 'claude' || view.signIn.userCode !== null))
-  writeFileSync(join(fixture.bin, `${kind === 'claude' ? 'claude' : 'codex'}.approve`), '')
+  await authorize(fixture, kind, attempt)
   const done = await until(fixture.service, view => view.signIn !== null && view.signIn.id === attempt && view.signIn.phase === 'succeeded')
   const added = done.accounts.find(account => !before.has(account.id))
   if (added === undefined) throw new Error('no account was added')
@@ -87,9 +97,14 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     const joined = await fixture.service.startSignIn('chatgpt')
     expect(joined.signIn?.id).toBe(started.signIn?.id)
     const waiting = await until(fixture.service, view => view.signIn?.url !== null)
-    expect(waiting.signIn).toMatchObject({ phase: 'waiting-browser', url: 'https://claude.ai/oauth/authorize?code=true&state=fake', userCode: null })
-    writeFileSync(join(fixture.bin, 'claude.approve'), '')
+    expect(waiting.signIn).toMatchObject({
+      phase: 'waiting-browser', url: 'https://claude.ai/oauth/authorize?code=true&state=fake', userCode: null, awaitingCode: true,
+    })
+    await fixture.service.submitSignInCode(started.signIn!.id, 'browser-code')
     const done = await until(fixture.service, view => view.signIn?.phase === 'succeeded')
+    // The code reached the login command's own terminal, which is the only channel that completes the flow.
+    expect(readFileSync(join(fixture.bin, 'submitted-code'), 'utf8')).toBe('browser-code')
+    expect(done.signIn?.awaitingCode).toBe(false)
     const [account] = done.accounts
     expect(done.accounts).toHaveLength(1)
     expect(account).toMatchObject({ kind: 'claude', email: 'claude-user@example.com', plan: 'max', isDefault: true })
@@ -110,7 +125,9 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     const fixture = await mount()
     await fixture.service.startSignIn('chatgpt')
     const prompted = await until(fixture.service, view => view.signIn?.userCode !== null)
-    expect(prompted.signIn).toMatchObject({ phase: 'waiting-device-code', url: 'https://auth.openai.com/codex/device', userCode: 'ABCD-EFGHI' })
+    expect(prompted.signIn).toMatchObject({
+      phase: 'waiting-device-code', url: 'https://auth.openai.com/codex/device', userCode: 'ABCD-EFGHI', awaitingCode: false,
+    })
     writeFileSync(join(fixture.bin, 'codex.approve'), '')
     await until(fixture.service, view => view.signIn?.phase === 'succeeded')
     const first = (await fixture.service.getState()).accounts[0]!
@@ -186,6 +203,137 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     expect(calls(fixture.bin)).toEqual([])
   })
 
+  it('runs the login command on a terminal, which closed standard input cannot replace', async () => {
+    // The disposition this provider used before: fd 0 on /dev/null. Every official login
+    // command renders a terminal interface and reads its confirmation from one, so it
+    // refuses this launch outright — the sign-in could never be confirmed on it.
+    const fixture = await mount()
+    const handle = fixture.ctx.get('subprocess')!.spawn({
+      argv: [join(fixture.bin, 'claude'), 'auth', 'login', '--claudeai'],
+      cwd: fixture.root,
+      env: { CLAUDE_CONFIG_DIR: fixture.root },
+      stdio: { stdin: 'ignore', stdout: { maxBytes: 4096 }, stderr: { maxBytes: 4096 } },
+      graceMs: 1_000,
+      signal: AbortSignal.timeout(20_000),
+    })
+    const { exitCode } = await handle.done
+    expect(exitCode).toBe(2)
+    expect(handle.collected.stderr?.readFrom(0).text).toContain('raw mode is not supported')
+    // On a terminal the same command prints its URL and takes the code it reads there.
+    await addAccount(fixture, 'claude')
+    expect(readFileSync(join(fixture.bin, 'submitted-code'), 'utf8')).toBe('browser-code')
+  })
+
+  it('records a login terminal that cannot be cleaned up without losing the sign-in', async () => {
+    const fixture = await mount()
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    cleanups.push(() =>{  info.mockRestore() })
+    const runtime = fixture.ctx.get('subprocess')!
+    const real = runtime.spawnTerminal.bind(runtime)
+    const spawnTerminal = vi.spyOn(runtime, 'spawnTerminal').mockImplementation(async (spec) => {
+      const handle = await real(spec)
+      const wrapped: SubprocessTerminalHandle = {
+        pid: handle.pid,
+        output: handle.output,
+        done: handle.done,
+        write: data => handle.write(data),
+        resize: (cols, rows) => handle.resize(cols, rows),
+        inspectForeground: () => handle.inspectForeground(),
+        inspectActivity: () => handle.inspectActivity(),
+        signalForeground: signal => handle.signalForeground(signal),
+        terminate: async () => { await handle.terminate(); throw new Error('terminate exploded') },
+      }
+      return wrapped
+    })
+    // The account was already written when cleanup failed, so the attempt keeps its outcome.
+    const id = await addAccount(fixture, 'claude')
+    expect((await fixture.service.getState()).accounts.map(account => account.id)).toEqual([id])
+    expect(info).toHaveBeenCalledWith('[ai-account] login terminal cleanup failed', { kind: 'claude', error: 'terminate exploded' })
+    spawnTerminal.mockRestore()
+  })
+
+  it('stops a login whose deadline passed while its terminal was still being allocated', async () => {
+    // The spawn signal only cancels allocation. An attempt aborted in the window between
+    // a published terminal and the abort listener would otherwise run to no deadline at all.
+    const fixture = await mount({ config: { loginTimeoutMs: 1_000 } })
+    const runtime = fixture.ctx.get('subprocess')!
+    const real = runtime.spawnTerminal.bind(runtime)
+    const spawnTerminal = vi.spyOn(runtime, 'spawnTerminal').mockImplementation(async (spec) => {
+      const handle = await real(spec)
+      await new Promise(resolve => setTimeout(resolve, 1_500))
+      return handle
+    })
+    await fixture.service.startSignIn('claude')
+    const failed = await until(fixture.service, view => view.signIn?.phase === 'failed')
+    expect(failed.signIn?.errorCode).toBe('timeout')
+    expect(existsSync(join(fixture.root, 'claude'))).toBe(false)
+    spawnTerminal.mockRestore()
+  })
+
+  it('leaves no empty kind directory behind when an attempt never registers an account', async () => {
+    const fixture = await mount()
+    writeFileSync(join(fixture.bin, 'claude.behavior'), 'login-fails')
+    await fixture.service.startSignIn('claude')
+    await until(fixture.service, view => view.signIn?.phase === 'failed')
+    // An empty `<root>/claude/` would look like a kind that already has accounts.
+    expect(existsSync(join(fixture.root, 'claude'))).toBe(false)
+    writeFileSync(join(fixture.bin, 'claude.behavior'), '')
+    const kept = await addAccount(fixture, 'claude')
+    const removed = await addAccount(fixture, 'claude')
+    // A kind directory that still holds another account survives one account's removal.
+    await fixture.service.remove(removed)
+    expect(existsSync(join(fixture.root, 'claude', kept))).toBe(true)
+    await fixture.service.remove(kept)
+    expect(existsSync(join(fixture.root, 'claude'))).toBe(false)
+  })
+
+  it('reports a failed account write as its own cause and signs the CLI back out', async () => {
+    const fixture = await mount()
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    cleanups.push(() =>{  info.mockRestore() })
+    const started = await fixture.service.startSignIn('claude')
+    await until(fixture.service, view => view.signIn?.phase === 'waiting-browser')
+    // The CLI signs in and only this Harness's own write fails.
+    chmodSync(fixture.root, 0o500)
+    // Cleanups run last-registered first, so this restores write access before the root is deleted.
+    cleanups.push(() =>{  chmodSync(fixture.root, 0o700) })
+    await fixture.service.submitSignInCode(started.signIn!.id, 'browser-code')
+    const failed = await until(fixture.service, view => view.signIn?.phase === 'failed')
+    // Not `login-failed`: the vendor did sign in, so the cause must stay distinguishable.
+    expect(failed.signIn?.errorCode).toBe('store-failed')
+    expect(failed.accounts).toEqual([])
+    expect(info).toHaveBeenCalledWith('[ai-account] storing the signed-in account failed', expect.objectContaining({ kind: 'claude' }))
+    // The directory would otherwise keep a credential no account record points at.
+    expect(calls(fixture.bin).at(-1)).toMatchObject({ args: 'auth logout' })
+    expect(existsSync(join(fixture.root, 'claude', started.signIn!.id))).toBe(false)
+  })
+
+  it('ignores a code for a stale attempt, an attempt reading none, and a rejected code', async () => {
+    const fixture = await mount()
+    // No attempt at all, then an attempt that reads no code.
+    expect((await fixture.service.submitSignInCode('stale' as AiAccountSignInId, 'x')).signIn).toBeNull()
+    const codex = await fixture.service.startSignIn('chatgpt')
+    await until(fixture.service, view => view.signIn?.phase === 'waiting-device-code')
+    const unchanged = await fixture.service.submitSignInCode(codex.signIn!.id, 'x')
+    expect(unchanged.signIn).toMatchObject({ phase: 'waiting-device-code', awaitingCode: false })
+    expect(existsSync(join(fixture.bin, 'submitted-code'))).toBe(false)
+    await fixture.service.cancelSignIn(codex.signIn!.id)
+
+    const started = await fixture.service.startSignIn('claude')
+    await until(fixture.service, view => view.signIn?.phase === 'waiting-browser')
+    // A stale id never reaches the live attempt's terminal.
+    await fixture.service.submitSignInCode('stale' as AiAccountSignInId, 'x')
+    expect(existsSync(join(fixture.bin, 'submitted-code'))).toBe(false)
+    await fixture.service.cancelSignIn(started.signIn!.id)
+
+    writeFileSync(join(fixture.bin, 'claude.behavior'), 'code-rejected')
+    const rejected = await fixture.service.startSignIn('claude')
+    await until(fixture.service, view => view.signIn !== null && view.signIn.id === rejected.signIn?.id && view.signIn.phase === 'waiting-browser')
+    await fixture.service.submitSignInCode(rejected.signIn!.id, 'wrong-code')
+    const failed = await until(fixture.service, view => view.signIn !== null && view.signIn.id === rejected.signIn?.id && view.signIn.phase === 'failed')
+    expect(failed.signIn).toMatchObject({ errorCode: 'login-failed', awaitingCode: false })
+  })
+
   it('reports login failure, a missing executable, an unreadable identity, and the login deadline', async () => {
     const fixture = await mount({ config: { loginTimeoutMs: 1_000 } })
     writeFileSync(join(fixture.bin, 'claude.behavior'), 'login-fails')
@@ -197,7 +345,7 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     writeFileSync(join(fixture.bin, 'claude.behavior'), 'status-garbage')
     const started = await fixture.service.startSignIn('claude')
     await until(fixture.service, view => view.signIn !== null && view.signIn.id === started.signIn?.id && view.signIn.phase === 'waiting-browser')
-    writeFileSync(join(fixture.bin, 'claude.approve'), '')
+    await fixture.service.submitSignInCode(started.signIn!.id, 'browser-code')
     const unidentified = await until(fixture.service, view => view.signIn !== null && view.signIn.id === started.signIn?.id && view.signIn.phase === 'failed')
     expect(unidentified.signIn?.errorCode).toBe('identity-unavailable')
     expect(calls(fixture.bin).slice(-2).map(call => call.args)).toEqual(['auth status --json', 'auth logout'])
@@ -236,7 +384,7 @@ describe.skipIf(process.platform === 'win32')('official-CLI AI accounts', () => 
     const started = await fixture.service.startSignIn('claude')
     await until(fixture.service, view => view.signIn !== null && view.signIn.id === started.signIn?.id && view.signIn.phase === 'waiting-browser')
     const statusSpawn = vi.spyOn(runtime, 'spawn').mockImplementation(() => { throw new Error('status exploded') })
-    writeFileSync(join(fixture.bin, 'claude.approve'), '')
+    await fixture.service.submitSignInCode(started.signIn!.id, 'browser-code')
     const unidentified = await until(fixture.service, view => view.signIn !== null && view.signIn.id === started.signIn?.id && view.signIn.phase === 'failed')
     expect(unidentified.signIn?.errorCode).toBe('identity-unavailable')
     expect(info).toHaveBeenCalledWith('[ai-account] status failed', { kind: 'claude', error: 'status exploded' })
@@ -319,10 +467,19 @@ it('defaults the account root to the Harness home and applies documented default
       loginTimeoutMs: 900_000,
       commandTimeoutMs: 15_000,
       graceMs: 2_000,
+      loginRows: 40,
+      loginCols: 200,
+      loginTerminalType: 'xterm-256color',
     })
   } finally {
     if (previous === undefined) delete process.env.DSH_HOME
     else process.env.DSH_HOME = previous
   }
   expect(() => resolveConfig({ loginTimeoutMs: 10 })).toThrow()
+  expect(() => resolveConfig({ loginCols: 10 })).toThrow()
+  expect(() => resolveConfig({ loginRows: 0 })).toThrow()
+  expect(() => resolveConfig({ loginTerminalType: '' })).toThrow()
+  expect(resolveConfig({ loginRows: 24, loginCols: 80, loginTerminalType: 'vt100' })).toMatchObject({
+    loginRows: 24, loginCols: 80, loginTerminalType: 'vt100',
+  })
 })

@@ -32,13 +32,20 @@ The base Bundle mounts the provider as row `ai-account`. Its configuration:
 | `loginTimeoutMs` | `900000` | Deadline for one login including user authorization (1 s–30 min) |
 | `commandTimeoutMs` | `15000` | Deadline for one status or logout command (1–120 s) |
 | `graceMs` | `2000` | Grace between termination tiers when a CLI command is cancelled |
+| `loginRows` | `40` | Rows of the terminal allocated for the login command (1–1000) |
+| `loginCols` | `200` | Columns of that terminal (40–1000); a narrow terminal can wrap the URL the CLI prints |
+| `loginTerminalType` | `xterm-256color` | `TERM` advertised to the login command; the Host must have its terminfo entry |
 
 | Kind | Account directory | Login | Identity | Sign-out |
 |---|---|---|---|---|
 | `claude` | `<root>/claude/<id>` as `CLAUDE_CONFIG_DIR` | `claude auth login --claudeai` | `claude auth status --json` | `claude auth logout` |
 | `chatgpt` | `<root>/codex/<id>` as `CODEX_HOME` | `codex login --device-auth` | `codex login status` | `codex logout` |
 
-The login command's output is scanned for the first `https://` URL, and for ChatGPT the one-time device code printed after it; both appear in the attempt view. A zero exit alone does not add an account: the status command must report a signed-in account, otherwise the provider runs the logout command, deletes the directory, and fails the attempt with `identity-unavailable`. Cancelled, failed, and timed-out attempts delete their directory.
+The login command runs on a terminal, not on pipes. Both official login commands render a terminal interface and read their confirmation from it, so with standard input on `/dev/null` they print their URL and then wait for an answer that can never arrive — the attempt could only end at `loginTimeoutMs`. Only the login command gets a terminal; the status and logout commands are non-interactive and keep their pipes.
+
+The login command's output is scanned for the first `https://` URL, and for ChatGPT the one-time device code printed after it; both appear in the attempt view. The Claude browser page ends on an authorization code, so a Claude attempt reports `awaitingCode` and completes when `submitSignInCode` writes that code to the login command's terminal; the code is passed straight through and is never stored, logged, or matched against the CLI's output. ChatGPT's device flow polls for authorization and reads nothing, so it never reports `awaitingCode`.
+
+A zero exit alone does not add an account: the status command must report a signed-in account, otherwise the provider runs the logout command, deletes the directory, and fails the attempt with `identity-unavailable`. A failure to record the account is reported as `store-failed` rather than `login-failed`, because the vendor did sign in and only this Harness's own write failed; the provider then runs the logout command so the discarded directory cannot keep a credential no account record points at. Every attempt that does not succeed deletes its directory, and also the `<root>/<kind>/` directory that held it when no other account of that kind remains, so an empty kind directory never looks like a registered account.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -66,9 +73,11 @@ No model request prefix changes.
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **Login runs on the Host** — the Claude CLI opens the browser on the Host machine; a remote browser user opens the surfaced URL instead, and a Claude flow that requires pasting a code back into the CLI cannot complete because the CLI's standard input is closed.
+- **Login runs on the Host** — the Claude CLI opens the browser on the Host machine; a remote browser user opens the surfaced URL instead and pastes the resulting code back through the attempt view.
+- **One login attempt at a time, and no view of its terminal** — the provider surfaces only the URL, the device code, and `awaitingCode`; a login command that asks anything else on its terminal cannot be answered, and the attempt ends at `loginTimeoutMs`.
 - **CLI output formats are not versioned** — URL and device-code extraction and the Codex status text match current official CLI output; a changed format can leave `url` or `userCode` empty or fail identity.
 - **Interrupted logins can leave directories** — a Host crash during login leaves its directory under `root` without an account record; such directories are not cleaned up.
+- **A rejected authorization code ends the attempt** — the CLI exits non-zero on a code it refuses, which the provider reports as `login-failed`; the user starts a new attempt rather than retyping into the same one.
 
 <a id="dev-note"></a>
 ### Dev Note

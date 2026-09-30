@@ -42,6 +42,17 @@ export abstract class AiAccount extends Service {
   abstract cancelSignIn(id: AiAccountSignInId): Promise<AiAccountsView>
 
   /**
+   * Deliver the authorization code the vendor's browser page displayed to the login
+   * command that is reading one, completing the attempt. Implementations pass the code
+   * to the official CLI and never store or inspect it.
+   * @param id - attempt identity from this Host; any other id, or an attempt whose
+   * `awaitingCode` is false, leaves state unchanged.
+   * @param code - code the user copied from the vendor's page.
+   * @returns the snapshot after the code is delivered, without waiting for the CLI to finish.
+   */
+  abstract submitSignInCode(id: AiAccountSignInId, code: string): Promise<AiAccountsView>
+
+  /**
    * Make one account the default of its kind.
    * @param id - registered account.
    * @returns the snapshot after the default changes.

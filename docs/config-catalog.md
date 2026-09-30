@@ -201,6 +201,12 @@ export interface Config {
   commandTimeoutMs?: number
   /** Grace between termination tiers when a CLI command is cancelled, in milliseconds. */
   graceMs?: number
+  /** Rows of the terminal allocated for the login command. */
+  loginRows?: number
+  /** Columns of the terminal allocated for the login command; a narrow terminal can wrap the URL the CLI prints. */
+  loginCols?: number
+  /** Terminal type advertised to the login command through `TERM`; the Host must have its terminfo entry. */
+  loginTerminalType?: string
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->

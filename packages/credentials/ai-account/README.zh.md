@@ -29,12 +29,13 @@ kind: "package-reference"
 | `getState()` | 完整的 `AiAccountsView`：账号先按种类、再按登记时间排序，并附带最近一次登录尝试 |
 | `startSignIn(kind)` | 加入进行中的尝试，或为新账号启动官方 CLI 登录；在用户授权之前返回 |
 | `cancelSignIn(id)` | 取消指定的尝试并丢弃其未完成的目录；过期的 id 不改变任何状态 |
+| `submitSignInCode(id, code)` | 将厂商浏览器页面显示的授权码交给正在读取授权码的登录命令；过期的 id 或不读取授权码的尝试不改变任何状态 |
 | `setDefault(id)` | 将一个账号设为该种类的默认账号 |
 | `remove(id)` | 通过其 CLI 退出账号、删除其目录并忘记该账号；移除默认账号时，该种类中最早登记的剩余账号成为默认账号 |
 | `watch(signal)` | 从当前快照开始的完整快照流；结束订阅不会取消登录 |
 | `defaultHome(kind)` | 仅限 Host 的默认账号绝对目录；该种类没有默认账号时为 `undefined` |
 
-一次尝试依次经过 `starting`、`waiting-browser`（Claude）或 `waiting-device-code`（ChatGPT）、`verifying`，最终为 `succeeded`、`cancelled`，或带有 `executable-missing`、`login-failed`、`timeout`、`identity-unavailable` 之一 `errorCode` 的 `failed`。`url` 携带 CLI 输出的浏览器或验证地址，`userCode` 携带 Codex 一次性验证码。某种类的第一个账号成为其默认账号。每次默认账号变化（包括变为无默认账号）都会在变化存储后发出带有种类的 `ai-account/default-changed`。
+一次尝试依次经过 `starting`、`waiting-browser`（Claude）或 `waiting-device-code`（ChatGPT）、`verifying`，最终为 `succeeded`、`cancelled`，或带有 `executable-missing`、`login-failed`、`timeout`、`identity-unavailable`、`store-failed` 之一 `errorCode` 的 `failed`。`login-failed` 是 CLI 自身的拒绝；`store-failed` 表示 CLI 已登录但账号未能记录，因此已将其退出登录。`url` 携带 CLI 输出的浏览器或验证地址，`userCode` 携带 Codex 一次性验证码。登录命令从其终端读取授权码期间会设置 `awaitingCode`，该通道由 `submitSignInCode` 应答；Claude 浏览器页面最后会给出这样的授权码，而 ChatGPT 采用轮询，从不读取授权码。某种类的第一个账号成为其默认账号。每次默认账号变化（包括变为无默认账号）都会在变化存储后发出带有种类的 `ai-account/default-changed`。
 
 <a id="understand-the-implementation"></a>
 ## 理解实现

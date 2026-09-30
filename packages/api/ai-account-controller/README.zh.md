@@ -22,7 +22,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用此包
 
-Web App Bundle 以 `ai-account-controller` 行挂载此控制器。命名空间公开 `getState`、`startSignIn(kind)`、`cancelSignIn(attemptId)`、`setDefault(accountId)`、`removeAccount(accountId)` 以及流式方法 `watch`。每个命令在完成后返回完整快照，`watch` 从当前快照开始。取消操作指定尝试 id，因此过期的页面无法取消更新的登录。`defaultHome` 不公开：账号目录保留在 Host 上。
+Web App Bundle 以 `ai-account-controller` 行挂载此控制器。命名空间公开 `getState`、`startSignIn(kind)`、`cancelSignIn(attemptId)`、`submitSignInCode(attemptId, code)`、`setDefault(accountId)`、`removeAccount(accountId)` 以及流式方法 `watch`。每个命令在完成后返回完整快照，`watch` 从当前快照开始。取消与提交授权码都指定尝试 id，因此过期的页面既无法取消更新的登录，也无法把授权码发给它。提交的授权码送达官方 CLI 的终端，从不在此存储或记录。`defaultHome` 不公开：账号目录保留在 Host 上。
 
 <a id="understand-the-implementation"></a>
 ## 理解实现

@@ -50,6 +50,9 @@ it('forwards commands to the Host, publishes their snapshots, and rejects refuse
   mock.remote.aiAccount.cancelSignIn.mockResolvedValue(ok(empty))
   await operations.cancelSignIn(attempt)
   expect(mock.remote.aiAccount.cancelSignIn).toHaveBeenCalledWith(attempt)
+  mock.remote.aiAccount.submitSignInCode.mockResolvedValue(ok(added))
+  await operations.submitSignInCode(attempt, 'browser-code')
+  expect(mock.remote.aiAccount.submitSignInCode).toHaveBeenCalledWith(attempt, 'browser-code')
   const account = 'a' as AiAccountId
   mock.remote.aiAccount.setDefault.mockResolvedValue(ok(added))
   await operations.setDefault(account)

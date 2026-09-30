@@ -66,6 +66,7 @@ export function apply(ctx: Context): void {
     },
     startSignIn: kind => settle(ctx.remote.aiAccount.startSignIn(kind)),
     cancelSignIn: id => settle(ctx.remote.aiAccount.cancelSignIn(id)),
+    submitSignInCode: (id, code) => settle(ctx.remote.aiAccount.submitSignInCode(id, code)),
     setDefault: id => settle(ctx.remote.aiAccount.setDefault(id)),
     remove: id => settle(ctx.remote.aiAccount.removeAccount(id)),
   }

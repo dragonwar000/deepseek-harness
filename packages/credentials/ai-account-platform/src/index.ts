@@ -4,8 +4,8 @@
  * directory per account. It never reads, copies, or refreshes the credentials those CLIs store.
  */
 import { randomUUID } from 'node:crypto'
-import { mkdir, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, rm, rmdir } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import Schema from '@deepseek-ai/schemastery'
 import {
@@ -13,7 +13,7 @@ import {
   type AiAccountsView,
 } from '@deepseek-ai/dsh-ai-account'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
-import { SubprocessExecutableNotFoundError } from '@deepseek-ai/dsh-subprocess'
+import { SubprocessExecutableNotFoundError, type SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
 import { CLI, LoginOutput, type CliIdentity } from './cli.ts'
 import { EMPTY_ACCOUNT_FILE, readAccountFile, writeAccountFile, type AccountFile, type AccountRecord } from './store.ts'
 
@@ -31,6 +31,12 @@ export interface Config {
   commandTimeoutMs?: number
   /** Grace between termination tiers when a CLI command is cancelled, in milliseconds. */
   graceMs?: number
+  /** Rows of the terminal allocated for the login command. */
+  loginRows?: number
+  /** Columns of the terminal allocated for the login command; a narrow terminal can wrap the URL the CLI prints. */
+  loginCols?: number
+  /** Terminal type advertised to the login command through `TERM`; the Host must have its terminfo entry. */
+  loginTerminalType?: string
 }
 
 /** Validated configuration: every field except `root` carries its default. */
@@ -44,6 +50,9 @@ export const Config: Schema<Config, ValidConfig> = Schema.object({
   loginTimeoutMs: Schema.number().min(1_000).max(1_800_000).default(900_000),
   commandTimeoutMs: Schema.number().min(1_000).max(120_000).default(15_000),
   graceMs: Schema.number().min(100).max(30_000).default(2_000),
+  loginRows: Schema.number().min(1).max(1_000).default(40),
+  loginCols: Schema.number().min(40).max(1_000).default(200),
+  loginTerminalType: Schema.string().min(1).default('xterm-256color'),
 })
 
 /** Configuration with every default applied. */
@@ -53,6 +62,9 @@ export interface ResolvedConfig {
   readonly loginTimeoutMs: number
   readonly commandTimeoutMs: number
   readonly graceMs: number
+  readonly loginRows: number
+  readonly loginCols: number
+  readonly loginTerminalType: string
 }
 
 /**
@@ -68,6 +80,9 @@ export function resolveConfig(config: Config): ResolvedConfig {
     loginTimeoutMs: valid.loginTimeoutMs,
     commandTimeoutMs: valid.commandTimeoutMs,
     graceMs: valid.graceMs,
+    loginRows: valid.loginRows,
+    loginCols: valid.loginCols,
+    loginTerminalType: valid.loginTerminalType,
   }
 }
 
@@ -82,6 +97,8 @@ interface Attempt {
   readonly home: string
   readonly controller: AbortController
   done: Promise<void>
+  /** Login terminal while the command runs, so a submitted authorization code reaches its standard input. */
+  terminal: SubprocessTerminalHandle | undefined
 }
 
 type Outcome = Pick<AiAccountSignInView, 'phase' | 'errorCode'>
@@ -136,11 +153,15 @@ export class PlatformAiAccount extends AiAccount {
     if (this.attempt === undefined || !ACTIVE_PHASES.has(this.attempt.view.phase)) {
       const accountId = randomUUID() as AiAccountId
       const attempt: Attempt = {
-        view: { id: randomUUID() as AiAccountSignInId, kind, phase: 'starting', url: null, userCode: null, errorCode: null },
+        view: {
+          id: randomUUID() as AiAccountSignInId, kind, phase: 'starting', url: null, userCode: null,
+          awaitingCode: false, errorCode: null,
+        },
         accountId,
         home: this.homeOf(kind, accountId),
         controller: new AbortController(),
         done: Promise.resolve(),
+        terminal: undefined,
       }
       this.attempt = attempt
       attempt.done = this.signIn(attempt)
@@ -154,6 +175,20 @@ export class PlatformAiAccount extends AiAccount {
     if (attempt?.view.id === id) {
       attempt.controller.abort()
       await attempt.done
+    }
+    return this.snapshot()
+  }
+
+  override async submitSignInCode(id: AiAccountSignInId, code: string): Promise<AiAccountsView> {
+    const attempt = this.attempt
+    const terminal = attempt?.terminal
+    if (attempt?.view.id === id && attempt.view.awaitingCode && terminal !== undefined) {
+      // The code is the vendor's, so it is written straight through to the CLI's
+      // terminal and never logged, stored, or matched against the CLI's output.
+      // `awaitingCode` deliberately stays set until the command exits: a CLI that
+      // rejects one code prompts again, and clearing the field here would leave the
+      // user no way to answer that prompt.
+      await terminal.write(`${code}\r`)
     }
     return this.snapshot()
   }
@@ -174,7 +209,7 @@ export class PlatformAiAccount extends AiAccount {
       const account = this.account(id)
       const home = this.homeOf(account.kind, id)
       await this.signOutHome(account.kind, home)
-      await rm(home, { recursive: true, force: true })
+      await this.discardHome(home)
       const accounts = this.file.accounts.filter(candidate => candidate.id !== id)
       const wasDefault = this.file.defaults[account.kind] === id
       const successor = accounts.filter(candidate => candidate.kind === account.kind)
@@ -261,8 +296,24 @@ export class PlatformAiAccount extends AiAccount {
   /** Run one attempt to its terminal phase; never rejects. */
   private async signIn(attempt: Attempt): Promise<void> {
     const outcome = await this.login(attempt)
-    if (outcome.phase !== 'succeeded') await rm(attempt.home, { recursive: true, force: true })
-    this.update(attempt, outcome)
+    if (outcome.phase !== 'succeeded') await this.discardHome(attempt.home)
+    attempt.terminal = undefined
+    this.update(attempt, { ...outcome, awaitingCode: false })
+  }
+
+  /**
+   * Delete one attempt's configuration directory and the kind directory that held it
+   * when nothing else does, so a failed first attempt leaves no empty `<root>/<kind>/`
+   * behind to look like a registered account.
+   */
+  private async discardHome(home: string): Promise<void> {
+    await rm(home, { recursive: true, force: true })
+    try {
+      await rmdir(dirname(home))
+    } catch (_kindDirectoryKeptOrGone: unknown) {
+      // ENOTEMPTY means another account of this kind still lives there and ENOENT that
+      // the directory never existed; neither is a failure of this attempt's cleanup.
+    }
   }
 
   private async login(attempt: Attempt): Promise<Outcome> {
@@ -277,32 +328,71 @@ export class PlatformAiAccount extends AiAccount {
       const executable = await this.executable(kind, signal)
       if (executable === undefined) return { phase: 'failed', errorCode: 'executable-missing' }
       await mkdir(attempt.home, { recursive: true, mode: 0o700 })
-      const handle = this.ctx.subprocess.spawn({
+      // A terminal, not pipes: every official login command is an interactive
+      // prompt that reads its confirmation from a terminal, so on /dev/null
+      // standard input it prints its URL and then waits for an answer it can
+      // never receive until the deadline fires.
+      const terminal = await this.ctx.subprocess.spawnTerminal({
         argv: [executable, ...cli.loginArgs],
         cwd: attempt.home,
         env: { [cli.homeEnv]: attempt.home },
-        stdio: { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' },
+        rows: this.config.loginRows,
+        cols: this.config.loginCols,
+        terminalType: this.config.loginTerminalType,
         graceMs: this.config.graceMs,
         signal,
       })
-      const output = new LoginOutput(cli.deviceCode)
-      const scan = (chunk: Buffer): void => {
-        const prompt = output.push(chunk.toString('utf8'))
-        if (prompt !== undefined) this.update(attempt, prompt)
+      attempt.terminal = terminal
+      // The spawn signal only cancels allocation, so cancellation and the deadline
+      // reach a live login only through this listener.
+      let termination: Promise<void> | undefined
+      const stop = (): void => { termination ??= terminal.terminate() }
+      signal.addEventListener('abort', stop, { once: true })
+      // An abort between allocation and this listener would otherwise never be observed.
+      if (signal.aborted) stop()
+      try {
+        const output = new LoginOutput(cli.deviceCode)
+        terminal.output.on('data', (chunk: Buffer) => {
+          const prompt = output.push(chunk.toString('utf8'))
+          if (prompt !== undefined) this.update(attempt, prompt)
+        })
+        this.update(attempt, { phase: cli.waitingPhase, awaitingCode: cli.awaitsCode })
+        const { exitCode } = await terminal.done
+        const stopped = interrupted()
+        if (stopped !== undefined) return stopped
+        if (exitCode !== 0) return { phase: 'failed', errorCode: 'login-failed' }
+        this.update(attempt, { phase: 'verifying', awaitingCode: false })
+        const identity = await this.identify(kind, attempt.home, executable)
+        if (identity === undefined) {
+          await this.signOutHome(kind, attempt.home)
+          return { phase: 'failed', errorCode: 'identity-unavailable' }
+        }
+        const outcome = await this.register(attempt, kind, identity)
+        // A provider closing while the record is written is a cancelled attempt, not a storage fault.
+        return outcome.errorCode === 'store-failed' ? interrupted() ?? outcome : outcome
+      } finally {
+        signal.removeEventListener('abort', stop)
+        attempt.terminal = undefined
+        // Reach quiescence rather than request it: a login left running would keep
+        // the vendor CLI and its terminal alive past this attempt.
+        try {
+          await (termination ??= terminal.terminate())
+        } catch (error: unknown) {
+          console.info('[ai-account] login terminal cleanup failed', { kind, error: errorText(error) })
+        }
       }
-      handle.stdout?.on('data', scan)
-      handle.stderr?.on('data', scan)
-      this.update(attempt, { phase: cli.waitingPhase })
-      const { exitCode } = await handle.done
-      const stopped = interrupted()
-      if (stopped !== undefined) return stopped
-      if (exitCode !== 0) return { phase: 'failed', errorCode: 'login-failed' }
-      this.update(attempt, { phase: 'verifying' })
-      const identity = await this.identify(kind, attempt.home, executable)
-      if (identity === undefined) {
-        await this.signOutHome(kind, attempt.home)
-        return { phase: 'failed', errorCode: 'identity-unavailable' }
-      }
+    } catch (error) {
+      console.info('[ai-account] sign-in failed', { kind, error: errorText(error) })
+      return interrupted() ?? { phase: 'failed', errorCode: 'login-failed' }
+    }
+  }
+
+  /**
+   * Record one signed-in account.
+   * @returns `succeeded`, or `store-failed` when the account could not be recorded.
+   */
+  private async register(attempt: Attempt, kind: AiAccountKind, identity: CliIdentity): Promise<Outcome> {
+    try {
       await this.exclusive(async () => {
         const record: AccountRecord = { id: attempt.accountId, kind, ...identity, createdAt: Date.now() }
         const promoted = this.file.defaults[kind] === undefined
@@ -315,8 +405,13 @@ export class PlatformAiAccount extends AiAccount {
       })
       return { phase: 'succeeded', errorCode: null }
     } catch (error) {
-      console.info('[ai-account] sign-in failed', { kind, error: errorText(error) })
-      return interrupted() ?? { phase: 'failed', errorCode: 'login-failed' }
+      // Not `login-failed`: the vendor signed in and only this Harness's own write
+      // failed, so the cause must stay distinguishable from a refused login. The CLI
+      // is signed back out because the discarded directory would otherwise keep a
+      // credential that no account record points at.
+      console.info('[ai-account] storing the signed-in account failed', { kind, error: errorText(error) })
+      await this.signOutHome(kind, attempt.home)
+      return { phase: 'failed', errorCode: 'store-failed' }
     }
   }
 

@@ -39,8 +39,13 @@ export type AiAccountSignInPhase =
   | 'cancelled'
   | 'failed'
 
-/** Failure causes rendered through the caller's locale dictionary. */
-export type AiAccountSignInError = 'executable-missing' | 'login-failed' | 'timeout' | 'identity-unavailable'
+/**
+ * Failure causes rendered through the caller's locale dictionary.
+ * `login-failed` is the official CLI's own refusal; `store-failed` means the CLI
+ * signed in but this Harness could not record the account, so the attempt was
+ * signed back out instead of being reported as a vendor failure.
+ */
+export type AiAccountSignInError = 'executable-missing' | 'login-failed' | 'timeout' | 'identity-unavailable' | 'store-failed'
 
 /** The latest sign-in attempt; a terminal phase stays visible until the next attempt starts. */
 export interface AiAccountSignInView {
@@ -51,6 +56,13 @@ export interface AiAccountSignInView {
   readonly url: string | null
   /** One-time device code the Codex CLI printed; always `null` for Claude. */
   readonly userCode: string | null
+  /**
+   * Whether the login command is reading an authorization code from its terminal.
+   * The Claude CLI's browser page ends on a code the user copies, so this is the
+   * channel that completes a Claude sign-in: while true, {@link AiAccount.submitSignInCode}
+   * accepts that code. Always `false` for ChatGPT, whose CLI polls for authorization.
+   */
+  readonly awaitingCode: boolean
   /** Set only in the `failed` phase. */
   readonly errorCode: AiAccountSignInError | null
 }

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Open **Settings → AI Account** to manage every account the app uses. The **Coteccons SSO — used for the main model** group signs a Coteccons staff member in with Microsoft Entra ID; that user's own sign-in runs the main model. The Claude and ChatGPT groups add subscription accounts, show which account of each kind is the default, switch the default, and sign an account out; adding one runs the official Claude Code or Codex login on the Host, and the page shows the link to open and, for ChatGPT, the one-time code to enter.
+Open **Settings → AI Account** to manage every account the app uses. The **Coteccons SSO — used for the main model** group signs a Coteccons staff member in with Microsoft Entra ID; that user's own sign-in runs the main model. The Claude and ChatGPT groups add subscription accounts, show which account of each kind is the default, switch the default, and sign an account out; adding one runs the official Claude Code or Codex login on the Host, and the page shows the link to open, the field for Claude's authorization code, and ChatGPT's one-time code.
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ The page shows three groups in order. **Coteccons SSO — used for the main mode
 
 Each subscription group also states why it adds nothing to the chat model picker and which key does instead: a Claude subscription is issued to Anthropic's own Claude Code client and a ChatGPT subscription to OpenAI's own Codex client, so only those clients may send them, and running the main model on that vendor means adding an Anthropic or OpenAI API key under **Models**. [llm-pi-ai](../../llm/llm-pi-ai/README.md#use-this-package) owns that rule and the classification behind it.
 
-**Add Claude account** starts `claude auth login`: the Claude CLI opens a browser window on the Host, and the page shows the authorization link in case no window opened. **Add ChatGPT account** starts `codex login --device-auth`: the page shows the verification link and the one-time code to enter there. **Cancel** stops the login. Failures explain whether the CLI is missing, the login did not complete, it timed out, or the CLI reported no signed-in account. Adding is disabled while a sign-in is active.
+**Add Claude account** starts `claude auth login`: the Claude CLI opens a browser window on the Host, and the page shows the authorization link in case no window opened. That browser page ends on an authorization code, so the page also shows **Authorization code**; pasting it there and pressing Enter or **Complete sign-in** hands it to the waiting login command, which is what completes the sign-in. The field stays available until the command exits, so a code the CLI refuses can be entered again. **Add ChatGPT account** starts `codex login --device-auth`: the page shows the verification link and the one-time code to enter there. **Cancel** stops the login. Failures explain whether the CLI is missing, the login did not complete, it timed out before the code was entered, the CLI reported no signed-in account, or the account could not be saved on the Host. Adding is disabled while a sign-in is active.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation

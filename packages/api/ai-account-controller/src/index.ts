@@ -30,6 +30,17 @@ export class AiAccountController extends TypertRemoteService {
   @Remote
   cancelSignIn(attemptId: AiAccountSignInId): Promise<AiAccountsView> { return this.ctx.aiAccount.cancelSignIn(attemptId) }
   /**
+   * Deliver the authorization code the vendor's browser page displayed to the login command reading one.
+   * The code reaches the official CLI's terminal and is never stored or logged here.
+   * @param attemptId - attempt to complete; a stale id or an attempt reading no code leaves state unchanged.
+   * @param code - code the user copied from the vendor's page.
+   * @returns the snapshot after the code is delivered.
+   */
+  @Remote
+  submitSignInCode(attemptId: AiAccountSignInId, code: string): Promise<AiAccountsView> {
+    return this.ctx.aiAccount.submitSignInCode(attemptId, code)
+  }
+  /**
    * Make one account the default of its kind.
    * @param accountId - registered account.
    * @returns the snapshot after the change.

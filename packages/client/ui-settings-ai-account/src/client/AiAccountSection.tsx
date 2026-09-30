@@ -1,5 +1,6 @@
 /** AI Account settings section: contributed account groups, then official-CLI accounts by kind with defaults, removal, and sign-in. */
-import { Button, Tag, usePendingAction } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useState } from 'react'
+import { Button, Input, Tag, usePendingAction } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   AiAccountId, AiAccountKind, AiAccountSignInError, AiAccountSignInId, AiAccountSignInView, AiAccountView, AiAccountsView,
 } from '@deepseek-ai/dsh-ai-account/types'
@@ -23,6 +24,8 @@ export interface AiAccountSectionInjected {
   startSignIn: (kind: AiAccountKind) => Promise<void>
   /** Cancel the named sign-in attempt. */
   cancelSignIn: (id: AiAccountSignInId) => Promise<void>
+  /** Hand the authorization code the vendor's browser page displayed to the waiting login command. */
+  submitSignInCode: (id: AiAccountSignInId, code: string) => Promise<void>
   /** Make one account the default of its kind. */
   setDefault: (id: AiAccountId) => Promise<void>
   /** Sign one account out and forget it. */
@@ -69,7 +72,13 @@ export function AiAccountSection(props: AiAccountSectionProps) {
       {renderSlot('settings.ai-account.group', {})}
       {failed && <p className={css.error} role="alert">{t('unavailable')}</p>}
       {signIn !== null && signingIn && (
-        <SignInCard signIn={signIn} t={t} onCancel={() => { run(() => props.cancelSignIn(signIn.id)) }} />
+        <SignInCard
+          signIn={signIn}
+          t={t}
+          pending={pending}
+          onCancel={() => { run(() => props.cancelSignIn(signIn.id)) }}
+          onSubmitCode={(code) => { run(() => props.submitSignInCode(signIn.id, code)) }}
+        />
       )}
       {signIn?.phase === 'failed' && <p className={css.error} role="alert">{t(failureKey(signIn))}</p>}
       {actionFailed && <p className={css.error} role="alert">{t('errorAction')}</p>}
@@ -115,6 +124,7 @@ const FAILURE_KEYS: Readonly<Record<Exclude<AiAccountSignInError, 'executable-mi
   'login-failed': 'errorLoginFailed',
   timeout: 'errorTimeout',
   'identity-unavailable': 'errorIdentity',
+  'store-failed': 'errorStoreFailed',
 }
 
 /**
@@ -151,10 +161,12 @@ function AccountRow({ account, t, disabled, onSetDefault, onRemove }: {
 }
 
 /** Progress of the active sign-in: the CLI's browser URL, or its device URL and one-time code. */
-function SignInCard({ signIn, t, onCancel }: {
+function SignInCard({ signIn, t, pending, onCancel, onSubmitCode }: {
   signIn: AiAccountSignInView
   t: AiAccountSectionProps['t']
+  pending: boolean
   onCancel: () => void
+  onSubmitCode: (code: string) => void
 }) {
   return (
     <div className={css.card} role="status">
@@ -174,7 +186,44 @@ function SignInCard({ signIn, t, onCancel }: {
           <code className={css.codeValue}>{signIn.userCode}</code>
         </div>
       )}
+      {signIn.awaitingCode && <CodeForm t={t} pending={pending} onSubmit={onSubmitCode} />}
       <Button variant="outline" size="sm" className={css.cancel} onClick={onCancel}>{t('cancel')}</Button>
+    </div>
+  )
+}
+
+/** Authorization code the vendor's browser page displayed, on its way to the waiting login command. */
+function CodeForm({ t, pending, onSubmit }: {
+  t: AiAccountSectionProps['t']
+  pending: boolean
+  onSubmit: (code: string) => void
+}) {
+  const [code, setCode] = useState('')
+  const trimmed = code.trim()
+  const submit = () => {
+    if (trimmed.length === 0) return
+    onSubmit(trimmed)
+    setCode('')
+  }
+  return (
+    <div className={css.codeForm}>
+      <p className={css.hint}>{t('codeHint')}</p>
+      <div className={css.codeEntry}>
+        <Input
+          value={code}
+          aria-label={t('codeLabel')}
+          placeholder={t('codePlaceholder')}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => { setCode(event.target.value) }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            submit()
+          }}
+        />
+        <Button size="sm" disabled={pending || trimmed.length === 0} onClick={submit}>{t('codeSubmit')}</Button>
+      </div>
     </div>
   )
 }

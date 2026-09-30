@@ -22,7 +22,7 @@ The `aiAccount` Remote namespace lets the settings UI list AI Accounts, start or
 <a id="use-this-package"></a>
 ## Use this package
 
-The Web App Bundle mounts the controller as row `ai-account-controller`. The namespace exposes `getState`, `startSignIn(kind)`, `cancelSignIn(attemptId)`, `setDefault(accountId)`, `removeAccount(accountId)`, and the stream `watch`. Every command returns the complete snapshot after it settles, and `watch` starts with the current snapshot. Cancellation names the attempt id, so a stale screen cannot cancel a newer sign-in. `defaultHome` is not exposed: account directories stay on the Host.
+The Web App Bundle mounts the controller as row `ai-account-controller`. The namespace exposes `getState`, `startSignIn(kind)`, `cancelSignIn(attemptId)`, `submitSignInCode(attemptId, code)`, `setDefault(accountId)`, `removeAccount(accountId)`, and the stream `watch`. Every command returns the complete snapshot after it settles, and `watch` starts with the current snapshot. Cancellation and code submission both name the attempt id, so a stale screen cannot cancel a newer sign-in or send its code to one. A submitted code reaches the official CLI's terminal and is never stored or logged here. `defaultHome` is not exposed: account directories stay on the Host.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
