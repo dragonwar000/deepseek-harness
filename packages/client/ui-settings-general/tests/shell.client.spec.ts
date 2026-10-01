@@ -11,6 +11,7 @@ import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-clie
 import { inject } from '../src/client/index.ts'
 import type { SettingsRootInjected } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
+import type { createSettingsShellStore } from '../src/client/shell-store.ts'
 import type { DesktopUpdatePresentation } from '../src/types.ts'
 
 const SELF = '@deepseek-ai/dsh-client-ui-settings-general'
@@ -74,6 +75,28 @@ describe('ui-settings-general shell', () => {
     expect(c.ctx.slots.entries('sidebar.toggle.badge')).toHaveLength(0)
     publish!({ phase: 'error', version: status.version, failure: 'install' })
     expect(row.hooks.desktopUpdate.getSnapshot().presentation).toEqual(status)
+  }, COLD_BOOT_TIMEOUT_MS)
+
+  it('opens the section a Desktop request names, the default section for an unregistered id, and unsubscribes on unload', async ({ start }) => {
+    let request: ((sectionId: string) => void) | undefined
+    const off = vi.fn()
+    const subscribe = vi.fn((listener: typeof request) => { request = listener; return off })
+    vi.stubGlobal('dshDesktop', { protocolVersion: 1, settings: { subscribe } })
+    onTestFinished(() => { vi.unstubAllGlobals() })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    onTestFinished(() => { warn.mockRestore() })
+    const c = await start()
+    expect(subscribe).toHaveBeenCalledOnce()
+    const shell = (c.ctx.slots.entries('sidebar.settings')[0]!.store as ReturnType<typeof createSettingsShellStore>).create()
+    request!('ai-account')
+    expect(shell.store.getSnapshot()).toEqual({ open: true, activeId: 'ai-account' })
+    shell.actions.close()
+    request!('retired-section')
+    expect(warn).toHaveBeenCalledWith('ui-settings-general: Desktop requested unregistered Settings section "retired-section"; opening the default section')
+    expect(shell.store.getSnapshot()).toEqual({ open: true, activeId: undefined })
+    await c.unload(SELF)
+    await c.flush()
+    expect(off).toHaveBeenCalledOnce()
   }, COLD_BOOT_TIMEOUT_MS)
 
   it('declares its services', () => {

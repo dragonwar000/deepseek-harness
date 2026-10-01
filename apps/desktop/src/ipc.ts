@@ -27,6 +27,8 @@ export const DESKTOP_IPC = {
   updatesStatus: 'dsh-desktop:updates-status',
   updatesOpen: 'dsh-desktop:updates-open',
   updatesPresentation: 'dsh-desktop:updates-presentation',
+  settingsRequested: 'dsh-desktop:settings-requested',
+  settingsTake: 'dsh-desktop:settings-take',
   nativeThemeSet: 'dsh-desktop:native-theme-set',
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowsAppearance: 'dsh-desktop:windows-appearance',
@@ -83,6 +85,16 @@ export interface DshDesktopProductApi {
     status(): Promise<DesktopUpdatePresentation>
     open(): Promise<void>
     subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
+  }
+  readonly settings: {
+    /**
+     * Receive Settings section requests from the shell, such as a click on the AI Account sign-out notification.
+     * A request made before this subscription, including one that created the window, arrives right after subscribing.
+     * Each request reaches one subscriber once; the Web UI validates the id against its registered sections.
+     * @param listener - Receives the requested Settings section id.
+     * @returns Unsubscribe; a request still in flight is dropped.
+     */
+    subscribe(listener: (sectionId: string) => void): () => void
   }
 }
 

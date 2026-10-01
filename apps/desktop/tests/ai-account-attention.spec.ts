@@ -44,14 +44,14 @@ it('notifies only while the main window is missing, hidden, minimized, or unfocu
   expect(native.notices).toHaveLength(0)
 })
 
-it('shows one notification per sign-out and opens the application on click', () => {
+it('shows one notification per sign-out and opens Settings on AI Account on click', () => {
   const { open, attention } = setup(windowState({ focused: false }))
   attention.signedOut('claude')
   expect(native.notices).toHaveLength(1)
   expect(native.notices[0]!.options).toEqual({ title: 'Claude account signed out', body: 'Open Settings → AI Account to sign in again.' })
   expect(native.notices[0]!.show).toHaveBeenCalledOnce()
   native.notices[0]!.emit('click')
-  expect(open).toHaveBeenCalledOnce()
+  expect(open).toHaveBeenCalledExactlyOnceWith('ai-account')
   expect(native.notices[0]!.close).toHaveBeenCalledOnce()
   // A click on a replaced notification opens nothing.
   attention.signedOut('chatgpt')

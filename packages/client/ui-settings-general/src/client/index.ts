@@ -28,8 +28,9 @@ import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client
 import { createSettingsShellStore } from './shell-store.ts'
 import { SettingsRoot } from './SettingsRoot.tsx'
 import { DesktopUpdateBadge } from './DesktopUpdateIndicator.tsx'
-import type { DesktopUpdateBridge } from '../types.ts'
+import type { DesktopSettingsBridge, DesktopUpdateBridge } from '../types.ts'
 import { DesktopUpdateSource } from './desktop-update-source.ts'
+import { openRequestedSettingsSection } from './desktop-settings-request.ts'
 import { CloseLabel, HeaderContent, TriggerContent } from './chrome.tsx'
 import { GeneralSection } from './GeneralSection.tsx'
 import { CurrentVersionRow } from './CurrentVersionRow.tsx'
@@ -86,8 +87,11 @@ export function apply(ctx: ClientContext): void {
   }, CurrentVersionRow))
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-general: dictionaries')
   const connection = ctx.get('connection') as ConnectionHandle
-  const carrier = (globalThis as typeof globalThis & { dshDesktop?: { protocolVersion: number; updates?: DesktopUpdateBridge } }).dshDesktop
+  const carrier = (globalThis as typeof globalThis & {
+    dshDesktop?: { protocolVersion: number; updates?: DesktopUpdateBridge; settings?: DesktopSettingsBridge }
+  }).dshDesktop
   const desktopUpdate = new DesktopUpdateSource(carrier?.protocolVersion === 1 ? carrier.updates : undefined)
+  const desktopSettings = carrier?.protocolVersion === 1 ? carrier.settings : undefined
   ctx.effect(() => () => { desktopUpdate.dispose() }, 'ui-settings-general: desktop update carrier')
   ctx.slots.inject('sidebar.toggle.badge', () => ctx.slots.register({
     name: 'sidebar.toggle.badge', locale: NS,
@@ -195,6 +199,12 @@ export function apply(ctx: ClientContext): void {
       },
     })
 
+    // Desktop requests (an AI Account sign-out notification click) resolve against the sections registered on arrival.
+    const disposeDesktopSettings = desktopSettings?.subscribe((sectionId) => {
+      openRequestedSettingsSection(sectionId,
+        id => ctx.slots.entries('settings.section').some(entry => entry.options.id === id), shellInstance.actions)
+    })
+
     const disposeSlot = ctx.slots.register({
       name: 'sidebar.settings',
       locale: NS,
@@ -210,7 +220,7 @@ export function apply(ctx: ClientContext): void {
       },
       inject: shellInjected,
     }, SettingsRoot)
-    return () => { disposeCommand(); disposeSlot() }
+    return () => { disposeCommand(); disposeSlot(); disposeDesktopSettings?.() }
   })
 
   ctx.slots.inject('settings.trigger', () =>

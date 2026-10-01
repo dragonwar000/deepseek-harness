@@ -57,6 +57,31 @@ it('limits product documents to update status and a native confirmation action',
   expect(electron.ipcRenderer.off).toHaveBeenCalledWith(DESKTOP_IPC.updatesPresentation, handler)
 })
 
+it('reads Settings requests on subscribe and after each shell signal', async () => {
+  vi.stubGlobal('location', new URL('dsh-app://app/index.html'))
+  await import('../src/preload-app.ts')
+  const api = electron.contextBridge.exposeInMainWorld.mock.calls.find(([name]) => name === 'dshDesktop')?.[1] as DshDesktopProductApi
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  const failure = new Error('rejected')
+  electron.ipcRenderer.invoke.mockResolvedValueOnce('ai-account').mockResolvedValueOnce(undefined).mockRejectedValueOnce(failure)
+  const listener = vi.fn()
+  const dispose = api.settings.subscribe(listener)
+  await vi.waitFor(() => { expect(listener).toHaveBeenCalledExactlyOnceWith('ai-account') })
+  const handler = electron.ipcRenderer.on.mock.calls.find(([channel]) => channel === DESKTOP_IPC.settingsRequested)?.[1] as () => void
+  handler()
+  handler()
+  await vi.waitFor(() => { expect(warn).toHaveBeenCalledWith('dsh desktop: could not read the Settings request', failure) })
+  expect(listener).toHaveBeenCalledOnce()
+  electron.ipcRenderer.invoke.mockResolvedValueOnce('ai-account')
+  handler()
+  dispose()
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(listener).toHaveBeenCalledOnce()
+  expect(electron.ipcRenderer.invoke.mock.calls.filter(([channel]) => channel === DESKTOP_IPC.settingsTake)).toHaveLength(4)
+  expect(electron.ipcRenderer.off).toHaveBeenCalledWith(DESKTOP_IPC.settingsRequested, handler)
+})
+
 it.each(['dsh-app://shell/plugin-manager.html', 'dsh-app://other/index.html', 'https://shell/startup.html', 'http://example.com/'])('exposes only the carrier marker to %s', async (url) => {
   vi.stubGlobal('location', new URL(url))
   await import('../src/preload-app.ts')

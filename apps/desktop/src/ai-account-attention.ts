@@ -2,6 +2,7 @@
 import { Notification } from 'electron'
 import type { DesktopAiAccountKind } from './host-process.ts'
 import type { DesktopLocale } from './locale.ts'
+import type { DesktopSettingsSectionId } from './settings-request.ts'
 
 /** Main-window state the notification decision reads. */
 export interface DesktopAiAccountWindow {
@@ -29,12 +30,12 @@ export class DesktopAiAccountAttention {
   /**
    * @param locale - Current shell-owned notification copy.
    * @param window - Current main window.
-   * @param open - Shows and focuses the application after the notification is clicked.
+   * @param openSettings - Shows and focuses the application on one Settings section after the notification is clicked.
    */
   constructor(
     private readonly locale: () => DesktopLocale,
     private readonly window: () => DesktopAiAccountWindow | undefined,
-    private readonly open: () => void,
+    private readonly openSettings: (sectionId: DesktopSettingsSectionId) => void,
   ) {}
 
   /**
@@ -56,7 +57,7 @@ export class DesktopAiAccountAttention {
       notification.once('click', () => {
         if (this.notifications.get(kind) !== notification) return
         this.close(kind)
-        this.open()
+        this.openSettings('ai-account')
       })
       notification.show()
     } catch (error) { console.warn('desktop ai account: notification unavailable', error) }

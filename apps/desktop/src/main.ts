@@ -61,6 +61,7 @@ import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
 import { DesktopAiAccountAttention } from './ai-account-attention.ts'
+import { DesktopSettingsRequest } from './settings-request.ts'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -436,8 +437,11 @@ async function main(): Promise<void> {
   }
   const platformView = new DesktopPlatformView(join(app.getAppPath(), 'lib', 'preload-platform-account.cjs'),
     () => locale.id === 'zh-CN' ? 'zh_CN' : 'en_US', process.platform === 'win32' ? 'win32' : 'darwin')
-  // The shell cannot open a Settings section inside the Web UI, so a click shows and focuses the application.
-  const aiAccountAttention = new DesktopAiAccountAttention(() => locale, () => mainWindow, () => { focusPrimaryWindow() })
+  const settingsRequest = new DesktopSettingsRequest(() => mainWindow?.webContents)
+  const aiAccountAttention = new DesktopAiAccountAttention(() => locale, () => mainWindow, (sectionId) => {
+    focusPrimaryWindow()
+    settingsRequest.open(sectionId)
+  })
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
@@ -775,6 +779,10 @@ async function main(): Promise<void> {
       const { width, height } = window.getBounds()
       if (width < 960) window.setSize(960, height)
     }
+  })
+  ipcMain.handle(DESKTOP_IPC.settingsTake, (event) => {
+    assertProductSender(event)
+    return settingsRequest.take()
   })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, async (event) => {
     assertProductSender(event)
