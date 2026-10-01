@@ -3,7 +3,8 @@ import { strToU8, zipSync } from 'fflate'
 import { Context } from '@deepseek-ai/cordis'
 import { M365AccessUnavailableError, type M365ConnectorId } from '@deepseek-ai/dsh-coteccons-sso'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
+import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { type ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as ToolM365 from '../src/index.ts'
@@ -14,7 +15,7 @@ afterEach(async () => { await Promise.all(roots.splice(0).map(ctx => ctx.fiber.d
 
 type Route = (url: string, init: RequestInit) => Response | Promise<Response>
 
-async function mount(route: Route, refused: Partial<Record<M365ConnectorId, M365AccessUnavailableError['reason']>> = {}, withSso = true) {
+async function mount(route: Route, refused: Partial<Record<M365ConnectorId, M365AccessUnavailableError['reason']>> = {}, withSso = true, overrides: Pick<ToolM365.Config, 'maxFileBytes' | 'maxOutputChars'> = {}) {
   const ctx = new Context()
   roots.push(ctx)
   await ctx.plugin(SystemPrompt)
@@ -35,11 +36,11 @@ async function mount(route: Route, refused: Partial<Record<M365ConnectorId, M365
     requests.push({ url, init })
     return Promise.resolve(route(url, init))
   }
-  const config = ToolM365.Config({ maxRetries: 1 })
+  const config = ToolM365.Config({ maxRetries: 1, ...overrides })
   await ctx.plugin({ name: 'tool-m365', inject: ToolM365.inject, apply: (scope: Context) => { ToolM365.apply(scope, config, fake) } })
   let counter = 0
-  const call = (name: string, args: unknown): Promise<ToolExecutionResult> =>
-    ctx.tools.execute({ signal: new AbortController().signal, callId: ToolCallId(`call-${++counter}`), name, arguments: args })
+  const call = (name: string, args: unknown, signal = new AbortController().signal): Promise<ToolExecutionResult> =>
+    ctx.tools.execute({ signal, callId: ToolCallId(`call-${++counter}`), name, arguments: args })
   return { ctx, call, requests, tokens }
 }
 
@@ -151,4 +152,139 @@ it('registers four tools and a prompt section that disappear on dispose', async 
   expect(ctx.tools.schemas().map(schema => schema.name).filter(name => name.startsWith('m365_')).sort())
     .toEqual(['m365_read_chat', 'm365_read_file', 'm365_read_mail', 'm365_search'])
   vi.clearAllMocks()
+})
+
+describe('Graph requests', () => {
+  it('backs off without Retry-After and stops waiting when the call is aborted', async () => {
+    const controller = new AbortController()
+    const { call, requests } = await mount(() => {
+      setTimeout(() => { controller.abort(new Error('stopped by user')) }, 5)
+      return new Response(null, { status: 503 })
+    })
+    const result = await call('m365_search', { query: 'x', sources: ['mail'] }, controller.signal)
+    expect(result.isError).toBe(true)
+    expect(requests).toHaveLength(1)
+  })
+
+  it('describes failures whose body names no Graph error by their HTTP status', async () => {
+    const plainText = await mount(() => new Response('upstream broke', { status: 500 }))
+    expect(text(await plainText.call('m365_read_mail', { id: '1' }))).toContain('Microsoft Graph returned HTTP 500')
+    const emptyError = await mount(() => json({ error: { code: 7, message: '' } }, 404))
+    const output = text(await emptyError.call('m365_read_mail', { id: '1' }))
+    expect(output).toContain('The item was not found or you cannot access it (Microsoft Graph returned HTTP 404).')
+  })
+
+  it('refuses a download redirect without a usable https location', async () => {
+    for (const headers of [{}, { location: 'http://download.sp/file' }] as Array<Record<string, string>>) {
+      const { call } = await mount(url => url.endsWith('/content') ? new Response(null, { status: 302, headers }) : json({ name: 'a.txt' }))
+      expect(text(await call('m365_read_file', { driveId: 'd', id: 'i' }))).toContain('Microsoft Graph returned an unusable download location.')
+    }
+  })
+
+  it('reports a failed pre-authenticated download', async () => {
+    const { call } = await mount((url) => {
+      if (url.endsWith('/content')) return new Response(null, { status: 302, headers: { location: 'https://download.sp/gone' } })
+      if (url === 'https://download.sp/gone') return new Response(null, { status: 404 })
+      return json({ name: 'a.txt' })
+    })
+    expect(text(await call('m365_read_file', { driveId: 'd', id: 'i' }))).toContain('The item was not found or you cannot access it')
+  })
+
+  it('skips files larger than maxFileBytes by declared length or by downloaded size', async () => {
+    const declared = await mount(url => url.endsWith('/content')
+      ? new Response('x'.repeat(10), { headers: { 'content-length': '4096' } })
+      : json({ name: 'big.txt', webUrl: 'https://sp/big' }), {}, true, { maxFileBytes: 1024 })
+    const declaredOutput = text(await declared.call('m365_read_file', { driveId: 'd', id: 'i' }))
+    expect(declaredOutput).toContain('The file is larger than 1024 bytes and was not read. Open it from the link.')
+    expect(declaredOutput).toContain('https://sp/big')
+    const streamed = await mount(url => url.endsWith('/content')
+      ? new Response(new Blob([new Uint8Array(2048)]).stream())
+      : json({}), {}, true, { maxFileBytes: 1024 })
+    const streamedOutput = text(await streamed.call('m365_read_file', { driveId: 'd', id: 'i' }))
+    expect(streamedOutput).toContain('# (file)')
+    expect(streamedOutput).toContain('The file is larger than 1024 bytes')
+  })
+})
+
+describe('result projection', () => {
+  it('projects mail, chat, and file hits with their fallbacks and skips hits without an id', async () => {
+    const hits: Record<string, unknown[]> = {
+      'Bearer token-mail': [{ resource: { id: 'm2' } }, { summary: 'no id' }],
+      'Bearer token-chat': [
+        { hitId: 'c1', resource: { body: { content: '<p>Site&nbsp;visit</p>' }, from: { user: { displayName: 'An' } }, createdDateTime: '2026-09-02', webUrl: 'https://teams/c1', chatId: '19:c1' } },
+        { hitId: 'c2', summary: 'from summary', resource: { from: { emailAddress: { name: 'Binh' } }, webLink: 'https://teams/c2' } },
+        { hitId: 'c3' },
+      ],
+      'Bearer token-files': [{ hitId: 'f2', resource: { lastModifiedBy: { user: { displayName: 'Chi' } }, lastModifiedDateTime: '2026-09-03' } }],
+    }
+    const { call } = await mount((_url, init) => json({ value: ['junk', { hitsContainers: [{ hits: hits[(init.headers as Record<string, string>).authorization ?? ''] }] }] }))
+    const output = text(await call('m365_search', { query: 'site', sources: ['mail', 'chat', 'files', 'mail'] }))
+    expect(output).toContain('- [mail] (no subject) (id: m2)\n')
+    expect(output).not.toContain('no id')
+    expect(output).toContain('- [chat] Site visit (id: c1, chatId: 19:c1) — An (2026-09-02)\n  https://teams/c1')
+    expect(output).toContain('- [chat] from summary (id: c2) — Binh\n  from summary\n  https://teams/c2')
+    expect(output).toContain('- [chat] (message) (id: c3)')
+    expect(output).toContain('- [files] (file) (id: f2) — Chi (2026-09-03)')
+  })
+
+  it('rejects an empty source list', async () => {
+    const { call } = await mount(() => json({}))
+    const result = await call('m365_search', { query: 'x', sources: [] })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toContain('sources must name at least one source')
+  })
+
+  it('reads a sparse message without attachments as an untitled header', async () => {
+    const { call, requests } = await mount(() => json({ hasAttachments: false }))
+    const output = text(await call('m365_read_mail', { id: '1' }))
+    expect(output).toBe(`${ToolM365.M365_CONTENT_NOTICE}\n\n# (no subject)\n\nFrom: \nTo: \nCc: \nDate: \n\n`)
+    expect(requests).toHaveLength(1)
+  })
+
+  it('omits the attachment line when a message lists no named attachments', async () => {
+    const { call } = await mount(url => url.includes('/attachments') ? json({ value: [{ size: 1 }] }) : json({ subject: 'S', hasAttachments: true }))
+    expect(text(await call('m365_read_mail', { id: '1' }))).not.toContain('Attachments:')
+  })
+
+  it('reads 30 chat messages by default and names application or unknown senders', async () => {
+    const { call, requests } = await mount(() => json({ value: [
+      { messageType: 'message', from: { application: { displayName: 'Bot' } }, createdDateTime: '2', body: { content: 'hi' } },
+      { messageType: 'message' },
+    ] }))
+    expect(text(await call('m365_read_chat', { chatId: 'c' }))).toContain('[] unknown: \n[2] Bot: hi')
+    expect(requests[0]?.url).toContain('$top=30')
+  })
+
+  it('truncates a read result at maxOutputChars', async () => {
+    const { call } = await mount(() => json({ value: [{ messageType: 'message', body: { content: 'y'.repeat(2000) } }] }), {}, true, { maxOutputChars: 1000 })
+    const output = text(await call('m365_read_chat', { chatId: 'c' }))
+    expect(output.endsWith('(Content truncated.)')).toBe(true)
+    expect(output).not.toContain('y'.repeat(1001))
+  })
+})
+
+describe('tool presentation and scheduling', () => {
+  it('presents every call as a generic card and runs every tool in parallel', async () => {
+    const { ctx } = await mount(() => json({}))
+    const calls: Array<[string, unknown, string]> = [
+      ['m365_search', { query: 'budget' }, 'Microsoft 365: budget'],
+      ['m365_read_mail', { id: '1' }, 'Read Outlook message'],
+      ['m365_read_chat', { chatId: 'c' }, 'Read Teams chat'],
+      ['m365_read_file', { driveId: 'd', id: 'i' }, 'Read Microsoft 365 file'],
+    ]
+    for (const [name, args, title] of calls) {
+      expect(ctx.tools.get(name)?.presentCall?.(args)).toMatchObject({ card: 'generic', title })
+      expect(ctx.tools.executionMode({ signal: new AbortController().signal, callId: ToolCallId('c'), name, arguments: args })).toEqual({ kind: 'parallel' })
+    }
+  })
+
+  it('adds the Microsoft 365 guidance only for scopes that can call m365_search', async () => {
+    const { ctx } = await mount(() => json({}))
+    expect(renderPrompt(await ctx.systemPrompt.assemble())).toContain('m365_search and the m365_read_* tools read the user\'s own Outlook mail')
+    const key = {}
+    let scope!: Scope
+    await ctx.plugin(Object.assign((inner: Context) => { scope = createScope(inner, key) }, { inject: ['tools', 'systemPrompt'] }))
+    scope.ctx.tools.restrict({ deny: ['m365_search'] })
+    expect(renderPrompt(await ctx.systemPrompt.assemble({ scope: key }))).not.toContain('m365_search')
+  })
 })

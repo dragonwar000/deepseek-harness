@@ -26,7 +26,7 @@ function decodeEntities(text: string): string {
  */
 function runs(xml: string, tag: string): string[] {
   const pattern = new RegExp(`<${tag}(?:\\s[^>]*)?>([^<]*)</${tag}>`, 'g')
-  return [...xml.matchAll(pattern)].map(match => decodeEntities(match[1] ?? ''))
+  return [...xml.matchAll(pattern)].map(match => decodeEntities(match[1] as string))
 }
 
 /**
@@ -73,8 +73,8 @@ function excel(files: Record<string, Uint8Array>): string {
   return sheets.map((match) => {
     const xml = strFromU8(files[match[0]] as Uint8Array)
     const rows = [...xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)].map((row) => {
-      const cells = [...(row[1] ?? '').matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].map((cell) => {
-        const attributes = cell[1] ?? ''
+      const cells = [...(row[1] as string).matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].map((cell) => {
+        const attributes = cell[1] as string
         const body = cell[2] ?? ''
         const value = /<v>([^<]*)<\/v>/.exec(body)?.[1]
         if (/\bt="s"/.test(attributes) && value !== undefined) return shared[Number(value)] ?? ''

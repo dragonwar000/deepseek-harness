@@ -8,8 +8,8 @@ import { M365AccessUnavailableError, type M365ConnectAttemptId, type M365Connect
 import { credentialKey } from '@deepseek-ai/dsh-credentials'
 import LocalCredentialProvider from '@deepseek-ai/dsh-credentials-local'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import MsalCotecconsSso, { classifyEntraError, resolveConfig, type Config } from '../src/index.ts'
-import { CLIENT, FakeMsal, TENANT, account } from './fake-msal.ts'
+import MsalCotecconsSso, { classifyEntraError, resolveConfig, type Config, type Internals } from '../src/index.ts'
+import { AUTHORIZE, CLIENT, FakeMsal, TENANT, account } from './fake-msal.ts'
 
 vi.mock('open', () => ({ default: vi.fn(() => Promise.resolve({})) }))
 
@@ -24,7 +24,7 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-async function mount(config: Config = CONFIGURED, path?: string) {
+async function mount(config: Config = CONFIGURED, path?: string, openBrowser: Internals['openBrowser'] = () => Promise.resolve()) {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-coteccons-m365-'))
   cleanups.push(() => { rmSync(dir, { recursive: true, force: true }) })
   const file = path ?? join(dir, '.credentials.yaml')
@@ -36,7 +36,7 @@ async function mount(config: Config = CONFIGURED, path?: string) {
     constructor(scope: Context, value: Config) {
       super(scope, value, {
         createClient: (configuration) => { const client = new FakeMsal(configuration); clients.push(client); return client },
-        openBrowser: () => Promise.resolve(),
+        openBrowser,
       })
     }
   }
@@ -49,7 +49,7 @@ async function mount(config: Config = CONFIGURED, path?: string) {
     if (found === undefined) throw new Error(`no client for ${clientId}`)
     return found
   }
-  return { sso, credentials, client, path: file }
+  return { ctx, sso, credentials, client, path: file }
 }
 
 function view(views: readonly M365ConnectorView[], id: string): M365ConnectorView | undefined {
@@ -160,5 +160,126 @@ describe('Microsoft 365 connectors', () => {
     expect(view(await fixture.sso.cancelM365Connect('mail', attempt.attemptId), 'mail')).toEqual({ id: 'mail', status: 'disconnected' })
     await reading
     expect(seen.map(views => view(views, 'mail')?.status)).toEqual(expect.arrayContaining(['disconnected', 'connecting']))
+  })
+})
+
+describe('Microsoft 365 connector sign-in', () => {
+  it('starts one attempt per connector and none once it is connected', async () => {
+    const fixture = await mount()
+    await connect(fixture)
+    const interactive = vi.spyOn(fixture.client(MAIL), 'acquireTokenInteractive')
+    await fixture.sso.connectM365('mail')
+    await fixture.client(MAIL).finish(account('a.nguyen@coteccons.vn'))
+    await vi.waitFor(async () => { expect(view(await fixture.sso.getM365State(), 'mail')).toMatchObject({ status: 'connected' }) })
+    expect(view(await fixture.sso.connectM365('mail'), 'mail')).toMatchObject({ status: 'connected' })
+    expect(interactive).not.toHaveBeenCalled()
+  })
+
+  it('publishes the sign-in link when the browser launch fails or is disabled', async () => {
+    const failing = await mount(CONFIGURED, undefined, () => Promise.reject(new Error('no display')))
+    await connect(failing)
+    expect(view(await failing.sso.getM365State(), 'mail')).toMatchObject({ status: 'connecting', url: AUTHORIZE })
+    const opened: string[] = []
+    const disabled = await mount({ ...CONFIGURED, openBrowser: false }, undefined, (url) => { opened.push(url); return Promise.resolve() })
+    await connect(disabled)
+    expect(view(await disabled.sso.getM365State(), 'mail')).toMatchObject({ status: 'connecting', url: AUTHORIZE })
+    expect(opened).toEqual([])
+    for (const fixture of [failing, disabled]) fixture.client(MAIL).interactive?.reject(new Error('closed'))
+  })
+
+  it('refuses an account outside the allowed domains and a sign-in that returns no account', async () => {
+    const fixture = await mount({ ...CONFIGURED, allowedDomains: ['coteccons.vn'] })
+    await connect(fixture)
+    await fixture.client(MAIL).finish(account('someone@gmail.com'))
+    await vi.waitFor(async () => { expect(view(await fixture.sso.getM365State(), 'mail')).toEqual({ id: 'mail', status: 'blocked', errorCode: 'failed' }) })
+    expect(await fixture.credentials.readRecord(MAIL_KEY)).toBeUndefined()
+    await connect(fixture)
+    await fixture.client(MAIL).finish(null)
+    await vi.waitFor(async () => { expect(view(await fixture.sso.getM365State(), 'mail')).toEqual({ id: 'mail', status: 'blocked', errorCode: 'failed' }) })
+  })
+
+  it('fails an unfinished sign-in at the sign-in timeout', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    cleanups.push(() => { vi.useRealTimers() })
+    const fixture = await mount({ ...CONFIGURED, signInTimeoutMs: 10_000 })
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {
+      const controller = new AbortController()
+      setTimeout(() => { controller.abort(new DOMException('timed out', 'TimeoutError')) }, ms)
+      return controller.signal
+    })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      fixture.client(MAIL).interactive?.reject(new Error('released'))
+      return Promise.resolve(new Response(null))
+    })
+    await connect(fixture)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.waitFor(async () => { expect(view(await fixture.sso.getM365State(), 'mail')).toEqual({ id: 'mail', status: 'blocked', errorCode: 'failed' }) })
+  })
+
+  it('only releases the loopback when the browser callback arrives after cancellation', async () => {
+    const fixture = await mount()
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null))
+    await connect(fixture)
+    const attempt = view(await fixture.sso.getM365State(), 'mail')
+    if (attempt?.status !== 'connecting') throw new Error('expected an attempt')
+    const cancelled = fixture.sso.cancelM365Connect('mail', attempt.attemptId)
+    await vi.waitFor(() => { expect(fetch).toHaveBeenCalledTimes(1) })
+    await fixture.client(MAIL).interactive?.request.openBrowser(AUTHORIZE)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch.mock.calls[1]?.[0]).toEqual(new URL('http://127.0.0.1:53123/'))
+    fixture.client(MAIL).interactive?.reject(new Error('released'))
+    expect(view(await cancelled, 'mail')).toEqual({ id: 'mail', status: 'disconnected' })
+  })
+
+  it('cancels an attempt whose sign-in URL names no loopback without releasing anything', async () => {
+    const fixture = await mount()
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null))
+    fixture.client(MAIL).authorizeUrl = `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/authorize`
+    await connect(fixture)
+    const attempt = view(await fixture.sso.getM365State(), 'mail')
+    if (attempt?.status !== 'connecting') throw new Error('expected an attempt')
+    const cancelled = fixture.sso.cancelM365Connect('mail', attempt.attemptId)
+    fixture.client(MAIL).interactive?.reject(new Error('cancelled'))
+    expect(view(await cancelled, 'mail')).toEqual({ id: 'mail', status: 'disconnected' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('Microsoft 365 connector storage', () => {
+  it('discards an unreadable connector cache at startup', async () => {
+    const fixture = await mount()
+    await fixture.credentials.modifyRecord(MAIL_KEY, () => Promise.resolve({ kind: 'grant', payload: { version: 1, clientId: MAIL, authority: `https://login.microsoftonline.com/${TENANT}`, cache: '{' } }))
+    const restarted = await mount(CONFIGURED, fixture.path)
+    expect(view(await restarted.sso.getM365State(), 'mail')).toEqual({ id: 'mail', status: 'disconnected' })
+    expect(await restarted.credentials.readRecord(MAIL_KEY)).toBeUndefined()
+  })
+
+  it('keeps a connector connected for this process when the store refuses its cache write', async () => {
+    const fixture = await mount()
+    vi.spyOn(fixture.credentials, 'modifyRecord').mockRejectedValue(new Error('read-only'))
+    await connect(fixture)
+    await fixture.client(MAIL).finish(account('a.nguyen@coteccons.vn'))
+    await vi.waitFor(async () => { expect(view(await fixture.sso.getM365State(), 'mail')).toMatchObject({ status: 'connected' }) })
+    expect(await fixture.sso.getM365AccessToken('mail')).toContain('Mail.Read')
+    expect(await fixture.credentials.readRecord(MAIL_KEY)).toBeUndefined()
+  })
+
+  it('clears the connector once when concurrent refreshes are both refused', async () => {
+    const fixture = await mount()
+    await connect(fixture)
+    await fixture.client(MAIL).finish(account('a.nguyen@coteccons.vn'))
+    await vi.waitFor(async () => { expect(view(await fixture.sso.getM365State(), 'mail')).toMatchObject({ status: 'connected' }) })
+    fixture.client(MAIL).silent.mockRejectedValue(new InteractionRequiredAuthError('invalid_grant', 'AADSTS50173 revoked'))
+    const deletions = vi.spyOn(fixture.credentials, 'deleteRecord')
+    const refusals = await Promise.all([fixture.sso.getM365AccessToken('mail'), fixture.sso.getM365AccessToken('mail')].map(token => token.catch((error: unknown) => error)))
+    expect(refusals).toEqual([expect.objectContaining({ reason: 'revoked' }), expect.objectContaining({ reason: 'revoked' })])
+    expect(deletions).toHaveBeenCalledTimes(1)
+    expect(view(await fixture.sso.getM365State(), 'mail')).toEqual({ id: 'mail', status: 'blocked', errorCode: 'revoked' })
+  })
+
+  it('refuses to start a connector sign-in after disposal', async () => {
+    const fixture = await mount()
+    await fixture.ctx.fiber.dispose()
+    await expect(fixture.sso.connectM365('mail')).rejects.toThrow('coteccons-sso: provider closed')
   })
 })
