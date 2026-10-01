@@ -67,7 +67,7 @@ Menu icons use `--dsw-alias-menu-icon`: neutral-bluish 800 in light mode and `la
 
 System toasts use `--dsw-alias-toast-bg` and `--dsw-alias-toast-label` for a shared background and text color across callers. Document previews pair `--dsw-alias-bg-document-preview` with `--dsw-alias-label-document-preview` so the backdrop and status text follow the same theme. Tooltip keycaps use `--dsw-alias-tooltip-key-bg`, a lighter fill derived from the tooltip background in each palette. Switch thumbs read `--dsw-alias-switch-thumb`: white in light mode and neutral-bluish 400 in dark mode, so an off switch stays lighter than its track without the glare of pure white.
 
-`--dsw-alias-label-shimmer` supplies an overlay for the shared text shimmer: black at 30% alpha in the light palette and white at 45% alpha in the dark palette. `--dsw-alias-label-deep-diving` and `--dsw-alias-label-deep-diving-shimmer` supply the blue activity label and sweep; the dark palette uses a lighter, less saturated label with a brighter blue sweep.
+`--dsw-alias-label-shimmer` supplies an overlay for the shared text shimmer: black at 30% alpha in the light palette and white at 45% alpha in the dark palette. `--dsw-alias-label-working` and `--dsw-alias-label-working-shimmer` supply the blue activity label and sweep; the dark palette uses a lighter, less saturated label with a brighter blue sweep.
 
 The `--dsw-alias-turn-trigger-*` tokens provide separate resting and hover backgrounds for Turn-trigger notices in each palette. Dark notices use brighter interactive layers so the resting card remains distinct from the transcript background.
 

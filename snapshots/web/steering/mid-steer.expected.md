@@ -12,8 +12,8 @@
 - button "Ask question waiting"
 - text: "Interjection: include the word BANANA in your final reply."
 - button "Copy"
-- status: Deep diving
-- text: Deep diving for {{duration}} ···
+- status: Under construction
+- text: Under construction for {{duration}} ···
 - region "Ready to continue?":
   - text: Checkpoint
   - heading "Ready to continue?" [level=2]
