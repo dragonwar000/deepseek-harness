@@ -274,7 +274,7 @@ describe('tool presentation and scheduling', () => {
     ]
     for (const [name, args, title] of calls) {
       expect(ctx.tools.get(name)?.presentCall?.(args)).toMatchObject({ card: 'generic', title })
-      expect(ctx.tools.executionMode({ callId: ToolCallId('c'), name, arguments: args })).toEqual({ kind: 'parallel' })
+      expect(ctx.tools.executionMode({ signal: new AbortController().signal, callId: ToolCallId('c'), name, arguments: args })).toEqual({ kind: 'parallel' })
     }
   })
 
