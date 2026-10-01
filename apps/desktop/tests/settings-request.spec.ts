@@ -9,21 +9,22 @@ it('keeps the Desktop settings bridge assignable to the Settings shell consumer'
 })
 
 it('signals the live renderer and hands the request to exactly one reader', () => {
-  const renderer: DesktopSettingsRenderer = { isDestroyed: () => false, send: vi.fn() }
+  const send = vi.fn()
+  const renderer: DesktopSettingsRenderer = { isDestroyed: () => false, send }
   const request = new DesktopSettingsRequest(() => renderer)
   expect(request.take()).toBeUndefined()
   request.open('ai-account')
-  expect(renderer.send).toHaveBeenCalledExactlyOnceWith(DESKTOP_IPC.settingsRequested)
+  expect(send).toHaveBeenCalledExactlyOnceWith(DESKTOP_IPC.settingsRequested)
   expect(request.take()).toBe('ai-account')
   expect(request.take()).toBeUndefined()
 })
 
 it('keeps a request made without a live renderer for the next reader', () => {
-  const renderer: DesktopSettingsRenderer = { isDestroyed: () => true, send: vi.fn() }
-  const renderers = [undefined, renderer]
+  const send = vi.fn()
+  const renderers: Array<DesktopSettingsRenderer | undefined> = [undefined, { isDestroyed: () => true, send }]
   const request = new DesktopSettingsRequest(() => renderers.shift())
   request.open('ai-account')
   request.open('ai-account')
-  expect(renderer.send).not.toHaveBeenCalled()
+  expect(send).not.toHaveBeenCalled()
   expect(request.take()).toBe('ai-account')
 })
