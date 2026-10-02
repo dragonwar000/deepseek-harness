@@ -57,6 +57,12 @@ export class CotecconsSsoController extends TypertRemoteService {
   @Remote
   connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]> { return this.ctx.cotecconsSso.connectM365(id) }
   /**
+   * Connect every configured connector that is not connected, one browser sign-in at a time.
+   * @returns every connector's state after the sequence starts.
+   */
+  @Remote
+  connectAllM365(): Promise<readonly M365ConnectorView[]> { return this.ctx.cotecconsSso.connectAllM365() }
+  /**
    * Cancel the named connector attempt.
    * @param id - connector whose attempt to cancel.
    * @param attemptId - attempt to cancel; a stale id changes nothing.

@@ -49,6 +49,11 @@ export interface Config {
    * assigning users to that app; an omitted connector stays `not-configured`.
    */
   m365?: Partial<Record<M365ConnectorId, M365ConnectorConfig>>
+  /**
+   * After a Coteccons SSO sign-in completes, connect every configured connector that is not connected, one at a
+   * time. A connector IT has not granted ends `blocked` without stopping the others.
+   */
+  m365AutoConnect?: boolean
 }
 
 /** One Microsoft 365 connector's enterprise app. */
@@ -62,7 +67,7 @@ export interface M365ConnectorConfig {
 /** Read-only Microsoft Graph delegated scopes each data kind needs. */
 export const M365_DEFAULT_SCOPES: Readonly<Record<M365ConnectorId, readonly string[]>> = {
   mail: ['User.Read', 'Mail.Read'],
-  chat: ['User.Read', 'Chat.Read'],
+  chat: ['User.Read', 'Chat.Read', 'ChannelMessage.Read.All'],
   files: ['User.Read', 'Files.Read.All', 'Sites.Read.All'],
 }
 
@@ -92,6 +97,7 @@ export const Config: Schema<Config, ValidConfig> = Schema.object({
   openBrowser: Schema.boolean().default(true),
   signInTimeoutMs: Schema.number().min(10_000).max(1_800_000).default(300_000),
   m365: Schema.object({ mail: ConnectorConfig, chat: ConnectorConfig, files: ConnectorConfig }).default({}),
+  m365AutoConnect: Schema.boolean().default(true),
 })
 
 /** App registration facts every MSAL call needs. */
@@ -112,6 +118,8 @@ export interface ResolvedConfig {
   readonly signInTimeoutMs: number
   /** Each configured connector's app and Graph scopes (full resource URIs). */
   readonly m365: Partial<Record<M365ConnectorId, { readonly clientId: string; readonly scopes: readonly string[] }>>
+  /** Connect the configured connectors after a completed SSO sign-in. */
+  readonly m365AutoConnect: boolean
 }
 
 /**
@@ -156,6 +164,7 @@ export function resolveConfig(config: Config): ResolvedConfig {
       }
       return [[id, { clientId, scopes: (scopes.length > 0 ? scopes : M365_DEFAULT_SCOPES[id]).map(graphScope) }]]
     })),
+    m365AutoConnect: valid.m365AutoConnect,
   }
 }
 
@@ -202,6 +211,7 @@ export class MsalCotecconsSso extends CotecconsSso {
   private readonly m365Listeners = new Set<() => void>()
   private readonly connectors: Readonly<Record<M365ConnectorId, M365Connector>>
   private readonly queue = new SerialQueue()
+  private connectingAll = false
   private closed = false
 
   /**
@@ -311,6 +321,15 @@ export class MsalCotecconsSso extends CotecconsSso {
   override connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]> {
     if (this.closed) return Promise.reject(new Error('coteccons-sso: provider closed'))
     this.connectors[id].connect()
+    return this.getM365State()
+  }
+
+  override connectAllM365(): Promise<readonly M365ConnectorView[]> {
+    if (this.closed) return Promise.reject(new Error('coteccons-sso: provider closed'))
+    if (!this.connectingAll) {
+      this.connectingAll = true
+      void this.connectAllSequentially().finally(() => { this.connectingAll = false })
+    }
     return this.getM365State()
   }
 
@@ -456,6 +475,22 @@ export class MsalCotecconsSso extends CotecconsSso {
     this.attempt = undefined
     this.lastError = outcome
     this.publish()
+    if (this.account !== undefined && this.config.m365AutoConnect) await this.connectAllSequentially()
+  }
+
+  /**
+   * Connect every configured connector that is not connected, one browser sign-in at a time; never rejects.
+   * A refused connector settles `blocked` and the next one still runs.
+   */
+  private async connectAllSequentially(): Promise<void> {
+    for (const id of M365_CONNECTORS) {
+      if (this.closed) return
+      const connector = this.connectors[id]
+      const status = connector.view().status
+      if (status === 'not-configured' || status === 'connected') continue
+      connector.connect()
+      await connector.settled()
+    }
   }
 }
 export default MsalCotecconsSso

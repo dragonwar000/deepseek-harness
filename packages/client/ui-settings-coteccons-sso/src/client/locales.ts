@@ -50,7 +50,8 @@ export const zh: { [Key in CotecconsSsoLocaleKey]: string } = {
 /** Microsoft 365 group copy (English, the key-set source of truth). */
 export const m365En = {
   title: 'Microsoft 365 — data the assistant may read',
-  description: 'Let the assistant read your Outlook mail, Teams chats, and OneDrive/SharePoint files with your own permissions. IT grants or revokes each kind in Microsoft Entra ID.',
+  description: 'Let the assistant read your Outlook mail, Teams chats and channels, and OneDrive/SharePoint files with your own permissions. Signing in with Coteccons SSO does not connect them: each kind connects separately, and IT grants or revokes each kind in Microsoft Entra ID.',
+  connectAll: 'Connect all',
   loading: 'Loading the Microsoft 365 access state…',
   unavailable: 'Lost the connection to the Microsoft 365 access state. Reload the page to retry.',
   mail: 'Outlook mail',
@@ -78,7 +79,8 @@ export type M365LocaleKey = keyof typeof m365En
 /** Simplified Chinese Microsoft 365 dictionary (same keys as {@link m365En}). */
 export const m365Zh: { [Key in M365LocaleKey]: string } = {
   title: 'Microsoft 365 — 助手可读取的数据',
-  description: '允许助手以你本人的权限读取 Outlook 邮件、Teams 聊天以及 OneDrive/SharePoint 文件。IT 在 Microsoft Entra ID 中逐类授予或撤销访问权限。',
+  description: '允许助手以你本人的权限读取 Outlook 邮件、Teams 聊天与频道以及 OneDrive/SharePoint 文件。使用 Coteccons SSO 登录不会连接它们：每类数据需单独连接，IT 在 Microsoft Entra ID 中逐类授予或撤销访问权限。',
+  connectAll: '全部连接',
   loading: '正在加载 Microsoft 365 访问状态…',
   unavailable: '与 Microsoft 365 访问状态的连接已断开。请刷新页面后重试。',
   mail: 'Outlook 邮件',

@@ -24,7 +24,7 @@ BASE_SCOPES='openid profile offline_access User.Read'
 # kind|display suffix|extra scopes
 CONNECTORS=(
   'mail|Mail|Mail.Read'
-  'chat|Teams Chat|Chat.Read'
+  'chat|Teams Chat|Chat.Read ChannelMessage.Read.All'
   'files|Files|Files.Read.All Sites.Read.All'
 )
 

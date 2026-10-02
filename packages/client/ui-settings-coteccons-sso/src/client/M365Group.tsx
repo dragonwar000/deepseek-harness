@@ -20,6 +20,8 @@ export interface M365GroupInjected {
   hooks: { m365: HostObservable<M365Snapshot> }
   /** Start or join a connector's browser sign-in. */
   connect: (id: M365ConnectorId) => Promise<void>
+  /** Connect every configured connector that is not connected, one at a time. */
+  connectAll: () => Promise<void>
   /** Cancel the named connector attempt. */
   cancel: (id: M365ConnectorId, attemptId: M365ConnectAttemptId) => Promise<void>
   /** Forget a connector's stored sign-in on this Host. */
@@ -108,10 +110,16 @@ export function M365Group(props: M365GroupProps) {
       </div>
     )
   }
+  const connectable = connectors?.some(view => view.status === 'disconnected' || view.status === 'blocked') ?? false
+  const busy = connectors?.some(view => view.status === 'connecting') ?? false
   return (
     <div className={css.group} data-kind="m365">
-      <div className={css.header}>
+      <div className={css.row}>
         <h4 className={css.title}>{t('title')}</h4>
+        {connectable && (
+          <Button variant="outline" size="sm" disabled={pending || busy}
+            onClick={() => { run(props.connectAll) }}>{t('connectAll')}</Button>
+        )}
       </div>
       <p className={css.hint}>{t('description')}</p>
       {connectors === null ? <p className={css.hint}>{t('loading')}</p> : connectors.map(row)}

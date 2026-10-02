@@ -111,6 +111,11 @@ export class M365Connector {
     this.options.changed()
   }
 
+  /** @returns a promise that settles when the active attempt, if any, reaches its terminal state. */
+  settled(): Promise<void> {
+    return this.attempt?.done ?? Promise.resolve()
+  }
+
   /**
    * Cancel the named attempt.
    * @param attemptId - attempt to cancel; another id changes nothing.

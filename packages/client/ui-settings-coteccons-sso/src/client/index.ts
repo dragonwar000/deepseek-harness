@@ -117,6 +117,7 @@ export function apply(ctx: Context): void {
       },
     },
     connect: id => settleM365(ctx.remote.cotecconsSso.connectM365(id)),
+    connectAll: () => settleM365(ctx.remote.cotecconsSso.connectAllM365()),
     cancel: (id, attemptId) => settleM365(ctx.remote.cotecconsSso.cancelM365Connect(id, attemptId)),
     disconnect: id => settleM365(ctx.remote.cotecconsSso.disconnectM365(id)),
   }

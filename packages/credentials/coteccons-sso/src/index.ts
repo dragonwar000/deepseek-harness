@@ -117,6 +117,14 @@ export abstract class CotecconsSso extends Service {
   abstract connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>
 
   /**
+   * Connect every configured connector that is not connected, one browser sign-in at a time, in the background.
+   * A connector IT has not granted ends `blocked` without stopping the others; a second call while the sequence
+   * runs joins it.
+   * @returns every connector's state after the sequence starts, without waiting for the user.
+   */
+  abstract connectAllM365(): Promise<readonly M365ConnectorView[]>
+
+  /**
    * Cancel the named connector attempt.
    * @param id - connector whose attempt to cancel.
    * @param attemptId - attempt identity; any other id leaves state unchanged.
