@@ -6,6 +6,7 @@
  * @module @deepseek-ai/dsh-subagent-claude-code
  */
 
+import type {} from '@deepseek-ai/dsh-ai-account'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
@@ -81,6 +82,8 @@ class ClaudeCodeProvider implements SubagentProvider {
   ) {}
 
   async start(request: ResolvedSubagentStartRequest) {
+    const home = this.config.env.CLAUDE_CONFIG_DIR
+    if (home !== undefined) await this.ctx.get('aiAccount')?.prepareHome('claude', home, request.signal)
     const parentCwd = request.parent.session.header.cwd
     if (parentCwd === undefined) {
       throw new Error(

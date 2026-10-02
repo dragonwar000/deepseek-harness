@@ -54,6 +54,7 @@ it.skipIf(process.platform === 'win32')('signs an account in through the Loader-
     `    root: ${JSON.stringify(accounts)}`,
     `    claudeCliPath: ${JSON.stringify(join(bin, 'claude'))}`,
     '    loginTimeoutMs: 30000',
+    '    refreshEnabled: false',
     '',
   ].join('\n'))
 

@@ -89,6 +89,8 @@ An install that omits optional dependencies, uses an unsupported platform, or lo
 
 -----
 
+When `ctx.aiAccount` is mounted, a run using a registered claude account directory awaits `prepareHome` before SDK or app-server startup. Expiring OAuth credentials are maintained by the account provider; a maintenance failure prevents that launch. An unrelated configured directory keeps its product-managed authentication.
+
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 

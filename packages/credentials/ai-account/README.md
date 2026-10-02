@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Account consumers list Claude and ChatGPT subscription accounts, add one through the official CLI login, choose the default account of each kind, and remove accounts. Each account owns one official-CLI configuration directory, and its subscription credential never leaves that directory: the service exposes the directory path only to Host consumers that launch the same official CLI.
+Account consumers list Claude and ChatGPT subscription accounts, add one through the official CLI login, choose the default account of each kind, and remove accounts. Each account owns one official-CLI configuration directory. Host consumers use its directory path and request credential maintenance before launching the same official CLI; account snapshots and Remote responses contain no credentials.
 
 ## Table of Contents
 
@@ -35,10 +35,11 @@ Account consumers list Claude and ChatGPT subscription accounts, add one through
 | `checkStatus()` | Runs every account's official CLI status command and records each conclusive answer; a call during a running check joins it |
 | `watch(signal)` | Complete snapshots starting with the current one; ending the subscription never cancels a sign-in |
 | `defaultHome(kind)` | Host-only absolute directory of the default account, or `undefined` when the kind has none |
+| `prepareHome(kind, home, signal)` | Refreshes expiring OAuth credentials for a registered directory before a CLI launch; unregistered directories remain untouched |
 
 An attempt moves through `starting`, then `waiting-browser` (Claude) or `waiting-device-code` (ChatGPT), then `verifying`, and ends as `succeeded`, `cancelled`, or `failed` with an `errorCode` of `executable-missing`, `login-failed`, `timeout`, `identity-unavailable`, or `store-failed`. `login-failed` is the CLI's own refusal; `store-failed` means the CLI signed in but the account could not be recorded, so it was signed back out. `url` carries the browser or verification URL the CLI printed and `userCode` the Codex one-time code. `awaitingCode` is set while the login command reads an authorization code from its terminal, which is the channel `submitSignInCode` answers; the Claude browser page ends on such a code, while ChatGPT polls and never reads one. The first account of a kind becomes its default. Every default change, including to none, emits `ai-account/default-changed` with the kind after the change is stored.
 
-Each account view carries `status`: `status` is `signedIn`, `signedOut`, or `unknown`; `checkedAt` is the completion time of the check that produced it (`null` while `unknown`); `message` is the first line the CLI printed with a `signedOut` answer (`null` otherwise). `unknown` means no check has answered conclusively since the provider started, and an inconclusive check leaves the recorded status unchanged. Every transition emits `ai-account/status-changed` once with an `AiAccountStatusChange`: the account `id` and `kind`, whether it was its kind's default, the `previous` status, and the `current` status view. A check that confirms the recorded status emits nothing.
+Each account view carries `status`: `status` is `signedIn`, `signedOut`, or `unknown`; `checkedAt` is the completion time of the check that produced it (`null` while `unknown`); `message` explains the CLI sign-out or OAuth authorization rejection (`null` otherwise). `unknown` means no check has answered conclusively since the provider started, and an inconclusive check leaves the recorded status unchanged. Every transition emits `ai-account/status-changed` once with an `AiAccountStatusChange`: the account `id` and `kind`, whether it was its kind's default, the `previous` status, and the `current` status view. A check that confirms the recorded status emits nothing.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -51,7 +52,7 @@ The package defines operations and credential-free views only; the provider owns
 - [ai-account-platform](../ai-account-platform/README.md) — the official-CLI provider.
 - [api-ai-account-controller](../../api/ai-account-controller/README.md) — the Remote controller that exposes the views to the browser.
 - [subagent-ai-account](../../subagent/subagent-ai-account/README.md) — mounts the Claude Code and Codex subagent providers for the default accounts.
-- [Official-CLI AI accounts decision](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md) — why credentials stay inside the official CLIs.
+- [Official-CLI AI accounts decision](../../../.agents/notes/implemented/feature/2026-09-29-official-cli-ai-accounts.md) — account isolation and credential ownership.
 
 <a id="model-experience"></a>
 ## Model Experience

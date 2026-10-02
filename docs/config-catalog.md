@@ -184,7 +184,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-ai-account-platform`
 
 - `inject`: `subprocess`
-- `source`: [`packages/credentials/ai-account-platform/src/index.ts:21`](../packages/credentials/ai-account-platform/src/index.ts)
+- `source`: [`packages/credentials/ai-account-platform/src/index.ts:24`](../packages/credentials/ai-account-platform/src/index.ts)
 
 ```ts config-catalog
 /** Deployment choices for the account root, CLI executables, and command deadlines. */
@@ -213,6 +213,14 @@ export interface Config {
   statusCheckTimeoutMs?: number
   /** Accounts whose status commands one sign-in status check runs at the same time. */
   statusCheckConcurrency?: number
+  /** Maintain registered accounts' OAuth grants before launches and during status checks. */
+  refreshEnabled?: boolean
+  /** Refresh when an access token expires within this many milliseconds. */
+  refreshAheadMs?: number
+  /** Deadline for a credential refresh, including storage and network operations. */
+  refreshTimeoutMs?: number
+  /** Maximum wait for another Harness process maintaining the same account. */
+  refreshLockWaitMs?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->
@@ -3923,7 +3931,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-subagent-claude-code`
 
 - `inject`: `subagents` · `subprocess`
-- `source`: [`packages/subagent/subagent-claude-code/src/index.ts:38`](../packages/subagent/subagent-claude-code/src/index.ts)
+- `source`: [`packages/subagent/subagent-claude-code/src/index.ts:39`](../packages/subagent/subagent-claude-code/src/index.ts)
 
 ```ts config-catalog
 /** Deployment-owned model, permission, environment, and process-release settings. */
@@ -3959,7 +3967,7 @@ export type ClaudeCodePermissionMode = typeof CLAUDE_CODE_PERMISSION_MODES[numbe
 ## `@deepseek-ai/dsh-subagent-codex`
 
 - `inject`: `subagents` · `subprocess`
-- `source`: [`packages/subagent/subagent-codex/src/index.ts:36`](../packages/subagent/subagent-codex/src/index.ts)
+- `source`: [`packages/subagent/subagent-codex/src/index.ts:37`](../packages/subagent/subagent-codex/src/index.ts)
 
 ```ts config-catalog
 /** Deployment-owned model, permission, environment, and process-release settings. */

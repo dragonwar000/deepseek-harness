@@ -1,7 +1,7 @@
 /**
  * AI Account provider that signs in, identifies, and signs out Claude and ChatGPT subscription
  * accounts only by running the official Claude Code and Codex CLIs against one configuration
- * directory per account. It never reads, copies, or refreshes the credentials those CLIs store.
+ * directory per account. It refreshes expiring OAuth grants in those accounts' CLI storage.
  */
 import { randomUUID } from 'node:crypto'
 import { mkdir, rm, rmdir } from 'node:fs/promises'
@@ -14,6 +14,9 @@ import {
 } from '@deepseek-ai/dsh-ai-account'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { SubprocessExecutableNotFoundError, type SubprocessTerminalHandle } from '@deepseek-ai/dsh-subprocess'
+import { withFileLock } from '@deepseek-ai/dsh-atomic-write'
+import { CliCredentialStorage } from './credential-storage.ts'
+import { OAuthAuthorizationRequired, readOAuthDocument, refreshOAuthDocument } from './oauth.ts'
 import { CLI, INCONCLUSIVE, LoginOutput, type CliIdentity, type CliStatus } from './cli.ts'
 import { EMPTY_ACCOUNT_FILE, readAccountFile, writeAccountFile, type AccountFile, type AccountRecord } from './store.ts'
 
@@ -43,6 +46,14 @@ export interface Config {
   statusCheckTimeoutMs?: number
   /** Accounts whose status commands one sign-in status check runs at the same time. */
   statusCheckConcurrency?: number
+  /** Maintain registered accounts' OAuth grants before launches and during status checks. */
+  refreshEnabled?: boolean
+  /** Refresh when an access token expires within this many milliseconds. */
+  refreshAheadMs?: number
+  /** Deadline for a credential refresh, including storage and network operations. */
+  refreshTimeoutMs?: number
+  /** Maximum wait for another Harness process maintaining the same account. */
+  refreshLockWaitMs?: number
 }
 
 /** Validated configuration: every field except `root` carries its default. */
@@ -62,6 +73,10 @@ export const Config: Schema<Config, ValidConfig> = Schema.object({
   statusCheckIntervalMs: Schema.union([Schema.const(0), Schema.natural().min(30_000).max(86_400_000)]).default(300_000),
   statusCheckTimeoutMs: Schema.natural().min(1_000).max(120_000).default(15_000),
   statusCheckConcurrency: Schema.natural().min(1).max(8).default(2),
+  refreshEnabled: Schema.boolean().default(true),
+  refreshAheadMs: Schema.natural().min(0).max(3_600_000).default(300_000),
+  refreshTimeoutMs: Schema.natural().min(1_000).max(120_000).default(15_000),
+  refreshLockWaitMs: Schema.natural().min(1_000).max(300_000).default(30_000),
 })
 
 /** Configuration with every default applied. */
@@ -78,6 +93,10 @@ export interface ResolvedConfig {
   readonly statusCheckIntervalMs: number | null
   readonly statusCheckTimeoutMs: number
   readonly statusCheckConcurrency: number
+  readonly refreshEnabled: boolean
+  readonly refreshAheadMs: number
+  readonly refreshTimeoutMs: number
+  readonly refreshLockWaitMs: number
 }
 
 /**
@@ -99,6 +118,10 @@ export function resolveConfig(config: Config): ResolvedConfig {
     statusCheckIntervalMs: valid.statusCheckIntervalMs === 0 ? null : valid.statusCheckIntervalMs,
     statusCheckTimeoutMs: valid.statusCheckTimeoutMs,
     statusCheckConcurrency: valid.statusCheckConcurrency,
+    refreshEnabled: valid.refreshEnabled,
+    refreshAheadMs: valid.refreshAheadMs,
+    refreshTimeoutMs: valid.refreshTimeoutMs,
+    refreshLockWaitMs: valid.refreshLockWaitMs,
   }
 }
 
@@ -146,6 +169,8 @@ export class PlatformAiAccount extends AiAccount {
   private checking: Promise<void> | undefined
   /** Aborted at unload so a running status check stops its CLI commands. */
   private readonly lifetime = new AbortController()
+  private readonly refreshing = new Map<string, Promise<void>>()
+  private readonly removing = new Set<AiAccountId>()
 
   /**
    * @param ctx - context providing the subprocess seam.
@@ -160,6 +185,7 @@ export class PlatformAiAccount extends AiAccount {
       this.attempt?.controller.abort()
       await this.checking
       await this.attempt?.done
+      await Promise.allSettled(this.refreshing.values())
       await this.queue
       this.publish()
     }, 'ai-account: sign-in, status check, and mutation lifetime')
@@ -240,8 +266,14 @@ export class PlatformAiAccount extends AiAccount {
     return this.exclusive(async () => {
       const account = this.account(id)
       const home = this.homeOf(account.kind, id)
-      await this.signOutHome(account.kind, home)
-      await this.discardHome(home)
+      this.removing.add(id)
+      try {
+        await this.refreshing.get(home)?.catch((_refreshFailed: unknown) => undefined)
+        await this.signOutHome(account.kind, home)
+        await this.discardHome(home)
+      } finally {
+        this.removing.delete(id)
+      }
       const accounts = this.file.accounts.filter(candidate => candidate.id !== id)
       const wasDefault = this.file.defaults[account.kind] === id
       const successor = accounts.filter(candidate => candidate.kind === account.kind)
@@ -287,6 +319,53 @@ export class PlatformAiAccount extends AiAccount {
   override defaultHome(kind: AiAccountKind): string | undefined {
     const id = this.file.defaults[kind]
     return id === undefined ? undefined : this.homeOf(kind, id)
+  }
+
+  override async prepareHome(kind: AiAccountKind, home: string, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted()
+    if (this.closed) throw new Error('ai-account: provider closed')
+    const account = this.file.accounts.find(candidate => candidate.kind === kind && this.homeOf(kind, candidate.id) === home)
+    if (account === undefined) return
+    if (this.removing.has(account.id)) throw new Error('ai-account: account is being removed')
+    const operation = this.maintain(account)
+    const aborted = new Promise<never>((_resolve, reject) => {
+      const stop = (): void => { reject(signal.reason) }
+      signal.addEventListener('abort', stop, { once: true })
+      void operation.finally(() => signal.removeEventListener('abort', stop)).catch((_reported: unknown) => undefined)
+    })
+    await Promise.race([operation, aborted])
+    signal.throwIfAborted()
+  }
+
+  /** Coalesce maintenance per account; the provider owns its deadline and unload cancellation. */
+  private maintain(account: AccountRecord): Promise<void> {
+    if (!this.config.refreshEnabled) return Promise.resolve()
+    const home = this.homeOf(account.kind, account.id)
+    const current = this.refreshing.get(home)
+    if (current !== undefined) return current
+    const operation = this.refresh(account, home).finally(() => { this.refreshing.delete(home) })
+    this.refreshing.set(home, operation)
+    return operation
+  }
+
+  private async refresh(account: AccountRecord, home: string): Promise<void> {
+    const signal = AbortSignal.any([this.lifetime.signal, AbortSignal.timeout(this.config.refreshTimeoutMs)])
+    const storage = new CliCredentialStorage(this.ctx.subprocess, this.config.graceMs)
+    await withFileLock(join(home, '.dsh-oauth-refresh'), async () => {
+      signal.throwIfAborted()
+      const location = await storage.read(account.kind, home, signal)
+      if (location === undefined) return
+      const document = readOAuthDocument(account.kind, location.text)
+      const dueAt = document?.expiresAt
+      if (document === undefined || (dueAt !== undefined && Date.now() + this.config.refreshAheadMs < dueAt)) return
+      const next = await refreshOAuthDocument(account.kind, document, signal)
+      signal.throwIfAborted()
+      if (this.removing.has(account.id) || !this.file.accounts.some(({ id }) => id === account.id)) return
+      const latest = await storage.read(account.kind, home, signal)
+      // Vendor CLIs do not take the Harness lock. A newer login or CLI refresh owns the replacement.
+      if (latest?.text !== location.text) return
+      await location.write(next)
+    }, { waitMs: this.config.refreshLockWaitMs })
   }
 
   private filePath(): string {
@@ -527,7 +606,14 @@ export class PlatformAiAccount extends AiAccount {
       return
     }
     if (executable === undefined) return
-    const answer = await this.status(account.kind, this.homeOf(account.kind, account.id), executable, signal)
+    let answer: CliStatus
+    try {
+      await this.prepareHome(account.kind, this.homeOf(account.kind, account.id), signal)
+      answer = await this.status(account.kind, this.homeOf(account.kind, account.id), executable, signal)
+    } catch (error) {
+      if (!(error instanceof OAuthAuthorizationRequired)) return
+      answer = { state: 'signedOut', message: error.message }
+    }
     // Output cut short by the deadline or unload is not an answer, and a removed account has no status.
     if (answer.state === 'inconclusive' || signal.aborted || !this.file.accounts.some(({ id }) => id === account.id)) return
     const current: AiAccountStatusView = answer.state === 'signedIn'

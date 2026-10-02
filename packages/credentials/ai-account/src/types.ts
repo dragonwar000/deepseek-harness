@@ -23,25 +23,25 @@ export interface AiAccountView {
   readonly createdAt: number
   /** Whether delegated product runs of this kind use this account. Each kind has at most one default. */
   readonly isDefault: boolean
-  /** Sign-in status the official CLI reported at the latest conclusive status check. */
+  /** Latest conclusive CLI status or OAuth authorization rejection. */
   readonly status: AiAccountStatusView
 }
 
 /**
- * Sign-in status the official CLI's status command reports for one account directory.
+ * Sign-in status from the account's CLI or credential maintenance.
  * `unknown` means no status check has answered conclusively since the provider started.
  */
 export type AiAccountStatus = 'signedIn' | 'signedOut' | 'unknown'
 
 /**
- * Latest conclusive answer of the official CLI's status command for one account. A check that
- * times out, cannot start the CLI, or cannot parse its output leaves this value unchanged.
+ * Latest conclusive CLI status or rejected OAuth grant for one account. A transient network,
+ * storage, or CLI failure leaves this value unchanged.
  */
 export interface AiAccountStatusView {
   readonly status: AiAccountStatus
   /** Completion time of the check that produced `status`, in milliseconds since the Unix epoch; `null` while `unknown`. */
   readonly checkedAt: number | null
-  /** First output line the CLI printed with a `signedOut` answer; `null` for other statuses. */
+  /** Credential-free CLI sign-out or OAuth rejection explanation; `null` for other statuses. */
   readonly message: string | null
 }
 

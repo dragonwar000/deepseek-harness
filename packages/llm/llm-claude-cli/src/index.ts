@@ -171,7 +171,12 @@ export function apply(ctx: Context, config: ValidConfig): void {
     ? dshHomePath('claude-cli')
     : config.workingDirectory
   // Resolved eagerly so an account that appears later cannot see a different account's directory.
-  const accountHome = (): string | undefined => ctx.get('aiAccount')?.defaultHome('claude')
+  const accountHome = async (signal?: AbortSignal): Promise<string | undefined> => {
+    const accounts = ctx.get('aiAccount')
+    const home = accounts?.defaultHome('claude')
+    if (home !== undefined) await accounts?.prepareHome('claude', home, signal ?? new AbortController().signal)
+    return home
+  }
   const spawn = (spec: Parameters<Context['subprocess']['spawn']>[0]) => ctx.subprocess.spawn(spec)
   // Constructing the catalog validates `extraArgs`, so a forbidden flag fails at load.
   const catalog = new ClaudeCliCatalog({
@@ -212,7 +217,7 @@ export function apply(ctx: Context, config: ValidConfig): void {
    * for a declaration and withdraw the route it had just added.
    */
   const wanted = (): readonly string[] => {
-    if (!config.autoActivate || accountHome() === undefined) return []
+    if (!config.autoActivate || ctx.get('aiAccount')?.defaultHome('claude') === undefined) return []
     const declaredElsewhere = declaredRoutes(ctx).has(config.providerName)
       && !owned.includes(config.providerName)
     return declaredElsewhere ? [] : [config.providerName]

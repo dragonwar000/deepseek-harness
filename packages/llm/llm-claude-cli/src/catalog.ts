@@ -62,7 +62,7 @@ export interface ClaudeCliCatalogDeps {
   readonly catalogTimeoutMs: number
   readonly graceMs: number
   /** Resolves the account's configuration directory, or `undefined` when no account has a default. */
-  readonly accountHome: () => string | undefined
+  readonly accountHome: (signal?: AbortSignal) => string | undefined | Promise<string | undefined>
 }
 
 /** One cached catalog, valid only while the CLI installation fingerprint is unchanged. */
@@ -115,7 +115,7 @@ export class ClaudeCliCatalog {
     return {
       executable: await this.executable(signal),
       extraArgs: this.deps.extraArgs,
-      accountHome: this.deps.accountHome(),
+      accountHome: await this.deps.accountHome(signal),
     }
   }
 

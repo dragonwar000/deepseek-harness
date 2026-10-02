@@ -13,9 +13,9 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /**
- * Account registry whose credentials never leave the official Claude Code and Codex CLIs.
- * Each account owns one CLI configuration directory; implementations sign in, identify,
- * and sign out only by running the official CLI against that directory.
+ * Account registry with one CLI configuration directory per account. Implementations use
+ * the official CLIs for authorization and maintain their subscription credentials for later runs.
+ * Credentials are never included in account snapshots or remote responses.
  */
 export abstract class AiAccount extends Service {
   /** @param ctx - context owning this account implementation. */
@@ -91,5 +91,15 @@ export abstract class AiAccount extends Service {
    * @returns the absolute directory, or `undefined` when the kind has no default account.
    */
   abstract defaultHome(kind: AiAccountKind): string | undefined
+
+  /**
+   * Refresh expiring subscription credentials before launching a product CLI.
+   * @param kind - product whose configuration directory is being used.
+   * @param home - CLI directory; an unregistered directory is left untouched.
+   * @param signal - caller cancellation; shared maintenance remains owned by the provider.
+   * @returns completion once the account credentials are ready; directories without refreshable OAuth retain CLI-managed auth.
+   * @throws when credential maintenance fails or the registered account is being removed.
+   */
+  abstract prepareHome(kind: AiAccountKind, home: string, signal: AbortSignal): Promise<void>
 }
 export default AiAccount

@@ -277,6 +277,10 @@ export class FakeAiAccount extends AiAccount {
     return kind === 'claude' ? this.state.home : undefined
   }
 
+  override prepareHome(_kind: AiAccountKind, _home: string, _signal: AbortSignal): Promise<void> {
+    return Promise.resolve()
+  }
+
   override getState(): Promise<AiAccountsView> {
     throw new Error('the fake AI Account provider answers only defaultHome')
   }

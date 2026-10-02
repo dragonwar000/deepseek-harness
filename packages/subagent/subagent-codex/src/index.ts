@@ -6,6 +6,7 @@
  * @module @deepseek-ai/dsh-subagent-codex
  */
 
+import type {} from '@deepseek-ai/dsh-ai-account'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
@@ -70,7 +71,9 @@ class CodexProvider implements SubagentProvider {
     private readonly config: ResolvedConfig,
   ) {}
 
-  start(request: ResolvedSubagentStartRequest) {
+  async start(request: ResolvedSubagentStartRequest) {
+    const home = this.config.env.CODEX_HOME
+    if (home !== undefined) await this.ctx.get('aiAccount')?.prepareHome('chatgpt', home, request.signal)
     const parentCwd = request.parent.session.header.cwd
     if (parentCwd === undefined) {
       throw new Error(

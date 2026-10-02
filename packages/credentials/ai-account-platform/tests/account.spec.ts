@@ -50,7 +50,7 @@ async function mount(options: { bin?: string; root?: string; config?: Config } =
   ctx.on('ai-account/status-changed', (change) => { transitions.push(change) })
   // Periodic checks stay off unless a test enables them, so status commands appear only where a test expects them.
   const config: Config = Object.assign(
-    { root, claudeCliPath: join(bin, 'claude'), codexCliPath: join(bin, 'codex'), statusCheckIntervalMs: 0 }, options.config,
+    { root, claudeCliPath: join(bin, 'claude'), codexCliPath: join(bin, 'codex'), statusCheckIntervalMs: 0, refreshEnabled: false }, options.config,
   )
   await ctx.plugin(PlatformAiAccount, config)
   return { ctx, service: ctx.get('aiAccount') as PlatformAiAccount, bin, root, changes, transitions }
@@ -616,6 +616,10 @@ it('defaults the account root to the Harness home and applies documented default
       statusCheckIntervalMs: 300_000,
       statusCheckTimeoutMs: 15_000,
       statusCheckConcurrency: 2,
+      refreshEnabled: true,
+      refreshAheadMs: 300_000,
+      refreshTimeoutMs: 15_000,
+      refreshLockWaitMs: 30_000,
     })
   } finally {
     if (previous === undefined) delete process.env.DSH_HOME

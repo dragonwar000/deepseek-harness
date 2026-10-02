@@ -37,6 +37,9 @@
     },
     {
       "path": "../../util/timeout"
+    },
+    {
+      "path": "../../credentials/ai-account"
     }
   ]
 }

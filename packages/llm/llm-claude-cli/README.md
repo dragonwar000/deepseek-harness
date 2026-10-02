@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-This plugin registers the `claude-cli` model route. Its transport is the vendor's own Claude Code CLI, spawned through `ctx.subprocess` per request, so a Claude subscription drives a model inside the Harness and no request goes to Anthropic. The CLI owns authentication: this package only points it at a registered account's directory through the CLI's own `CLAUDE_CONFIG_DIR` variable.
+This plugin registers the `claude-cli` model route. Its transport is the vendor's own Claude Code CLI, spawned through `ctx.subprocess` per request, so a Claude subscription drives a model inside the Harness. Before launching, it asks the AI Account provider to maintain the OAuth grant, then points the CLI at that account's directory through `CLAUDE_CONFIG_DIR`.
 
 Claude Code takes no caller-supplied tool definitions, so a request declaring tools has its schemas rendered into the system prompt and the model's fenced reply parsed back into a real `tool-call` block. That keeps iteration, guards, approvals, and compaction in the Harness.
 

@@ -386,8 +386,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'aiAccount',
-    summary: 'Account registry whose credentials never leave the official Claude Code and Codex CLIs.',
-    description: 'Account registry whose credentials never leave the official Claude Code and Codex CLIs. Each account owns one CLI configuration directory; implementations sign in, identify, and sign out only by running the official CLI against that directory.',
+    summary: 'Account registry with one CLI configuration directory per account.',
+    description: 'Account registry with one CLI configuration directory per account. Implementations use the official CLIs for authorization and maintain their subscription credentials for later runs. Credentials are never included in account snapshots or remote responses.',
     methods: [
       {
         signature: 'abstract getState(): Promise<AiAccountsView>',
@@ -444,6 +444,13 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Resolve the configuration directory of the default account of one kind, for launching that kind\'s official CLI (`CLAUDE_CONFIG_DIR` for Claude Code, `CODEX_HOME` for Codex).',
         parameters: [{ name: 'kind', description: 'account kind.' }],
         returns: 'the absolute directory, or `undefined` when the kind has no default account.',
+      },
+      {
+        signature: 'abstract prepareHome(kind: AiAccountKind, home: string, signal: AbortSignal): Promise<void>',
+        description: 'Refresh expiring subscription credentials before launching a product CLI.',
+        parameters: [{ name: 'kind', description: 'product whose configuration directory is being used.' }, { name: 'home', description: 'CLI directory; an unregistered directory is left untouched.' }, { name: 'signal', description: 'caller cancellation; shared maintenance remains owned by the provider.' }],
+        returns: 'completion once the account credentials are ready; directories without refreshable OAuth retain CLI-managed auth.',
+        throws: ['when credential maintenance fails or the registered account is being removed.'],
       },
     ],
   },
