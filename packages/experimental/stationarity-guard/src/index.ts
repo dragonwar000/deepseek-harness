@@ -6,6 +6,11 @@
  * pair. At the next step boundary it reminds the model or rejects the step,
  * which ends the turn `blocked` and blocks an active goal. `shadow` mode
  * records the same decisions without acting.
+ *
+ * It also hashes the content of every file the turn wrote, read through
+ * `ctx.fs` at the step boundary after a write. A content state that recurs
+ * since the last human message, for example after an edit is reverted or
+ * re-applied, stops the turn with the same `repeat` decision.
  * @module @deepseek-ai/dsh-experimental-stationarity-guard
  */
 
@@ -16,6 +21,7 @@ import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { boundContextSummary, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-goal'
 import type {} from '@deepseek-ai/dsh-tools'
 import type { LoopStationarity, StationarityTier } from './types.ts'
@@ -33,8 +39,8 @@ declare module '@deepseek-ai/dsh-llm' {
 
 /** Cordis plugin name. */
 export const name = 'stationarity-guard'
-/** The guard classifies calls through the tool registry. */
-export const inject = ['tools']
+/** The guard classifies calls through the tool registry and hashes written files through the filesystem. */
+export const inject = ['tools', 'fs']
 
 /** Per-tier repeat thresholds. */
 export interface TierThresholds {
@@ -59,6 +65,15 @@ export interface Config {
   stopAt?: TierThresholds
   /** Consecutive read-only steps without new evidence that stop the turn (default 4). */
   noopStopAt?: number
+  /** Tools whose `file_path` or `path` argument names a file the turn writes (default `write`, `edit`). */
+  writeTools?: string[]
+  /** Occurrences of one written-file state, since the last human message, that stop the turn (default 2). */
+  stateRepeatStopAt?: number
+  /**
+   * Largest file read to hash its content. A larger file, or one whose size the backend does not report, hashes its
+   * version token instead (default 262144).
+   */
+  maxHashBytes?: number
 }
 
 /**
@@ -81,6 +96,9 @@ export const Config: z<Config> = z.object({
   remindAt: tierSchema(4, 8).default({}),
   stopAt: tierSchema(8, 12).default({}),
   noopStopAt: z.number().default(4),
+  writeTools: z.array(z.string()).default(['write', 'edit']),
+  stateRepeatStopAt: z.number().default(2),
+  maxHashBytes: z.number().default(262_144),
 })
 
 /** One root tool call of a step, folded from `tool/call`. */
@@ -108,6 +126,12 @@ interface SessionFold {
   signatures: Map<string, number>
   ledger: Set<string>
   noopRun: number
+  /** Files written since the last human message. */
+  writes: Set<string>
+  /** The step that last wrote a file and has not been judged yet. */
+  writeStep: { turn: number; step: number } | undefined
+  /** Occurrences of each written-file state since the last human message. */
+  states: Map<string, number>
 }
 
 /** A decision before the mode is applied. */
@@ -151,6 +175,20 @@ function parseArguments(raw: string): unknown {
 }
 
 /**
+ * The file a write-tool call names.
+ * @param args - parsed arguments of the call.
+ * @returns the trimmed `file_path`, else `path`, or `undefined` when neither is a non-blank string.
+ */
+function writtenPathOf(args: unknown): string | undefined {
+  if (typeof args !== 'object' || args === null) return undefined
+  const named = args as { file_path?: unknown; path?: unknown }
+  const candidate = typeof named.file_path === 'string' ? named.file_path : named.path
+  if (typeof candidate !== 'string') return undefined
+  const path = candidate.trim()
+  return path === '' ? undefined : path
+}
+
+/**
  * Reject a threshold that is not an integer of at least 2.
  * @param field - config path named in the error.
  * @param value - the validated number.
@@ -180,6 +218,8 @@ export function apply(ctx: Context, config: Config): void {
   // schemastery's .default() guarantees the fields are set after validation.
   const mode = config.mode as 'off' | 'shadow' | 'enforce'
   if (mode === 'off') return
+  // A `const` narrowed here keeps the active modes inside hoisted helpers below.
+  const activeMode: 'shadow' | 'enforce' = mode
   if ((config.assumption as string).trim() === '') {
     throw new Error('stationarity-guard: `assumption` must name what this guard assumes about the model')
   }
@@ -194,16 +234,77 @@ export function apply(ctx: Context, config: Config): void {
     }
   }
   requireThreshold('noopStopAt', noopStopAt)
+  const writeTools = new Set(config.writeTools as string[])
+  if (writeTools.size === 0 || [...writeTools].some(tool => tool.trim() === '')) {
+    throw new Error('stationarity-guard: writeTools must name at least one tool and no blank one')
+  }
+  const stateRepeatStopAt = config.stateRepeatStopAt as number
+  requireThreshold('stateRepeatStopAt', stateRepeatStopAt)
+  const maxHashBytes = config.maxHashBytes as number
+  if (!Number.isSafeInteger(maxHashBytes) || maxHashBytes < 1) {
+    throw new Error(`stationarity-guard: maxHashBytes ${maxHashBytes} must be a positive integer`)
+  }
 
   const folds = new WeakMap<Session, SessionFold>()
 
   function foldOf(session: Session): SessionFold {
     let fold = folds.get(session)
     if (fold === undefined) {
-      fold = { open: undefined, completed: undefined, signatures: new Map(), ledger: new Set(), noopRun: 0 }
+      fold = {
+        open: undefined,
+        completed: undefined,
+        signatures: new Map(),
+        ledger: new Set(),
+        noopRun: 0,
+        writes: new Set(),
+        writeStep: undefined,
+        states: new Map(),
+      }
       folds.set(session, fold)
     }
     return fold
+  }
+
+  /**
+   * Hash the content of each written file as it is now. A file the backend cannot read as text contributes its
+   * version token, and a file larger than `maxHashBytes` or of unknown size contributes its version token without
+   * being read, so the hash still changes when the file does.
+   * @param session - the session whose working directory resolves relative paths.
+   * @param paths - files written since the last human message.
+   * @param signal - cancellation of the step boundary.
+   * @returns the sha256 hex of the sorted path and content-digest pairs.
+   */
+  async function writtenStateOf(session: Session, paths: ReadonlySet<string>, signal: AbortSignal): Promise<string> {
+    const cwd = session.header.cwd
+    const entries: [string, string][] = []
+    for (const path of [...paths].sort()) {
+      const target = await ctx.fs.resolve(path, cwd === undefined ? { signal } : { cwd, signal })
+      const info = await ctx.fs.stat(target, signal)
+      if (info === undefined) {
+        entries.push([path, 'absent'])
+      } else if (info.size === undefined || info.size > maxHashBytes) {
+        entries.push([path, `version:${info.version}`])
+      } else {
+        entries.push([path, await readDigest(target, info.version, signal)])
+      }
+    }
+    return sha256(JSON.stringify(entries))
+  }
+
+  /**
+   * Digest of one file's text, or a fixed marker plus its version when the text cannot be read.
+   * @param target - the resolved file.
+   * @param version - the file's freshness token, used when the text is unreadable.
+   * @param signal - cancellation.
+   * @returns the content digest or the unreadable marker.
+   */
+  async function readDigest(target: Parameters<typeof ctx.fs.readText>[0], version: string, signal: AbortSignal): Promise<string> {
+    try {
+      return sha256(await ctx.fs.readText(target, signal))
+    } catch {
+      // Unreadable text (binary or invalid UTF-8): hash the version token so a rewrite still changes the state.
+      return `unreadable:${version}`
+    }
   }
 
   function tierOf(batch: StepBatch, agent: Agent, signal: AbortSignal): StationarityTier {
@@ -246,6 +347,20 @@ export function apply(ctx: Context, config: Config): void {
     })
   }
 
+  /**
+   * Append one decision and report whether the guard rejects the step.
+   * @param agent - the agent whose step boundary this is.
+   * @param verdict - the decision before the mode is applied.
+   * @returns true when the mode is `enforce` and the decision is a stop.
+   */
+  function record(agent: Agent, verdict: Verdict): boolean {
+    const applied = activeMode === 'enforce'
+    agent.session.append('loop/stationarity', { ...verdict, mode: activeMode, applied })
+    if (!applied || verdict.action !== 'stop') return false
+    blockGoal(agent, verdict)
+    return true
+  }
+
   ctx.on('session/event', (session, event) => {
     switch (event.type) {
       case 'step/start':
@@ -254,7 +369,13 @@ export function apply(ctx: Context, config: Config): void {
       case 'tool/call': {
         const args = parseArguments(event.data.arguments)
         const canonical = JSON.stringify(sortJsonValue(args))
-        foldOf(session).open?.calls.push({ callId: event.data.callId, name: event.data.name, args, canonical })
+        const fold = foldOf(session)
+        fold.open?.calls.push({ callId: event.data.callId, name: event.data.name, args, canonical })
+        const path = writeTools.has(event.data.name) ? writtenPathOf(args) : undefined
+        if (path !== undefined && fold.open !== undefined) {
+          fold.writes.add(path)
+          fold.writeStep = { turn: fold.open.turn, step: fold.open.step }
+        }
         return
       }
       case 'tool/result': {
@@ -283,20 +404,33 @@ export function apply(ctx: Context, config: Config): void {
       fold.signatures.clear()
       fold.ledger.clear()
       fold.noopRun = 0
+      fold.writes.clear()
+      fold.writeStep = undefined
+      fold.states.clear()
       return next()
+    }
+    const written = fold.writeStep
+    if (written !== undefined) {
+      fold.writeStep = undefined
+      const state = await writtenStateOf(agent.session, fold.writes, signal)
+      const count = (fold.states.get(state) ?? 0) + 1
+      fold.states.set(state, count)
+      if (count >= stateRepeatStopAt) {
+        const verdict: Verdict = {
+          turn: written.turn, step: written.step, signature: state, tier: 'sideEffect',
+          repeats: count, noopRun: fold.noopRun, action: 'stop', reason: 'repeat',
+        }
+        if (record(agent, verdict)) return { kind: 'reject' }
+      }
     }
     const batch = fold.completed
     fold.completed = undefined
     if (batch === undefined) return next()
     const verdict = judge(fold, batch, tierOf(batch, agent, signal))
     if (verdict === undefined) return next()
-    const applied = mode === 'enforce'
-    agent.session.append('loop/stationarity', { ...verdict, mode, applied })
-    if (!applied) return next()
-    if (verdict.action === 'stop') {
-      blockGoal(agent, verdict)
-      return { kind: 'reject' }
-    }
+    if (record(agent, verdict)) return { kind: 'reject' }
+    // A reminder is added only when enforced; shadow records the decision and changes nothing.
+    if (mode !== 'enforce') return next()
     const downstream = await next()
     if (downstream.kind !== 'enter') return downstream
     return { ...downstream, messages: [...downstream.messages, reminder(verdict)] }

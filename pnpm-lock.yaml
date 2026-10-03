@@ -8929,6 +8929,15 @@ importers:
       '@deepseek-ai/dsh-agent-loop-testkit':
         specifier: workspace:*
         version: link:../../test-support/agent-loop-testkit
+      '@deepseek-ai/dsh-fs':
+        specifier: workspace:*
+        version: link:../../fs/fs
+      '@deepseek-ai/dsh-fs-local':
+        specifier: workspace:*
+        version: link:../../fs/fs-local
+      '@deepseek-ai/dsh-fs-observation-policy':
+        specifier: workspace:*
+        version: link:../../fs/fs-observation-policy
       '@deepseek-ai/dsh-goal':
         specifier: workspace:*
         version: link:../../goal/goal
@@ -8941,6 +8950,9 @@ importers:
       '@deepseek-ai/dsh-session':
         specifier: workspace:*
         version: link:../../core/session
+      '@deepseek-ai/dsh-tool-fs':
+        specifier: workspace:*
+        version: link:../../fs/tool-fs
       '@deepseek-ai/dsh-tools':
         specifier: workspace:*
         version: link:../../core/tools

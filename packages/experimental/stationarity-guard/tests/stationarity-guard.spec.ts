@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
+import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
+import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
 import { createUserMessage, ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { ContextFormed, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
@@ -34,9 +40,39 @@ interface HarnessOptions {
   invariant?: boolean
 }
 
-async function harness(config: Config, options: HarnessOptions = {}): Promise<Context> {
+const workspaces: string[] = []
+/** Workspace of the most recent {@link mountFs}. */
+let workspace = ''
+
+afterEach(() => {
+  for (const dir of workspaces.splice(0)) rmSync(dir, { recursive: true, force: true })
+})
+
+/**
+ * Mount the local filesystem, its observation policy, and the real file tools, rooted at a fresh temporary workspace.
+ * @param ctx - the context to mount into.
+ */
+async function mountFs(ctx: Context): Promise<void> {
+  workspace = mkdtempSync(join(tmpdir(), 'dsh-stationarity-'))
+  workspaces.push(workspace)
+  await ctx.plugin(LocalFileSystem, { cwd: workspace })
+  await ctx.plugin(FsPolicy)
+  await ctx.plugin(ToolFs)
+}
+
+/**
+ * A context with the agent-loop test dependencies and the filesystem, but not the guard.
+ * @returns the bare context.
+ */
+async function bare(): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
+  await mountFs(ctx)
+  return ctx
+}
+
+async function harness(config: Config, options: HarnessOptions = {}): Promise<Context> {
+  const ctx = await bare()
   if (options.invariant === true) {
     await ctx.plugin(InvariantService, { enabled: true })
     await ctx.plugin(StationarityInvariant)
@@ -253,8 +289,7 @@ describe('invariant companion', () => {
 
 describe('config', () => {
   it('fails loud without an assumption', async () => {
-    const ctx = new Context()
-    await mountAgentLoopTestDependencies(ctx)
+    const ctx = await bare()
     await expect(ctx.plugin(StationarityGuard, { ...CONFIG, assumption: ' ' })).rejects.toThrow('`assumption` must name')
   })
 
@@ -262,15 +297,179 @@ describe('config', () => {
     [{ remindAt: { sideEffect: 3, readOnly: 5 } }, 'remindAt.sideEffect (3) must be less than stopAt.sideEffect (3)'],
     [{ noopStopAt: 1 }, 'invalid noopStopAt 1'],
     [{ stopAt: { sideEffect: 3, readOnly: 6.5 } }, 'invalid stopAt.readOnly 6.5'],
+    [{ stateRepeatStopAt: 1 }, 'invalid stateRepeatStopAt 1'],
+    [{ maxHashBytes: 0 }, 'maxHashBytes 0 must be a positive integer'],
+    [{ writeTools: [' '] }, 'writeTools must name at least one tool and no blank one'],
   ] satisfies [Config, string][])('fails loud on %j', async (patch, message) => {
-    const ctx = new Context()
-    await mountAgentLoopTestDependencies(ctx)
+    const ctx = await bare()
     await expect(ctx.plugin(StationarityGuard, { ...CONFIG, ...patch })).rejects.toThrow(message)
   })
 
   it('registers nothing in off mode', async () => {
     const ctx = await harness({ ...CONFIG, mode: 'off' })
     const { agent } = await mockAgent(ctx, [...pokes(3), textResponse('done')])
+    await prompt(ctx, agent, 'go')
+    expect(decisions(agent)).toEqual([])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+})
+
+/**
+ * A tool call whose arguments are the given raw text, for argument shapes an object cannot encode.
+ * @param callId - the call id.
+ * @param name - the tool name.
+ * @param raw - the arguments text the model emitted.
+ * @returns the streamed response.
+ */
+function rawToolCall(callId: string, name: string, raw: string): StreamChunk[] {
+  return toolCallResponse(callId, name, {}).map(chunk => (chunk.type === 'block-end' && chunk.block.type === 'tool-call'
+    ? { ...chunk, block: { ...chunk.block, arguments: raw } }
+    : chunk))
+}
+
+/** One model response that writes `content` to `path` with the real `write` tool. */
+const writeStep = (callId: string, path: string, content: string): StreamChunk[][] =>
+  [toolCallResponse(callId, 'write', { file_path: path, content })]
+
+describe('written state', () => {
+  it('stops the turn when a file returns to an earlier content state', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2 })
+    const { agent, adapter } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'two'),
+      ...writeStep('w3', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(adapter.requests).toHaveLength(3)
+    expect(decisions(agent).map(d => [d.action, d.reason, d.tier, d.repeats, d.applied])).toEqual([['stop', 'repeat', 'sideEffect', 2, true]])
+    expect(turnEnds(agent)).toEqual(['blocked'])
+  })
+
+  it('stops a step that rewrites the same content', async () => {
+    // Raise the evidence stop so only the written-state stop can end this turn.
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2, stopAt: { sideEffect: 9, readOnly: 12 } })
+    const { agent, adapter } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(adapter.requests).toHaveLength(2)
+    expect(decisions(agent).map(d => [d.action, d.reason, d.repeats, d.applied])).toEqual([['stop', 'repeat', 2, true]])
+    expect(turnEnds(agent)).toEqual(['blocked'])
+  })
+
+  it('records the stop without rejecting in shadow mode', async () => {
+    const ctx = await harness({ ...CONFIG, mode: 'shadow', stateRepeatStopAt: 2 })
+    const { agent } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'two'),
+      ...writeStep('w3', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(decisions(agent).map(d => [d.action, d.reason, d.applied])).toEqual([['stop', 'repeat', false]])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+
+  it('does not stop while each write leaves a new combined state', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2 })
+    const { agent, adapter } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'b.txt', 'one'),
+      ...writeStep('w3', 'a.txt', 'two'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(adapter.requests).toHaveLength(4)
+    expect(decisions(agent)).toEqual([])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+
+  it('compares a file over maxHashBytes by its version token, so a file rewritten to the same content is not repeated', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2, maxHashBytes: 1 })
+    const { agent } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'two'),
+      ...writeStep('w3', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(decisions(agent)).toEqual([])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+
+  it('tracks only the tools named by writeTools', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2, writeTools: ['poke'] })
+    const { agent } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'two'),
+      ...writeStep('w3', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(decisions(agent)).toEqual([])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+
+  it('tracks a written path only from an object argument with a non-blank path, and hashes a missing file as absent', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2, writeTools: ['poke'] })
+    const { agent, adapter } = await mockAgent(ctx, [
+      rawToolCall('a', 'poke', '"text"'),
+      rawToolCall('b', 'poke', 'null'),
+      rawToolCall('c', 'poke', '[1]'),
+      rawToolCall('d', 'poke', '{"path":"never-written.txt"}'),
+      rawToolCall('e', 'poke', '{"file_path":"   "}'),
+      rawToolCall('f', 'poke', '{"file_path":5}'),
+      textResponse('done'),
+    ])
+    await prompt(ctx, agent, 'go')
+    expect(adapter.requests).toHaveLength(7)
+    expect(decisions(agent)).toEqual([])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+
+  it('hashes a path that is a directory by its version when its text cannot be read', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2 })
+    mkdirSync(join(workspace, 'dir'))
+    const { agent, adapter } = await mockAgent(ctx, [...writeStep('w1', 'dir', 'one'), textResponse('done')])
+    await prompt(ctx, agent, 'go')
+    expect(adapter.requests).toHaveLength(2)
+    expect(decisions(agent)).toEqual([])
+    expect(turnEnds(agent)).toEqual(['completed'])
+  })
+
+  it('resolves written paths against the session working directory', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2 })
+    const adapter = new MockAdapter([
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'two'),
+      ...writeStep('w3', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
+    ctx.llm.registerAdapter(['cwd'], adapter)
+    const agent = await ctx.agentLoop.create(SessionId('cwd'), { provider: 'cwd', model: 'mock' }, { cwd: workspace })
+    await prompt(ctx, agent, 'go')
+    expect(decisions(agent).map(d => [d.action, d.reason, d.repeats])).toEqual([['stop', 'repeat', 2]])
+    expect(turnEnds(agent)).toEqual(['blocked'])
+  })
+
+  it('compares by version token, without reading, when the backend reports no file size', async () => {
+    const ctx = await harness({ ...CONFIG, stateRepeatStopAt: 2 })
+    const stat = ctx.fs.stat.bind(ctx.fs)
+    vi.spyOn(ctx.fs, 'stat').mockImplementation(async (target, signal) => {
+      const info = await stat(target, signal)
+      if (info === undefined) return undefined
+      const { size: _size, ...withoutSize } = info
+      return withoutSize
+    })
+    const { agent } = await mockAgent(ctx, [
+      ...writeStep('w1', 'a.txt', 'one'),
+      ...writeStep('w2', 'a.txt', 'two'),
+      ...writeStep('w3', 'a.txt', 'one'),
+      textResponse('done'),
+    ])
     await prompt(ctx, agent, 'go')
     expect(decisions(agent)).toEqual([])
     expect(turnEnds(agent)).toEqual(['completed'])

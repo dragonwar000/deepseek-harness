@@ -47,12 +47,17 @@ Choose it when agents spend steps and tokens repeating tool calls whose results 
 | `remindAt.sideEffect` / `remindAt.readOnly` | `4` / `8` | Occurrences of one step signature that add one reminder |
 | `stopAt.sideEffect` / `stopAt.readOnly` | `8` / `12` | Occurrences of one step signature that stop the turn |
 | `noopStopAt` | `4` | Consecutive read-only steps without a new call/result pair that stop the turn |
+| `writeTools` | `write`, `edit` | Tools whose `file_path` or `path` argument names a file the turn writes; the content of those files is hashed after each write step |
+| `stateRepeatStopAt` | `2` | Occurrences of one written-file content state since the last human message that stop the turn |
+| `maxHashBytes` | `262144` | Largest file read to hash its content; a larger file, or one whose size the backend does not report, hashes its version token instead |
 
 Loading fails with a `stationarity-guard:` error when `assumption` is blank, when a threshold is not an integer of at least 2, or when a tier's `remindAt` is not below its `stopAt`.
 
 ### What you get
 
 At the step boundary after a tool step that reaches a threshold, the guard appends one `loop/stationarity` session event with the judged turn and step, the mode, the step signature, the tier (`sideEffect` or `readOnly`), the signature's occurrence count, the read-only no-progress run, the action (`remind` or `stop`), the reason (`repeat` or `noop`), and whether the guard acted. In `enforce` mode a `remind` adds a `notice`-form user message whose source kind is `stationarity-guard` to the next step's input, and a `stop` rejects the next step, so the turn ends with `turn/end` reason `blocked` and an active session goal is blocked with code `stationary`. A new human message resets every count.
+
+The written-file state is a second check on the same step boundary. After a step whose calls include a `writeTools` call naming a path, the guard reads each path named since the last human message through `ctx.fs` and hashes the sorted (path, content digest) pairs. When one state occurs `stateRepeatStopAt` times, the guard appends a `stop` decision with reason `repeat`, using the state hash as the signature and tier `sideEffect`; in `enforce` mode that rejects the next step as above. A path that is absent hashes as `absent`. Text the backend cannot read hashes its version token, and so does a file larger than `maxHashBytes` or one whose size the backend does not report. A rewrite still changes the state, but identical bytes in such a file are not recognized as a repeat.
 
 -----
 

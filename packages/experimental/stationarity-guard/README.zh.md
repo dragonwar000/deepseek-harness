@@ -47,12 +47,17 @@ kind: "package-reference"
 | `remindAt.sideEffect` / `remindAt.readOnly` | `4` / `8` | 同一 step 签名出现多少次时添加一条提醒 |
 | `stopAt.sideEffect` / `stopAt.readOnly` | `8` / `12` | 同一 step 签名出现多少次时停止 turn |
 | `noopStopAt` | `4` | 连续多少个没有新调用/结果对的只读 step 会停止 turn |
+| `writeTools` | `write`、`edit` | 其 `file_path` 或 `path` 参数指向 turn 写入的文件的工具；每个写入 step 之后会对这些文件的内容取哈希 |
+| `stateRepeatStopAt` | `2` | 自上一条人类消息起，同一写入文件内容状态出现多少次时停止 turn |
+| `maxHashBytes` | `262144` | 读取内容取哈希的最大文件；超过该大小或后端不报告大小的文件改为取其版本令牌 |
 
 以下情况加载会以 `stationarity-guard:` 错误失败：`assumption` 为空白；某个阈值不是不小于 2 的整数；某一层级的 `remindAt` 不小于其 `stopAt`。
 
 ### 你会得到什么
 
 在达到阈值的工具 step 之后的 step 边界，护栏追加一个 `loop/stationarity` 会话事件，内容包括被判定的 turn 与 step、模式、step 签名、层级（`sideEffect` 或 `readOnly`）、签名出现次数、只读无进展连续数、动作（`remind` 或 `stop`）、原因（`repeat` 或 `noop`），以及护栏是否实际采取了行动。在 `enforce` 模式下，`remind` 会把一条 source kind 为 `stationarity-guard` 的 `notice` 形式 user 消息加入下一个 step 的输入；`stop` 会拒绝下一个 step，于是 turn 以 `turn/end` 原因 `blocked` 结束，活动中的会话 goal 以代码 `stationary` 被阻塞。新的人类消息会重置所有计数。
+
+写入文件状态是同一个 step 边界上的第二项检查。在包含 `writeTools` 调用且其路径有效的 step 之后，护栏通过 `ctx.fs` 读取自上一条人类消息以来被命名的每个路径，并对按排序的（路径、内容摘要）对取哈希。当某个状态出现 `stateRepeatStopAt` 次时，护栏追加一条原因为 `repeat` 的 `stop` 决定，以该状态哈希作为签名、层级为 `sideEffect`；在 `enforce` 模式下，这会如上拒绝下一个 step。不存在的路径按 `absent` 哈希。后端无法读取为文本的内容改为取版本令牌，超过 `maxHashBytes` 的文件或后端不报告大小的文件同样如此。重写仍会改变状态，但此类文件中字节相同的内容不会被识别为重复。
 
 -----
 
