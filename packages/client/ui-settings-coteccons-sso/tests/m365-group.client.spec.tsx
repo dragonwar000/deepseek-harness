@@ -14,6 +14,7 @@ afterEach(() => { cleanup() })
 function mount(connectors: readonly M365ConnectorView[] | null, copy: Record<M365LocaleKey, string> = m365En, failed = false) {
   const operations = {
     connect: vi.fn<M365GroupInjected['connect']>(() => Promise.resolve()),
+    connectAll: vi.fn<M365GroupInjected['connectAll']>(() => Promise.resolve()),
     cancel: vi.fn<M365GroupInjected['cancel']>(() => Promise.resolve()),
     disconnect: vi.fn<M365GroupInjected['disconnect']>(() => Promise.resolve()),
   }
