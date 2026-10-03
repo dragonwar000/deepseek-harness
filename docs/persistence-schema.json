@@ -11262,7 +11262,7 @@
       "kind": "event",
       "event": "graph/node",
       "surface": false,
-      "digest": "f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa",
+      "digest": "377c08a1d4e6c94db348ae6a6806f4e1da6a64bef3a80ac1471f541c829918d4",
       "schema": {
         "root": 0,
         "nodes": [
@@ -11276,7 +11276,7 @@
               },
               {
                 "name": "ignorable",
-                "type": 34,
+                "type": 39,
                 "optional": true
               },
               {
@@ -11291,7 +11291,7 @@
               },
               {
                 "name": "type",
-                "type": 35,
+                "type": 40,
                 "optional": false
               }
             ],
@@ -11356,8 +11356,13 @@
                 "optional": false
               },
               {
-                "name": "recoveryState",
+                "name": "ratchet",
                 "type": 18,
+                "optional": true
+              },
+              {
+                "name": "recoveryState",
+                "type": 25,
                 "optional": false
               },
               {
@@ -11372,7 +11377,7 @@
               },
               {
                 "name": "status",
-                "type": 22,
+                "type": 29,
                 "optional": false
               },
               {
@@ -11382,7 +11387,7 @@
               },
               {
                 "name": "violations",
-                "type": 33,
+                "type": 24,
                 "optional": true
               }
             ],
@@ -11404,6 +11409,10 @@
           },
           {
             "kind": "literal",
+            "value": "sessionExited"
+          },
+          {
+            "kind": "literal",
             "value": "verifier"
           },
           {
@@ -11417,10 +11426,6 @@
           {
             "kind": "literal",
             "value": "predicate"
-          },
-          {
-            "kind": "literal",
-            "value": "sessionExited"
           },
           {
             "kind": "array",
@@ -11497,11 +11502,81 @@
             "element": 15
           },
           {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "action",
+                "type": 19,
+                "optional": false
+              },
+              {
+                "name": "attempt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "bestAttempt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "bestScore",
+                "type": 12,
+                "optional": false
+              },
+              {
+                "name": "leftovers",
+                "type": 24,
+                "optional": false
+              },
+              {
+                "name": "restored",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "score",
+                "type": 12,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
             "kind": "union",
             "types": [
-              19,
               20,
-              21
+              21,
+              22,
+              23
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "literal",
+            "value": "skipped"
+          },
+          {
+            "kind": "literal",
+            "value": "kept"
+          },
+          {
+            "kind": "literal",
+            "value": "reverted"
+          },
+          {
+            "kind": "array",
+            "element": 11
+          },
+          {
+            "kind": "union",
+            "types": [
+              26,
+              27,
+              28
             ]
           },
           {
@@ -11519,21 +11594,25 @@
           {
             "kind": "union",
             "types": [
-              23,
-              24,
-              25,
-              26,
-              27,
-              28,
-              29,
+              21,
               30,
               31,
-              32
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38
             ]
           },
           {
             "kind": "literal",
-            "value": "skipped"
+            "value": "running"
+          },
+          {
+            "kind": "literal",
+            "value": "cancelled"
           },
           {
             "kind": "literal",
@@ -11542,10 +11621,6 @@
           {
             "kind": "literal",
             "value": "waiting_human"
-          },
-          {
-            "kind": "literal",
-            "value": "cancelled"
           },
           {
             "kind": "literal",
@@ -11566,14 +11641,6 @@
           {
             "kind": "literal",
             "value": "ready"
-          },
-          {
-            "kind": "literal",
-            "value": "running"
-          },
-          {
-            "kind": "array",
-            "element": 11
           },
           {
             "kind": "literal",
@@ -27774,7 +27841,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphEdgeOutcome"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:354"
+        "packages/experimental/graph-contract/src/types.ts:382"
       ]
     },
     {
@@ -28578,6 +28645,11 @@
       "sources": [
         "packages/llm/llm-retry/src/types.ts:30"
       ]
+    },
+    {
+      "digest": "377c08a1d4e6c94db348ae6a6806f4e1da6a64bef3a80ac1471f541c829918d4",
+      "names": [],
+      "sources": []
     },
     {
       "digest": "378f90f9f6022a0991928a1eaf7991094ea1920fe89a9248358a1da106e1a970",
@@ -29653,6 +29725,11 @@
       ]
     },
     {
+      "digest": "691c578666b33dc526877f8620e441a5f1a896b91ed2f0c1c65c13d743d41087",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "693d41cd3064f005b48e287362b4951976539ac988480be65393107d9fb07813",
       "names": [],
       "sources": []
@@ -30647,6 +30724,15 @@
       ]
     },
     {
+      "digest": "9900f5d36f9c8ff09ba01921e2898b8dc4f923d56e800564e7e366577aa1448f",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphNodeRecord"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:324"
+      ]
+    },
+    {
       "digest": "99135d8a3937977955eaac5f8f04f930dcd1562f8450a54a51cde9b921dd59a6",
       "names": [],
       "sources": []
@@ -30791,6 +30877,11 @@
     },
     {
       "digest": "9ffde67f07c58879fea68f7f53539bb8f2d31a6bab462650f8efdf0c5842a0fc",
+      "names": [],
+      "sources": []
+    },
+    {
+      "digest": "9fff6bbb0ddf68ae0de45d9c3f8eca580f85875a5fe7aa4eb1c24a269c9f65b4",
       "names": [],
       "sources": []
     },
@@ -31204,6 +31295,15 @@
       ]
     },
     {
+      "digest": "b0e358e95b6a6adfbf7c97bc4ca807bdea9a89ca2bd43d7c26614cb235d4ad45",
+      "names": [
+        "packages/experimental/graph-contract/src/types.ts#GraphRatchet"
+      ],
+      "sources": [
+        "packages/experimental/graph-contract/src/types.ts:302"
+      ]
+    },
+    {
       "digest": "b158f3ff6923714807c0d73882f0b05dc87f8fa85c9e90814852d48bbc866081",
       "names": [
         "packages/core/session/src/types.ts#RequestContext"
@@ -31387,7 +31487,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphRunRecord"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:336"
+        "packages/experimental/graph-contract/src/types.ts:364"
       ]
     },
     {
@@ -31444,15 +31544,6 @@
       "digest": "b978cff734e62143eb56c9125423ec275405eda969802d42aaf73ecb987d3b26",
       "names": [],
       "sources": []
-    },
-    {
-      "digest": "b97e37a02dfcbbc1a39b585a0cdcd181c402bb79a5edfe8eb5133c3ea9751d34",
-      "names": [
-        "packages/experimental/graph-contract/src/types.ts#GraphNodeRecord"
-      ],
-      "sources": [
-        "packages/experimental/graph-contract/src/types.ts:298"
-      ]
     },
     {
       "digest": "b991674df056a21bab97d826bc48ba3b18a3a30bdfc0086387b46fb4173ca87e",
@@ -32296,6 +32387,11 @@
       "sources": []
     },
     {
+      "digest": "ebf79298a52dd81c02288dfe04c5431271dfddb4774ba5d52c3d7b47b802a1ac",
+      "names": [],
+      "sources": []
+    },
+    {
       "digest": "ec14e97adfc7ad70120af115df293ffffbfdfd29688799331e201960093724fa",
       "names": [],
       "sources": []
@@ -32323,7 +32419,7 @@
         "packages/experimental/graph-contract/src/types.ts#GraphEdgeRecord"
       ],
       "sources": [
-        "packages/experimental/graph-contract/src/types.ts:357"
+        "packages/experimental/graph-contract/src/types.ts:385"
       ]
     },
     {
@@ -32590,11 +32686,6 @@
     },
     {
       "digest": "f89f7915df9e5486c31a118eb5fad26df3ada0af507c5d972d0ae93c7056c91e",
-      "names": [],
-      "sources": []
-    },
-    {
-      "digest": "f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa",
       "names": [],
       "sources": []
     },

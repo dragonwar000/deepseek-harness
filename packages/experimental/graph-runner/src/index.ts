@@ -63,6 +63,15 @@ export interface Config {
   outputTailChars?: number
   /** Human gate timeout in milliseconds; 0 (default) waits until the run stops. */
   humanTimeoutMs?: number
+  /**
+   * Shell command whose last stdout line measures a failed node attempt. Blank (default) turns the keep-best ratchet
+   * off; set it to keep a node's best attempt across its retries.
+   */
+  ratchetMetric?: string
+  /** Which direction of the metric is better (default `max`). */
+  ratchetDirection?: 'max' | 'min'
+  /** Most bytes of write-scope text one ratchet snapshot may hold (default 1048576). */
+  ratchetMaxBytes?: number
 }
 
 /** Schemastery validator for {@link Config}. */
@@ -77,6 +86,9 @@ export const Config: z<Config> = z.object({
   verifyTimeoutMs: z.number().default(300_000),
   outputTailChars: z.number().default(2000),
   humanTimeoutMs: z.number().default(0),
+  ratchetMetric: z.string().default(''),
+  ratchetDirection: z.union(['max', 'min'] as const).default('max'),
+  ratchetMaxBytes: z.number().default(1_048_576),
 })
 
 /** Model-facing description of `graph_run`. */
@@ -194,6 +206,8 @@ export function apply(ctx: Context, config: Config): void {
   requireCount('verifyTimeoutMs', config.verifyTimeoutMs as number, 1)
   requireCount('outputTailChars', config.outputTailChars as number, 1)
   requireCount('humanTimeoutMs', config.humanTimeoutMs as number, 0)
+  requireCount('ratchetMaxBytes', config.ratchetMaxBytes as number, 1)
+  const ratchetMetric = config.ratchetMetric as string
   const settings: RunSettings = {
     mode,
     provider,
@@ -203,6 +217,9 @@ export function apply(ctx: Context, config: Config): void {
     verifyTimeoutMs: config.verifyTimeoutMs as number,
     outputTailChars: config.outputTailChars as number,
     humanTimeoutMs: config.humanTimeoutMs as number,
+    ratchet: ratchetMetric.trim() === ''
+      ? undefined
+      : { metric: ratchetMetric, direction: config.ratchetDirection as 'max' | 'min', maxBytes: config.ratchetMaxBytes as number },
   }
   const scopes = new WriteScopes()
 
@@ -273,7 +290,7 @@ export function apply(ctx: Context, config: Config): void {
       }
       const runId = graphRunId(randomUUID())
       const outcome = await runGraph(
-        { subagents: ctx.subagents, shell: ctx.get('shell'), approval: ctx.get('approval'), scopes },
+        { subagents: ctx.subagents, shell: ctx.get('shell'), approval: ctx.get('approval'), scopes, files: ctx.get('fs') },
         settings,
         {
           agent, callId: exec.callId, signal: exec.signal, runId,

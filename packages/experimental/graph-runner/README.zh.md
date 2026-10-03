@@ -58,6 +58,9 @@ kind: "package-reference"
 | `verifyTimeoutMs` | `300000` | 每条 verify 命令的超时 |
 | `outputTailChars` | `2000` | 每次检查保留的命令输出 |
 | `humanTimeoutMs` | `0` | 人工关口超时；`0` 表示一直等到运行停止 |
+| `ratchetMetric` | 空 | 测量失败节点尝试的 shell 命令，取其 stdout 的最后一行；为空则关闭保留最优的棘轮 |
+| `ratchetDirection` | `max` | 指标的哪个方向更优：`max` 或 `min` |
+| `ratchetMaxBytes` | `1048576` | 一个棘轮快照最多保存的写入范围文本字节数；超出或非文本的范围不会被保留 |
 
 当 `assumption` 或 `provider` 为空白，或某个计数不是范围内的整数（`maxConcurrent`、`maxPlanVersions`、`verifyTimeoutMs` 与 `outputTailChars` 至少为 1；其他至少为 0）时，加载会以 `graph-runner:` 错误失败。
 
@@ -106,6 +109,7 @@ need 在它为 `executed`、带 `mayFail` 的 `failed`（此时绑定收到其 `
 - **`maxPlanVersions` 限制重新规划。** 目标轮次统计的是目标驱动的回合，而不是计划版本。
 - **`maxConcurrent` 是唯一的并发上限。** `maxActiveSubagents` 只作用于可继续的子代理。
 - **不按类型设置 persona。** 节点简报说明节点的角色；验证节点的简报还会加上要检查的产物、验收标准与 verdict 规则。更早的失败痕迹从不包含在内。
+- **保留最优的重试。** 设置 `ratchetMetric` 后，每个带重试的代理节点的失败尝试，都会在其 verify 命令之后运行指标命令。当其指标严格优于已保留尝试的指标时，保留该尝试；否则（包括指标没有输出数字时），在下一次尝试之前或节点放弃时，写入范围恢复到已保留状态。恢复会重写文本不同的文件，并删除已保留状态中不存在的文件。删除只对由字母、数字、`.`、`_`、`-`、`/` 组成的路径使用 `rm -f`；其他路径保留原位，并以 `leftovers` 报告。`shadow` 模式只记录比较结果，不写入任何内容。已保留的快照只存在于一次 `graph_run` 调用的内存中，因此进程重启会丢弃它。比较结果记录在失败尝试的 `graph/node` 事件的 `ratchet` 字段中。
 - **关口在调用方代理上询问。** 子代理会拒绝审批请求。请求指明 `graph_run` 与调用 id；`humanTimeoutMs` 限制等待；只有 `allowed-once` 表示批准。
 - **路由来自日志。** 带类别的节点在准入版本记录的路由上运行；提供方必须支持 agent options。
 - **不变量伴随插件。** `./invariant` 把每个 `graph/node`、`graph/run` 与 `graph/edge` 与其之前的 `graph` 投影比较：记录能折叠到前缀上，状态转换在 `NODE_TRANSITIONS` 中或该记录是一次重新打开（`pending`、attempt 0、下一个迭代、来自 `canReopen` 接受的状态、位于已触发循环的循环体内），修订号紧接上一个，从未运行的节点只有带 `carriedFrom` 才能变为 `executed`，`executed` 带有 `predicate`、`verifier` 或 `human` 依据，且输出符合节点的输出 schema。边决策要求其 `from` 节点在所记录的迭代处为 `executed` 且尚未决策、触发次数紧接上一次、恰在 `until` 检查通过时为 `until-met`、触发次数不超过 `maxIterations`，且只在最后一次触发之后为 `exhausted`。组合需把伴随插件与 `@deepseek-ai/dsh-invariants` 和 graph 投影一起挂载。

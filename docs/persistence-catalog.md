@@ -40,7 +40,7 @@ The [format references](persistence-changes/historical-formats/README.md) cover 
 | `event:feedback/record` | event | `b54940ff095c17e874c5be03815f4c2145a256cf3a1d34dae4ab2f7769dfffe8` | [`{ type: "feedback/record" }`](#persistence-type-sha256-b54940ff095c17e874c5be03815f4c2145a256cf3a1d34dae4ab2f7769dfffe8) |
 | `event:goal/change` | event | `763c8a20af487263a0080548274f7437ef4a86e0ba8769127d1ced10a72c664d` | [`{ type: "goal/change" }`](#persistence-type-sha256-763c8a20af487263a0080548274f7437ef4a86e0ba8769127d1ced10a72c664d) |
 | `event:graph/edge` | event | `a84af717c367337f8538f5208528b01805f55bbb7acb6da5ea4d7b163cb3d30d` | [`{ type: "graph/edge" }`](#persistence-type-sha256-a84af717c367337f8538f5208528b01805f55bbb7acb6da5ea4d7b163cb3d30d) |
-| `event:graph/node` | event | `f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa` | [`{ type: "graph/node" }`](#persistence-type-sha256-f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa) |
+| `event:graph/node` | event | `377c08a1d4e6c94db348ae6a6806f4e1da6a64bef3a80ac1471f541c829918d4` | [`{ type: "graph/node" }`](#persistence-type-sha256-377c08a1d4e6c94db348ae6a6806f4e1da6a64bef3a80ac1471f541c829918d4) |
 | `event:graph/plan` | event | `6021c0913fd7ca9a06eb9621db858f3746456d9d2a4d62cd1af8a8480333d666` | [`{ type: "graph/plan" }`](#persistence-type-sha256-6021c0913fd7ca9a06eb9621db858f3746456d9d2a4d62cd1af8a8480333d666) |
 | `event:graph/run` | event | `d3c0b323291b3fd396ec50af064f84f347b7d5df62fbec370268a744b856fc4e` | [`{ type: "graph/run" }`](#persistence-type-sha256-d3c0b323291b3fd396ec50af064f84f347b7d5df62fbec370268a744b856fc4e) |
 | `event:hook/invoked` | event | `8a6e1ec9e8db346b0e02f027db73c07a94f067a26d40c1aef1abd09c47ce7ba0` | [`{ type: "hook/invoked" }`](#persistence-type-sha256-8a6e1ec9e8db346b0e02f027db73c07a94f067a26d40c1aef1abd09c47ce7ba0) |
@@ -579,7 +579,7 @@ Source: [`packages/goal/goal/src/domain.ts:66`](../packages/goal/goal/src/domain
 'graph/edge': GraphEdgeRecord
 ```
 
-Source: [`packages/experimental/graph-contract/src/types.ts:391`](../packages/experimental/graph-contract/src/types.ts)
+Source: [`packages/experimental/graph-contract/src/types.ts:419`](../packages/experimental/graph-contract/src/types.ts)
 
 <a id="graphnode--log-only"></a>
 
@@ -590,7 +590,7 @@ Source: [`packages/experimental/graph-contract/src/types.ts:391`](../packages/ex
 'graph/node': GraphNodeRecord
 ```
 
-Source: [`packages/experimental/graph-contract/src/types.ts:387`](../packages/experimental/graph-contract/src/types.ts)
+Source: [`packages/experimental/graph-contract/src/types.ts:415`](../packages/experimental/graph-contract/src/types.ts)
 
 <a id="graphplan--log-only"></a>
 
@@ -601,7 +601,7 @@ Source: [`packages/experimental/graph-contract/src/types.ts:387`](../packages/ex
 'graph/plan': GraphPlanRecord
 ```
 
-Source: [`packages/experimental/graph-contract/src/types.ts:385`](../packages/experimental/graph-contract/src/types.ts)
+Source: [`packages/experimental/graph-contract/src/types.ts:413`](../packages/experimental/graph-contract/src/types.ts)
 
 <a id="graphrun--log-only"></a>
 
@@ -612,7 +612,7 @@ Source: [`packages/experimental/graph-contract/src/types.ts:385`](../packages/ex
 'graph/run': GraphRunRecord
 ```
 
-Source: [`packages/experimental/graph-contract/src/types.ts:389`](../packages/experimental/graph-contract/src/types.ts)
+Source: [`packages/experimental/graph-contract/src/types.ts:417`](../packages/experimental/graph-contract/src/types.ts)
 
 ### `hook/*`
 
@@ -2845,6 +2845,14 @@ SHA-256: `69d238a6e9b08d67f601b1825962963d8d3523cb69ebf6208c697dc5d058c199`
 
 `"interrupted"`
 
+<a id="persistence-type-sha256-691c578666b33dc526877f8620e441a5f1a896b91ed2f0c1c65c13d743d41087"></a>
+
+### `"kept"`
+
+SHA-256: `691c578666b33dc526877f8620e441a5f1a896b91ed2f0c1c65c13d743d41087`
+
+`"kept"`
+
 <a id="persistence-type-sha256-b890f24846f34a28e131bf144d285701688ed56a647282ca3a58a851920ce636"></a>
 
 ### `"knowledge-context"`
@@ -3484,6 +3492,14 @@ SHA-256: `34d1ab5c5df378186d6054b1a1beea9a41e41965d6f336f0bc0025c441a82e66`
 SHA-256: `f538b5735e665c85782e580c8ca557b51ffb7f4deb80e9f26b01d3c4848d4289`
 
 `"retried"`
+
+<a id="persistence-type-sha256-ebf79298a52dd81c02288dfe04c5431271dfddb4774ba5d52c3d7b47b802a1ac"></a>
+
+### `"reverted"`
+
+SHA-256: `ebf79298a52dd81c02288dfe04c5431271dfddb4774ba5d52c3d7b47b802a1ac`
+
+`"reverted"`
 
 <a id="persistence-type-sha256-77a0510f736a6c51b0e5a6f4216d604ea961a0e75c1ae7daf31768ae50665e43"></a>
 
@@ -5337,7 +5353,7 @@ Sources: [`packages/experimental/graph-contract/src/types.ts:98`](../packages/ex
 
 SHA-256: `120d4e7e46ab992a78b923056f76205cf5205407354198d0c4e5e998bc368c8f`
 
-Sources: [`packages/experimental/graph-contract/src/types.ts:354`](../packages/experimental/graph-contract/src/types.ts)
+Sources: [`packages/experimental/graph-contract/src/types.ts:382`](../packages/experimental/graph-contract/src/types.ts)
 
 One of:
 
@@ -5356,7 +5372,7 @@ One of:
 
 SHA-256: `ed3f58b8cb8e1c0cb69c42f4550b6fa18e07e81588170784d16dac2fcb068ae2`
 
-Sources: [`packages/experimental/graph-contract/src/types.ts:357`](../packages/experimental/graph-contract/src/types.ts)
+Sources: [`packages/experimental/graph-contract/src/types.ts:385`](../packages/experimental/graph-contract/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -5546,7 +5562,7 @@ One of:
 - `"synthesis"`
 - `"verification"`
 
-<a id="persistence-type-sha256-b97e37a02dfcbbc1a39b585a0cdcd181c402bb79a5edfe8eb5133c3ea9751d34"></a>
+<a id="persistence-type-sha256-9900f5d36f9c8ff09ba01921e2898b8dc4f923d56e800564e7e366577aa1448f"></a>
 
 <a id="persistence-type-graphnoderecord"></a>
 
@@ -5554,9 +5570,9 @@ One of:
 
 ### `GraphNodeRecord`
 
-SHA-256: `b97e37a02dfcbbc1a39b585a0cdcd181c402bb79a5edfe8eb5133c3ea9751d34`
+SHA-256: `9900f5d36f9c8ff09ba01921e2898b8dc4f923d56e800564e7e366577aa1448f`
 
-Sources: [`packages/experimental/graph-contract/src/types.ts:298`](../packages/experimental/graph-contract/src/types.ts)
+Sources: [`packages/experimental/graph-contract/src/types.ts:324`](../packages/experimental/graph-contract/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -5571,6 +5587,7 @@ Sources: [`packages/experimental/graph-contract/src/types.ts:298`](../packages/e
 | `nodeId` | required | `string` |
 | `output` | optional | [`JsonValue`](#persistence-type-sha256-c592ce75aab73fcab19c1d7845684c72cf402b78d2e1f2833a58ecf9f3598ed6) |
 | `planId` | required | `string` |
+| `ratchet` | optional | [`GraphRatchet`](#persistence-type-sha256-b0e358e95b6a6adfbf7c97bc4ca807bdea9a89ca2bd43d7c26614cb235d4ad45) |
 | `recoveryState` | required | [`GraphRecoveryState`](#persistence-type-sha256-651df47acd0cd43209bb5054c2ffe761c0c3d486a9c46008ff3cdf614a9f810f) |
 | `revision` | required | `number` |
 | `runId` | required | `string` |
@@ -5658,6 +5675,28 @@ Sources: [`packages/experimental/graph-contract/src/types.ts:202`](../packages/e
 | `routes` | optional | [`GraphRoute[]`](#persistence-type-sha256-6d9aca2ef9d3a31ee9655183ed486ce1848d11d965c9324dc38870b442e87278) |
 | `sha` | required | `string` |
 | `version` | required | `number` |
+
+<a id="persistence-type-sha256-b0e358e95b6a6adfbf7c97bc4ca807bdea9a89ca2bd43d7c26614cb235d4ad45"></a>
+
+<a id="persistence-type-graphratchet"></a>
+
+<a id="persistence-type-packagesexperimentalgraph-contractsrctypestsgraphratchet"></a>
+
+### `GraphRatchet`
+
+SHA-256: `b0e358e95b6a6adfbf7c97bc4ca807bdea9a89ca2bd43d7c26614cb235d4ad45`
+
+Sources: [`packages/experimental/graph-contract/src/types.ts:302`](../packages/experimental/graph-contract/src/types.ts)
+
+| Property | Presence | Type |
+|---|---|---|
+| `action` | required | [`union (4 variants)`](#persistence-type-sha256-9fff6bbb0ddf68ae0de45d9c3f8eca580f85875a5fe7aa4eb1c24a269c9f65b4) |
+| `attempt` | required | `number` |
+| `bestAttempt` | required | `number` |
+| `bestScore` | required | [`OptionalSessionSeq`](#persistence-type-sha256-3bd652ebfa8726b3ce3937a4f1bd2759e02f86b3a08a20f9e41a8513656fbc5f) |
+| `leftovers` | required | [`string[]`](#persistence-type-sha256-93c33d9687613293f8c95d46c4d922fe9ceae83b84c384beff5c3315abe005f2) |
+| `restored` | required | `number` |
+| `score` | required | [`OptionalSessionSeq`](#persistence-type-sha256-3bd652ebfa8726b3ce3937a4f1bd2759e02f86b3a08a20f9e41a8513656fbc5f) |
 
 <a id="persistence-type-sha256-651df47acd0cd43209bb5054c2ffe761c0c3d486a9c46008ff3cdf614a9f810f"></a>
 
@@ -5777,7 +5816,7 @@ Array of [`GraphRoute`](#persistence-type-sha256-c2dbbd59f321169e709afdce42af893
 
 SHA-256: `b7819c1cde4d7eab2f05e0bf96ca2814e55df513135f629bb4e036ea53c60326`
 
-Sources: [`packages/experimental/graph-contract/src/types.ts:336`](../packages/experimental/graph-contract/src/types.ts)
+Sources: [`packages/experimental/graph-contract/src/types.ts:364`](../packages/experimental/graph-contract/src/types.ts)
 
 | Property | Presence | Type |
 |---|---|---|
@@ -8417,6 +8456,19 @@ One of:
 - `"not-ok"`
 - `"ok"`
 - `"unverifiable"`
+
+<a id="persistence-type-sha256-9fff6bbb0ddf68ae0de45d9c3f8eca580f85875a5fe7aa4eb1c24a269c9f65b4"></a>
+
+### `union (4 variants)`
+
+SHA-256: `9fff6bbb0ddf68ae0de45d9c3f8eca580f85875a5fe7aa4eb1c24a269c9f65b4`
+
+One of:
+
+- `"kept"`
+- `"reverted"`
+- `"shadow"`
+- `"skipped"`
 
 <a id="persistence-type-sha256-cc6686b2bcaffeee039baf30ed02400b27c04e6de10a607eddd19f21383d7b33"></a>
 
@@ -11356,17 +11408,17 @@ SHA-256: `a84af717c367337f8538f5208528b01805f55bbb7acb6da5ea4d7b163cb3d30d`
 | `time` | required | `number` |
 | `type` | required | `"graph/edge"` |
 
-<a id="persistence-type-sha256-f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa"></a>
+<a id="persistence-type-sha256-377c08a1d4e6c94db348ae6a6806f4e1da6a64bef3a80ac1471f541c829918d4"></a>
 
 <a id="persistence-type-eventgraphnode"></a>
 
 ### `{ type: "graph/node" }`
 
-SHA-256: `f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa`
+SHA-256: `377c08a1d4e6c94db348ae6a6806f4e1da6a64bef3a80ac1471f541c829918d4`
 
 | Property | Presence | Type |
 |---|---|---|
-| `data` | required | [`GraphNodeRecord`](#persistence-type-sha256-b97e37a02dfcbbc1a39b585a0cdcd181c402bb79a5edfe8eb5133c3ea9751d34) |
+| `data` | required | [`GraphNodeRecord`](#persistence-type-sha256-9900f5d36f9c8ff09ba01921e2898b8dc4f923d56e800564e7e366577aa1448f) |
 | `ignorable` | optional | `true` |
 | `seq` | required | `number` |
 | `time` | required | `number` |

@@ -58,6 +58,9 @@ Choose it when the model should execute a multi-unit plan whose units must not c
 | `verifyTimeoutMs` | `300000` | Timeout per verify command |
 | `outputTailChars` | `2000` | Command output kept per check |
 | `humanTimeoutMs` | `0` | Human gate timeout; `0` waits until the run stops |
+| `ratchetMetric` | empty | Shell command whose last stdout line measures a failed node attempt; empty turns the keep-best ratchet off |
+| `ratchetDirection` | `max` | Which direction of the metric is better: `max` or `min` |
+| `ratchetMaxBytes` | `1048576` | Most write-scope text one ratchet snapshot may hold; a larger or non-text scope is not kept |
 
 Loading fails with a `graph-runner:` error when `assumption` or `provider` is blank, or a count is not an integer in range (`maxConcurrent`, `maxPlanVersions`, `verifyTimeoutMs`, and `outputTailChars` at least 1; the others at least 0).
 
@@ -106,6 +109,7 @@ A need is satisfied when it is `executed`, `failed` with `mayFail` (bindings the
 - **`maxPlanVersions` bounds replanning.** Goal rounds count goal-driven turns, not plan versions.
 - **`maxConcurrent` is the only concurrency cap.** `maxActiveSubagents` applies only to continuable children.
 - **No persona per kind.** The node brief states the node's role; a verification node's brief adds the artifacts to check, the acceptance criteria, and the verdict rule. Earlier failure traces are never included.
+- **Keep-best retries.** With `ratchetMetric` set, each failed attempt of an agent node with retries runs the metric command after its verify commands. The attempt is kept when its metric is strictly better than the kept attempt's; otherwise, including when the metric prints no number, the write scopes return to the kept state before the next attempt or when the node gives up. A restore rewrites files whose text differs and removes files the kept state lacks. Removal uses `rm -f` only for paths made of letters, digits, `.`, `_`, `-`, and `/`; other paths stay in place and are reported as `leftovers`. In `shadow` mode the comparison is recorded and nothing is written. The kept snapshot lives in memory for one `graph_run` call, so a process restart drops it. The comparison is recorded on the failed attempt's `graph/node` event as `ratchet`.
 - **Gates ask on the calling agent.** Child subagents reject approval requests. The request names `graph_run` and the call id; `humanTimeoutMs` bounds the wait; only `allowed-once` grants.
 - **Routes come from the log.** A node with a category runs on the route recorded with the admitted version; the provider must support agent options.
 - **Invariant companion.** `./invariant` checks every `graph/node`, `graph/run`, and `graph/edge` against the `graph` projection before it: the record folds onto the prefix, the transition is in `NODE_TRANSITIONS` or the record is a reopen (`pending`, attempt 0, the next iteration, from a status `canReopen` accepts, inside the body of a fired loop), the revision follows the previous one, a node that never ran becomes `executed` only with `carriedFrom`, `executed` carries a `predicate`, `verifier`, or `human` basis, and the output matches the node's output schema. An edge decision requires its `from` node `executed` at the recorded iteration and undecided, a fire count that follows the previous one, `until-met` exactly when the `until` check passed, no fire beyond `maxIterations`, and `exhausted` only after the last fire. A composition mounts the companion together with `@deepseek-ai/dsh-invariants` and the graph projection.

@@ -22,6 +22,7 @@ import type {
   GraphNodeKind,
   GraphNodeStatus,
   GraphPlan,
+  GraphRatchet,
   GraphRecoveryState,
   GraphRoute,
   GraphRunId,
@@ -39,6 +40,8 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { metricOf, plateaued, plateauOf, sentBack } from './cycle.ts'
 import { nodePrompt } from './prompt.ts'
 import type { PromptFeedback, PromptInput } from './prompt.ts'
+import { captureScope, isBetter, parseMetric, removalCommand, restoreScope } from './ratchet.ts'
+import type { RatchetFiles, RatchetSettings, RatchetSnapshot } from './ratchet.ts'
 import type { WriteScopes } from './write-scope.ts'
 
 /** The shell operations the runner uses; `ShellExecutor` satisfies it structurally. */
@@ -88,6 +91,8 @@ export interface RunServices {
   readonly approval: RunApproval | undefined
   /** Write-scope registry shared with the fs listeners. */
   readonly scopes: WriteScopes
+  /** File operations the keep-best ratchet reads and restores; absent disables the ratchet. */
+  readonly files: RatchetFiles | undefined
 }
 
 /** Validated runner settings. */
@@ -108,6 +113,8 @@ export interface RunSettings {
   readonly outputTailChars: number
   /** Human gate timeout in milliseconds; 0 waits for the run signal only. */
   readonly humanTimeoutMs: number
+  /** Keep-best ratchet for node retries; undefined leaves retries unchanged. */
+  readonly ratchet: RatchetSettings | undefined
 }
 
 /** One run request. */
@@ -202,6 +209,7 @@ interface Change {
   violations?: string[] | undefined
   detail?: string | undefined
   iteration?: number | undefined
+  ratchet?: GraphRatchet | undefined
 }
 
 /**
@@ -315,6 +323,7 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
         carriedFrom: next.carriedFrom,
         violations: next.violations !== undefined && next.violations.length > 0 ? next.violations : undefined,
         detail: next.detail,
+        ratchet: next.ratchet,
       }),
     })
     if (updated.status === 'executed') scheduleDecision(id)
@@ -351,6 +360,103 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
   function failureOf(checks: readonly GraphNodeCheck[]): string | undefined {
     const failed = checks.find(check => check.exitCode !== 0)
     return failed === undefined ? undefined : `verify command failed: ${failed.command}`
+  }
+
+  // Keep-best ratchet state of each node: the best measured attempt and its write-scope text, and the attempt whose
+  // state the write scopes hold now.
+  const kept = new Map<GraphNodeId, { attempt: number; score: number; snapshot: RatchetSnapshot }>()
+  const holding = new Map<GraphNodeId, number>()
+
+  /**
+   * Whether the ratchet applies to a node: configured, a file service mounted, and an agent node with retries.
+   * @param node - the plan node.
+   * @returns true when the node's attempts are measured and returned to the kept state.
+   */
+  function ratchetOn(node: GraphNode): boolean {
+    return settings.ratchet !== undefined && services.files !== undefined && runsAsAgent(node) && node.retryBudget > 0
+  }
+
+  /**
+   * Run the metric command. A failed command or a stdout without a number measures nothing.
+   * @param config - the ratchet settings.
+   * @returns the metric, or null.
+   */
+  async function measure(config: RatchetSettings): Promise<number | null> {
+    const { check, stdout } = await execute(config.metric)
+    return check.exitCode === 0 && !check.timedOut ? parseMetric(stdout) : null
+  }
+
+  /**
+   * Remove one file a restore created. Only a shell-safe path is handed to the shell; a refused path stays in the scope.
+   * @param path - workspace-relative path.
+   * @returns true when the file was removed.
+   */
+  async function removeFile(path: string): Promise<boolean> {
+    const command = removalCommand(path)
+    if (command === undefined) return false
+    return (await execute(command)).check.exitCode === 0
+  }
+
+  /**
+   * Return a node's write scopes to the kept snapshot. In shadow mode nothing is written and the restore is only recorded.
+   * @param node - the node whose write scopes are restored.
+   * @param snapshot - the kept text.
+   * @param config - the ratchet settings.
+   * @returns the action with the restore counts.
+   */
+  async function restoreKept(node: GraphNode, snapshot: RatchetSnapshot, config: RatchetSettings): Promise<Pick<GraphRatchet, 'action' | 'restored' | 'leftovers'>> {
+    if (settings.mode !== 'enforce') return { action: 'shadow', restored: 0, leftovers: [] }
+    const files = services.files
+    /* v8 ignore next -- callers check services.files through ratchetOn before restoring */
+    if (files === undefined) return { action: 'skipped', restored: 0, leftovers: [] }
+    const current = await captureScope(files, cwd, node.writes, config.maxBytes, runSignal)
+    const outcome = await restoreScope(files, cwd, snapshot, current, removeFile, runSignal)
+    return { action: 'reverted', restored: outcome.restored, leftovers: outcome.leftovers }
+  }
+
+  /**
+   * Return the write scopes to the kept attempt when another attempt has changed them since.
+   * @param node - the plan node.
+   * @returns the record of the return, or undefined when nothing was due.
+   */
+  async function returnToKept(node: GraphNode): Promise<GraphRatchet | undefined> {
+    const config = settings.ratchet
+    const best = kept.get(node.id)
+    if (config === undefined || best === undefined || !ratchetOn(node)) return undefined
+    // A kept attempt always holds its write scopes in `holding`, since the attempt set both.
+    const held = must(holding, node.id)
+    if (held === best.attempt) return undefined
+    const outcome = await restoreKept(node, best.snapshot, config)
+    if (outcome.action === 'reverted') holding.set(node.id, best.attempt)
+    return { attempt: held, score: null, bestAttempt: best.attempt, bestScore: best.score, ...outcome }
+  }
+
+  /**
+   * Measure a failed attempt against the kept one: keep it when strictly better, otherwise return to the kept state.
+   * @param node - the plan node.
+   * @param attempt - the attempt that failed verification.
+   * @returns the comparison record, or undefined when the ratchet does not apply.
+   */
+  async function measureFailure(node: GraphNode, attempt: number): Promise<GraphRatchet | undefined> {
+    const config = settings.ratchet
+    if (config === undefined || !ratchetOn(node)) return undefined
+    const files = services.files
+    /* v8 ignore next -- ratchetOn requires the file service */
+    if (files === undefined) return undefined
+    const score = await measure(config)
+    const current = await captureScope(files, cwd, node.writes, config.maxBytes, runSignal)
+    const best = kept.get(node.id)
+    const base = { attempt, score, bestAttempt: best?.attempt ?? attempt, bestScore: best?.score ?? null }
+    if (score !== null && (best === undefined || isBetter(score, best.score, config.direction))) {
+      if (current === undefined) return { ...base, action: 'skipped', restored: 0, leftovers: [] }
+      kept.set(node.id, { attempt, score, snapshot: current })
+      holding.set(node.id, attempt)
+      return { attempt, score, bestAttempt: attempt, bestScore: score, action: 'kept', restored: 0, leftovers: [] }
+    }
+    if (best === undefined) return { ...base, action: 'skipped', restored: 0, leftovers: [] }
+    const outcome = await restoreKept(node, best.snapshot, config)
+    if (outcome.action === 'reverted') holding.set(node.id, best.attempt)
+    return { ...base, ...outcome }
   }
 
   function undecided(id: GraphNodeId): CycleEdge[] {
@@ -498,8 +604,10 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
       return
     }
     const failed = failureOf(checks)
-    if (failed !== undefined) change(node.id, { ...base, status: 'failed_retryable', output, checks, detail: failed })
-    else if (checks.length > 0) change(node.id, { ...base, status: 'executed', basis: 'predicate', output, checks })
+    if (failed !== undefined) {
+      const ratchet = await measureFailure(node, must(state, node.id).attempt)
+      change(node.id, { ...base, status: 'failed_retryable', output, checks, detail: failed, ratchet })
+    } else if (checks.length > 0) change(node.id, { ...base, status: 'executed', basis: 'predicate', output, checks })
     else change(node.id, { ...base, status: 'unverified', basis: 'agentReported', output })
   }
 
@@ -507,7 +615,10 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
     const current = must(state, node.id)
     const recoveryState: GraphRecoveryState = current.status === 'failed_retryable' || current.status === 'cancelled' ? 'retried' : current.recoveryState
     const interrupted = current.interrupted
-    change(node.id, { status: 'running', attempt: current.attempt + 1, recoveryState })
+    // A retry starts from the kept attempt, so an unmeasured or worse attempt before it is rolled back first.
+    const returned = await returnToKept(node)
+    if (ratchetOn(node)) holding.set(node.id, current.attempt + 1)
+    change(node.id, { status: 'running', attempt: current.attempt + 1, recoveryState, ratchet: returned })
     const route = node.category === undefined ? undefined : request.routes.find(entry => entry.category === node.category)
     if (node.category !== undefined && route === undefined) {
       change(node.id, { status: 'failed', detail: `no route is recorded for category ${node.category}` })
@@ -631,7 +742,9 @@ export async function runGraph(services: RunServices, settings: RunSettings, req
       for (const node of plan.nodes) {
         const current = must(state, node.id)
         if (current.status === 'failed_retryable' && current.attempt > node.retryBudget && !inFlight.has(node.id)) {
-          change(node.id, { status: 'failed', detail: current.detail })
+          // A node that gives up leaves its best attempt in the write scopes.
+          const ratchet = await returnToKept(node)
+          change(node.id, { status: 'failed', detail: current.detail, ratchet })
         }
       }
       if (!stop.humanRefused && !runSignal.aborted) {

@@ -184,9 +184,10 @@ describe('cycle edges in graph_run', () => {
         subagents: { start: (_name, request) => Promise.resolve(child(request.label!)) },
         shell,
         approval: undefined,
+        files: undefined,
         scopes: new WriteScopes(),
       },
-      { mode: 'enforce', provider: 'spawn', maxConcurrent: 1, maxDispatches: 0, maxWallMs: 0, verifyTimeoutMs: 1000, outputTailChars: 200, humanTimeoutMs: 0 },
+      { mode: 'enforce', provider: 'spawn', maxConcurrent: 1, maxDispatches: 0, maxWallMs: 0, verifyTimeoutMs: 1000, outputTailChars: 200, humanTimeoutMs: 0, ratchet: undefined },
       { agent, callId: ToolCallId('direct'), signal: controller.signal, runId: graphRunId('direct'), plan: task.plan, version: task.version, task, inputs: {}, routes: [] },
     )
     expect(outcome.stopReason).toBe('HUMAN_STOPPED')

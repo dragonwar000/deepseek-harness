@@ -88,6 +88,7 @@ export type {
   GraphPlanRecord,
   GraphPlansState,
   GraphPlanVersion,
+  GraphRatchet,
   GraphRecoveryState,
   GraphRejection,
   GraphRejectionCode,

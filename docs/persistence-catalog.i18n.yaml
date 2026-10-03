@@ -9,8 +9,8 @@
   en: e7c80d1de4d328b4
   zh: d9f368c27fd9f998
 /session-persistence-event-catalog/persistence-type-fingerprints:
-  en: 5d60e48bd666e0f8
-  zh: 3deb5ce554cf7767
+  en: e79dce2fc3c0f8e5
+  zh: ec886e1d43f263c6
 /session-persistence-event-catalog/event-envelope:
   en: 7ebb1a2e0dd1f916
   zh: 8946f415dda5c1b8
@@ -108,17 +108,17 @@
   en: 3b37e5b9d7c3aba9
   zh: 3b37e5b9d7c3aba9
 /session-persistence-event-catalog/events/graph/graph-edge-log-only:
-  en: 4122f64bc1a232a5
-  zh: b827f4f84c0d745e
+  en: cb46acdcef8d17d0
+  zh: 3385d1b40f5f8d70
 /session-persistence-event-catalog/events/graph/graph-node-log-only:
-  en: b77d8763ec674938
-  zh: b7c1d967f9cfcfb6
+  en: de66c4cfe08053da
+  zh: d5532ec0d860a78c
 /session-persistence-event-catalog/events/graph/graph-plan-log-only:
-  en: 220e4138d4126a29
-  zh: 9a2306aa22281cb1
+  en: e5d5695f25043047
+  zh: 0a90aab833ebcb8e
 /session-persistence-event-catalog/events/graph/graph-run-log-only:
-  en: b61b03e0597d7d92
-  zh: 3813bfeb47bbff77
+  en: 93cc9988a63843bf
+  zh: 410098190e4b0a75
 /session-persistence-event-catalog/events/hook:
   en: 8d6fa78d450a0e56
   zh: 8d6fa78d450a0e56
@@ -861,8 +861,11 @@
   en: dfbdbe0682d3b1c8
   zh: dfbdbe0682d3b1c8
 /session-persistence-event-catalog/resolved-persistence-types/interrupted:
-  en: b61084ce164b767e
-  zh: b61084ce164b767e
+  en: e21b9c56bf886cbe
+  zh: e21b9c56bf886cbe
+/session-persistence-event-catalog/resolved-persistence-types/kept:
+  en: 9064470a84f3da90
+  zh: 9064470a84f3da90
 /session-persistence-event-catalog/resolved-persistence-types/knowledge-context:
   en: dff58fa16674d3cb
   zh: dff58fa16674d3cb
@@ -1101,8 +1104,11 @@
   en: 71336bab06cc4eed
   zh: 71336bab06cc4eed
 /session-persistence-event-catalog/resolved-persistence-types/retried:
-  en: c8a16edda20346ae
-  zh: c8a16edda20346ae
+  en: 53279de3747f2982
+  zh: 53279de3747f2982
+/session-persistence-event-catalog/resolved-persistence-types/reverted:
+  en: 2a83d200782d7013
+  zh: 2a83d200782d7013
 /session-persistence-event-catalog/resolved-persistence-types/root:
   en: d8b9ba4729bdc218
   zh: d8b9ba4729bdc218
@@ -1608,11 +1614,11 @@
   en: 9299bb29c949e49f
   zh: 6cbd98829c94cf29
 /session-persistence-event-catalog/resolved-persistence-types/graphedgeoutcome:
-  en: b616bd289b87ad64
-  zh: f33638eade2fa970
+  en: eff01cd675ad797c
+  zh: e5ced5031a306f02
 /session-persistence-event-catalog/resolved-persistence-types/graphedgerecord:
-  en: a1607bb3a9d0af61
-  zh: c77a764be652f456
+  en: 538713dbf6bca866
+  zh: 334d76ad86b5d04a
 /session-persistence-event-catalog/resolved-persistence-types/graphedgerelation:
   en: d8c042e74ae7c2e2
   zh: 584f799b1a03235a
@@ -1641,11 +1647,11 @@
   en: a22fbc9d2fd75021
   zh: 524a074362e95279
 /session-persistence-event-catalog/resolved-persistence-types/graphnodekind:
-  en: a8b1b2bd38e615c4
-  zh: d006c6c1de5254bc
+  en: c3679ba354b5b2e3
+  zh: 05bc1ea22d12a0be
 /session-persistence-event-catalog/resolved-persistence-types/graphnoderecord:
-  en: 40586f3c467b9dbd
-  zh: 05658b7b3d720d0e
+  en: 3c8d6641af72c3b2
+  zh: 557189bfe5f578a3
 /session-persistence-event-catalog/resolved-persistence-types/graphnodestatus:
   en: 3b143364c92f2850
   zh: 7a2f108ba2f73485
@@ -1656,8 +1662,11 @@
   en: bdc833d6a7e4881d
   zh: e109db9236fb0162
 /session-persistence-event-catalog/resolved-persistence-types/graphplanrecord:
-  en: 471d43318ba775ff
-  zh: d75c1d51eebe2800
+  en: 4dc3bc8d687236d1
+  zh: 5601041cd5f5fa5e
+/session-persistence-event-catalog/resolved-persistence-types/graphratchet:
+  en: b8b20e83f0fb6c5f
+  zh: 22b73a53b4c3dea4
 /session-persistence-event-catalog/resolved-persistence-types/graphrecoverystate:
   en: 7ff91c841c628c81
   zh: 488e321d064b2a2a
@@ -1677,8 +1686,8 @@
   en: 453afb73f4af6fa3
   zh: 8184219251baa8ba
 /session-persistence-event-catalog/resolved-persistence-types/graphrunrecord:
-  en: 7981ef29fd68ed7a
-  zh: 042876d126c6e0b6
+  en: 849d24f76b91c7b9
+  zh: 38847d4914730a8d
 /session-persistence-event-catalog/resolved-persistence-types/headerline:
   en: 0228dc7dcff3ff5a
   zh: bfab168767453f00
@@ -2106,8 +2115,11 @@
   en: cdc92bab9b334162
   zh: 360d08df025bdf4f
 /session-persistence-event-catalog/resolved-persistence-types/union-4-variants~2:
-  en: 555984de2e9dfec8
-  zh: 83f2db13b22ed2cb
+  en: 444311f59d68600f
+  zh: fb796df41469bc5c
+/session-persistence-event-catalog/resolved-persistence-types/union-4-variants~3:
+  en: 3dfaf1b4ccfe5ae2
+  zh: 82110445e4adb7c0
 /session-persistence-event-catalog/resolved-persistence-types/union-5-variants:
   en: 40d36fb1f85d3a29
   zh: 031b4a123bcd3fd5
@@ -2802,11 +2814,11 @@
   en: 4cc79337ef9190ee
   zh: e757a84a6f5a2848
 /session-persistence-event-catalog/resolved-persistence-types/type-graph-edge:
-  en: 7576b7d779a879d3
-  zh: 71731a286a96db8f
+  en: a071e575321dd62d
+  zh: 6fa608c7f8f03325
 /session-persistence-event-catalog/resolved-persistence-types/type-graph-node:
-  en: 50875580454c880f
-  zh: 47e00615366df1d9
+  en: 0eeceb7685a41a05
+  zh: 3cfe56c2374a5c90
 /session-persistence-event-catalog/resolved-persistence-types/type-graph-plan:
   en: b562c6a8f8dd4265
   zh: 65588c4b277626fb

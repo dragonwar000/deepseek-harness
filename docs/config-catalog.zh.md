@@ -1127,7 +1127,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-graph-contract`
 
 - `inject`: `tools` · `sessionProjections`
-- `source`: [`packages/experimental/graph-contract/src/index.ts:109`](../packages/experimental/graph-contract/src/index.ts)
+- `source`: [`packages/experimental/graph-contract/src/index.ts:110`](../packages/experimental/graph-contract/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1236,6 +1236,15 @@ export interface Config {
   outputTailChars?: number
   /** Human gate timeout in milliseconds; 0 (default) waits until the run stops. */
   humanTimeoutMs?: number
+  /**
+   * Shell command whose last stdout line measures a failed node attempt. Blank (default) turns the keep-best ratchet
+   * off; set it to keep a node's best attempt across its retries.
+   */
+  ratchetMetric?: string
+  /** Which direction of the metric is better (default `max`). */
+  ratchetDirection?: 'max' | 'min'
+  /** Most bytes of write-scope text one ratchet snapshot may hold (default 1048576). */
+  ratchetMaxBytes?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-runner -->
@@ -1405,7 +1414,7 @@ export interface BudgetLimits {
   maxTokens?: number
   /** USD priced through `prices`. */
   maxUsd?: number
-  /** Milliseconds since the turn started, or since the goal was first tracked. */
+  /** Milliseconds since the turn started, or since the goal was first tracked (default 900000 per turn, 3600000 per goal). */
   maxWallMs?: number
 }
 
@@ -1705,8 +1714,8 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-experimental-stationarity-guard`
 
-- `inject`: `tools`
-- `source`: [`packages/experimental/stationarity-guard/src/index.ts:51`](../packages/experimental/stationarity-guard/src/index.ts)
+- `inject`: `tools` · `fs`
+- `source`: [`packages/experimental/stationarity-guard/src/index.ts:57`](../packages/experimental/stationarity-guard/src/index.ts)
 
 ```ts config-catalog
 /**
@@ -1724,6 +1733,15 @@ export interface Config {
   stopAt?: TierThresholds
   /** Consecutive read-only steps without new evidence that stop the turn (default 4). */
   noopStopAt?: number
+  /** Tools whose `file_path` or `path` argument names a file the turn writes (default `write`, `edit`). */
+  writeTools?: string[]
+  /** Occurrences of one written-file state, since the last human message, that stop the turn (default 2). */
+  stateRepeatStopAt?: number
+  /**
+   * Largest file read to hash its content. A larger file, or one whose size the backend does not report, hashes its
+   * version token instead (default 262144).
+   */
+  maxHashBytes?: number
 }
 
 /** Per-tier repeat thresholds. */

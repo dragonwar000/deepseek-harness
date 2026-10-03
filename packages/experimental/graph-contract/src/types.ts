@@ -294,6 +294,32 @@ export interface GraphNodeCheck {
   outputTail: string
 }
 
+/**
+ * The keep-best comparison of one failed node attempt, when the runner has a ratchet. The runner keeps the write
+ * scopes of the best attempt and returns them to that state before the node's next attempt, so a retry starts from
+ * its best result.
+ */
+export interface GraphRatchet {
+  /** Attempt the record concerns. */
+  attempt: number
+  /** The metric of that attempt; null when the metric command failed or printed no number. */
+  score: number | null
+  /** Attempt whose state the runner keeps. */
+  bestAttempt: number
+  /** Metric of the kept attempt; null when no attempt is kept. */
+  bestScore: number | null
+  /**
+   * `kept`: this attempt is the new best. `reverted`: the write scopes were restored to the best attempt.
+   * `shadow`: a restore was due but the runner is in shadow mode. `skipped`: no state could be kept, such as an
+   * unreadable write scope.
+   */
+  action: 'kept' | 'reverted' | 'shadow' | 'skipped'
+  /** Files written or removed inside the write scopes by a restore. */
+  restored: number
+  /** Paths a restore could not remove; they remain inside the write scopes. */
+  leftovers: string[]
+}
+
 /** One node status change written by the graph runner. */
 export interface GraphNodeRecord {
   /** Run that made the change. */
@@ -328,6 +354,8 @@ export interface GraphNodeRecord {
   carriedFrom?: number
   /** Writes outside the node's write scopes during the attempt. */
   violations?: string[]
+  /** Keep-best comparison, when a ratchet is configured and the node has retries. */
+  ratchet?: GraphRatchet
   /** Human-readable reason. */
   detail?: string
 }

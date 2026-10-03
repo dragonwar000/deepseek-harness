@@ -318,6 +318,16 @@ const checkSchema = z.object({
   outputTail: z.string(),
 }).strict()
 
+const ratchetSchema = z.object({
+  attempt: nonNegativeInt,
+  score: z.number().nullable(),
+  bestAttempt: nonNegativeInt,
+  bestScore: z.number().nullable(),
+  action: z.enum(['kept', 'reverted', 'shadow', 'skipped']),
+  restored: nonNegativeInt,
+  leftovers: z.array(z.string()),
+}).strict()
+
 /** `graph/node` payload schema. */
 export const graphNodeRecordSchema = z.object({
   runId: graphRunIdSchema,
@@ -336,6 +346,7 @@ export const graphNodeRecordSchema = z.object({
   checks: z.array(checkSchema).optional(),
   carriedFrom: positiveInt.optional(),
   violations: z.array(z.string()).optional(),
+  ratchet: ratchetSchema.optional(),
   detail: z.string().optional(),
 }).strict() as z.ZodType<GraphNodeRecord>
 

@@ -136,7 +136,7 @@ describe('write scopes', () => {
 })
 
 describe('runGraph edge paths', () => {
-  const SETTINGS: RunSettings = { mode: 'enforce', provider: 'spawn', maxConcurrent: 1, maxDispatches: 0, maxWallMs: 0, verifyTimeoutMs: 1000, outputTailChars: 200, humanTimeoutMs: 0 }
+  const SETTINGS: RunSettings = { mode: 'enforce', provider: 'spawn', maxConcurrent: 1, maxDispatches: 0, maxWallMs: 0, verifyTimeoutMs: 1000, outputTailChars: 200, humanTimeoutMs: 0, ratchet: undefined }
 
   async function planned(options: Parameters<typeof l2Plan>[0] = {}): Promise<{ ctx: Context; agent: Agent; task: GraphTask }> {
     const { ctx, agent } = await harness([audit('a', l2Plan(options)), textResponse('planned')])
@@ -156,7 +156,7 @@ describe('runGraph edge paths', () => {
     signal = new AbortController().signal,
   ) {
     return runGraph(
-      { subagents: { start: () => Promise.reject(new Error('unused')) }, shell: scriptedShell({}), approval: undefined, scopes: new WriteScopes(), ...services },
+      { subagents: { start: () => Promise.reject(new Error('unused')) }, shell: scriptedShell({}), approval: undefined, scopes: new WriteScopes(), files: undefined, ...services },
       { ...SETTINGS, ...settings },
       { agent, callId: ToolCallId('direct'), signal, runId: graphRunId(`direct-${Math.random()}`), plan: task.plan, version: task.version, task, inputs: {}, routes: [] },
     )
