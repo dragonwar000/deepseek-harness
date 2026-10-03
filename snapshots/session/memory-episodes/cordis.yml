@@ -1,0 +1,13 @@
+# The ordinary headless composition plus conversation memory backed by a
+# scripted zm that answers like zeromem with one stored turn of an earlier
+# session. The model recalls it once.
+
+- insert:
+    - id: memory-zeromem
+      name: '@deepseek-ai/dsh-experimental-memory-zeromem'
+      config:
+        zmPath: !!js process.execPath
+        zmArgs:
+          - !!js process.cwd() + '/zm-fixture.mjs'
+        embedder: hash
+        scope: global

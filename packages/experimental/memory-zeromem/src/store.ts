@@ -124,6 +124,17 @@ export function sourceUuid(sessionId: SessionId, seq: number): ZeromemSourceUuid
   return brandString<ZeromemSourceUuid>(`dsh:${sessionId}:${seq}`)
 }
 
+/**
+ * The dedup key of one stored episode. It names the turn and its final response, so a replayed turn keeps its key.
+ * @param sessionId - the session the episode belongs to.
+ * @param turn - the turn number.
+ * @param responseSeq - the event sequence number of the final response.
+ * @returns the key zeromem stores with the episode; it never equals a {@link sourceUuid}.
+ */
+export function episodeSourceUuid(sessionId: SessionId, turn: number, responseSeq: number): ZeromemSourceUuid {
+  return brandString<ZeromemSourceUuid>(`dsh:episode:${sessionId}:${turn}:${responseSeq}`)
+}
+
 let spoolSequence = 0
 
 /**

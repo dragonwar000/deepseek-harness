@@ -85,6 +85,12 @@ cargo build --release --locked --no-default-features -p zeromem       # or: targ
 | `timeoutMs` | `120000` | 一次 `zm` 操作的截止时间，包括摄取待处理轮次 |
 | `graceMs` | `2000` | 终止 `zm` 后到强制结束前的宽限时间 |
 | `maxConcurrent` | `1` | 并发 `zm` 进程数 |
+| `ingestMode` | `conversation` | 每个轮次存储什么：`conversation` 只存储其用户消息和最终回复；`episodes` 只存储改动过文件的轮次的已验证片段；`both` 同时存储两者 |
+| `episodeChangeTools` | `write`、`edit` | 成功调用后会改变其 `file_path` 或 `path` 的工具，使该轮次成为片段候选 |
+| `episodeTransientMarkers` | `this session`、`for now`、`today only`、`temporarily`、`for this turn` | 从片段的请求和结果中删除的临时语句标记 |
+| `maxEpisodeRequestChars` | `1000` | 片段请求保留的字符数 |
+| `maxEpisodeOutcomeChars` | `2000` | 片段结果保留的字符数 |
+| `maxEpisodeChars` | `6000` | 单个片段文本的字符数。先缩短请求，再缩短结果以适应上限；标识符、验证结果引用和改动文件保持完整。必须能容纳片段的固定行 |
 
 显式的 `resolveZm` 步骤按以下顺序选择可执行文件：非空的 `zmPath`；否则为非空的 `DSH_ZEROMEM_ZM`，它必须是绝对路径；否则为 `PATH` 上的 `zm`。bundle 行保持 `zmPath` 与 `modelDir` 为空并设置 `embedder: default`，因此 Desktop 运行其自带的 `zm` 与模型；对不含 fastembed 的 `zm` 构建，或要在没有模型的情况下运行时，设置 `embedder: hash`。
 
@@ -93,6 +99,8 @@ cargo build --release --locked --no-default-features -p zeromem       # or: targ
 ### 存储什么、存在哪里
 
 插件逐字、不加密地存储每条人类用户消息的文本，以及每个已完成轮次最后一条助手消息的文本，每条截断到 `maxIngestChars` 个字符。它从不存储工具调用、工具结果、推理、注入的上下文或子智能体会话（除非开启 `ingestSubagentSessions`）。在 `workspace` 范围下，会话的存储为 `<storeRoot>/workspaces/<其工作目录 SHA-256 的前 16 个十六进制数字>`；在 `global` 范围下为 `<storeRoot>/global`。每个存储包含 `zeromem.db`（SQLite，由 `zm` 写入）、`spool/`（等待摄取的轮次文件）、`dsh-forgotten/`（被 `memory_forget_session` 删除的会话）以及指向模型目录的 `models` 链接。插件以仅所有者可访问的权限创建目录，spool 文件的模式为 `0600`。用户消息可能包含用户输入的机密；删除存储目录即可删除其记忆。在 `workspace` 范围下，没有工作目录的会话不会被存储，每个会话记录一次警告。
+
+当 `ingestMode` 设为 `episodes` 或 `both` 时，改动过文件的轮次还可以存储为一个**已验证片段**：文本以 `# Verified episode` 开头，包含轮次号、最终响应和验证结果的事件号、去掉临时语句后的请求和结果、每个改动文件及其成功改动的事件，以及一行验证说明。只有当轮次以原因 `completed` 结束、最终响应未被中断、验证器的 `ok` 判定指向该响应，并且判定之后没有新的用户消息或文件改动时，轮次才会存储为片段。改动过文件但被拒绝的轮次，每个会话按原因记录一次日志。不调用模型，片段中从不存储工具输出。
 
 -----
 
@@ -107,6 +115,8 @@ cargo build --release --locked --no-default-features -p zeromem       # or: targ
 `zeromemTurn` 投影折叠当前轮次的人类 `user/message` 文本及其最后一条未中断的助手文本，并保留最后一个已完成轮次。在 `turn/end` 时，插件把该轮次以 zeromem 的 spool 格式写成一个 spool 文件：每段文本一行 JSON `{session_id, speaker, text, ts, uuid}`，`ts` 为 epoch 秒，`uuid` 为 `dsh:<session id>:<event seq>`。文件先以临时名写入，再重命名进 `spool/`，因此 `zm` 从不读取不完整的文件。写入逐个执行，不在模型请求路径上，也从不启动 `zm`。`zm` 在每次操作前摄取所有待处理的 spool 文件，并跳过已存储过的 `uuid` 行，因此摄取是幂等的。
 
 每个插件实例为每个会话记录它最后 spool 的轮次号。在 `turn/start` 时，若该轮次号更小，它还会 spool 最后一个已完成轮次；这样，上一个进程未完成摄取的轮次会在恢复的会话开始下一轮次时被存储；若上一个进程已 spool 过，zeromem 按 `uuid` 丢弃重复项。spool 写入失败会被记录，并在该会话的下一个轮次边界重试。从 fork 父会话继承的事件不会以子会话的 id 存储。在 `dsh-forgotten/` 中标记的会话不再被 spool。
+
+在片段模式下，`zeromemEpisode` 投影使用 memory-distill 的折叠逻辑处理未结束的轮次，保留第一条请求、每个改动文件最近一次成功的改动、最终响应，以及与该响应对应的验证结果。同一轮次的对话记录和片段写入同一个 spool 文件。片段记录的 `speaker` 为 `assistant`，`ts` 为最终响应的时间，`uuid` 为 `dsh:episode:<session id>:<turn>:<response seq>`，因此重放时保持同一个键。片段未通过验证的轮次不会存储为片段，对话记录仍照常存储。
 
 ### 存储操作
 
@@ -152,7 +162,7 @@ cargo build --release --locked --no-default-features -p zeromem       # or: targ
 
 #### 模型看到什么
 
-插件挂载期间，模型会获得 [`memory_recall`](../../../docs/tool-catalog.zh.md#deepseek-aidsh-experimental-memory-zeromem)，含必填字符串 `query` 与可选整数 `limit`（1 到 `maxResults`）。描述会写明存储范围（`in this workspace` 或 `in any workspace`），以及当前会话被排除还是被包含。结果为紧凑 JSON `{"turns":[{"session","time","speaker","text","kind","truncated"?}]}`，其中 `time` 为 ISO 8601 UTC，`kind` 为 `match` 或 `context`，`truncated` 标记被截断到 `maxTurnChars` 的文本。空查询、超出范围的 `limit`、会话无法使用的存储以及 `zm` 失败都是工具错误。
+插件挂载期间，模型会获得 [`memory_recall`](../../../docs/tool-catalog.zh.md#deepseek-aidsh-experimental-memory-zeromem)，含必填字符串 `query` 与可选整数 `limit`（1 到 `maxResults`）。描述会写明存储范围（`in this workspace` 或 `in any workspace`），以及当前会话被排除还是被包含。当 `ingestMode` 设为 `episodes` 或 `both` 时，描述会把已验证的 episode 列为存储记录，返回的文本可能是一个 episode。结果为紧凑 JSON `{"turns":[{"session","time","speaker","text","kind","truncated"?}]}`，其中 `time` 为 ISO 8601 UTC，`kind` 为 `match` 或 `context`，`truncated` 标记被截断到 `maxTurnChars` 的文本。空查询、超出范围的 `limit`、会话无法使用的存储以及 `zm` 失败都是工具错误。
 
 ##### 该字段的原文
 

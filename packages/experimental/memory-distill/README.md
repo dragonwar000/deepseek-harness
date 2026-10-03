@@ -78,6 +78,7 @@ The `memoryDistill` projection folds the open turn: the first `user/message` wit
 - **Retention by archiving.** `resolveRetention` turns `maxEpisodes` into no archiving (`0`) or the count of active episode pages kept. With a count, the plugin reads the store index before writing; after the episode is written, it archives every other `episode` page under `dir` beyond the newest `maxEpisodes - 1` (newer means a later `updated`, then a later id). Archiving reads the page and writes its title, body, and relations back with status `archived` through `ctx.knowledge.write`, citing the same tool results as the new episode, so the store rules check it and it is logged as a `knowledge/write` with operation `update`. An archived page leaves the index, query results, and neighbor levels but stays readable through `knowledge_read` and `knowledge_cite`; the plugin never deletes a page. A frontmatter status was chosen over a `supersedes` relation because a newer episode does not replace the facts of an older one, and a superseded page would stay in the index. In `shadow` mode the plugin records one `knowledge/write` per page it would archive.
 - **Citations from changes.** The page cites the successful `tool/result` of each changed file's latest change; a turn that changed no file is not distilled, because its page could cite nothing.
 - **Temporary statements dropped.** Sentences containing a configured marker, case-insensitively, are removed from the request and the outcome.
+- **Shared content.** `episodeContent` applies the marker filter and the length bounds to a turn's request and outcome. It is a pure export: `memory-zeromem` uses it for the text of its verified episodes, so both stores drop the same statements without copying the rule.
 - **Once per turn.** The fold marks a turn distilled at its first `knowledge/write` by this writer, so a steered continuation of the same turn is not distilled again.
 - **No compaction summaries.** A summary is model output, not a tool result, so it cannot be cited.
 - **Gate independence.** The gate's `loop/verdict` is read by event name and validated with zod; this package does not depend on the gate at runtime.
@@ -90,7 +91,7 @@ The `memoryDistill` projection folds the open turn: the first `user/message` wit
 | [`src/index.ts`](src/index.ts) | `Config`, the projection registration, the turn-stopping listener, and the order warning |
 | [`src/fold.ts`](src/fold.ts) | The `memoryDistill` projection fold and the verdict parser |
 | [`src/retention.ts`](src/retention.ts) | `maxEpisodes` resolution and the choice of episode pages to archive |
-| [`src/episode.ts`](src/episode.ts) | Episode page id, marker filter, and page entry |
+| [`src/episode.ts`](src/episode.ts) | Episode page id, marker filter, the shared `episodeContent`, and page entry |
 
 </details>
 

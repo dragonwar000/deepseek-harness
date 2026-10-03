@@ -18,6 +18,8 @@
     { "path": "../../core/tools" },
     { "path": "../../llm/llm" },
     { "path": "../../session/session-projection" },
-    { "path": "../../subprocess/subprocess" }
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../knowledge" },
+    { "path": "../memory-distill" }
   ]
 }

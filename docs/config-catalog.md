@@ -1478,7 +1478,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-memory-zeromem`
 
 - `inject`: `tools` · `subprocess` · `sessionProjections`
-- `source`: [`packages/experimental/memory-zeromem/src/index.ts:90`](../packages/experimental/memory-zeromem/src/index.ts)
+- `source`: [`packages/experimental/memory-zeromem/src/index.ts:122`](../packages/experimental/memory-zeromem/src/index.ts)
 
 ```ts config-catalog
 /** Config with every default applied. */
@@ -1521,10 +1521,34 @@ export interface Config {
   graceMs?: number
   /** Concurrent `zm` processes this plugin runs (default 1). */
   maxConcurrent?: number
+  /**
+   * What each turn stores: `conversation` stores the user messages and final reply; `episodes` stores only the
+   * verified episode of a turn that changed files; `both` stores both (default `conversation`).
+   */
+  ingestMode?: IngestMode
+  /** Tools whose successful calls change their `file_path` or `path` and so make a turn an episode candidate (default `write`, `edit`). */
+  episodeChangeTools?: string[]
+  /**
+   * Markers of temporary statements, dropped sentence by sentence from an episode's request and outcome
+   * (default `this session`, `for now`, `today only`, `temporarily`, `for this turn`).
+   */
+  episodeTransientMarkers?: string[]
+  /** Characters of the request an episode keeps (default 1000). */
+  maxEpisodeRequestChars?: number
+  /** Characters of the outcome an episode keeps (default 2000). */
+  maxEpisodeOutcomeChars?: number
+  /**
+   * Characters of one whole episode text (default 6000). The request and then the outcome shrink to fit; the
+   * identifiers, verdict reference, and changed files are never cut. Must cover the fixed lines of an episode.
+   */
+  maxEpisodeChars?: number
 }
 
 /** Which conversations share one store. */
 export type StoreScope = 'workspace' | 'global'
+
+/** Which records one turn stores. */
+export type IngestMode = 'conversation' | 'episodes' | 'both'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-zeromem -->
 

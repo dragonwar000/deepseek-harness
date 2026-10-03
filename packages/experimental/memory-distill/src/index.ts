@@ -22,8 +22,8 @@ import { applyDistill, distillStateSchema, emptyDistill, parseVerdict } from './
 import type { DistillState } from './fold.ts'
 import { episodesToArchive, resolveRetention } from './retention.ts'
 
-export { episodeEntry, episodeId, filterTransient } from './episode.ts'
-export type { EpisodeInput } from './episode.ts'
+export { episodeContent, episodeEntry, episodeId, filterTransient } from './episode.ts'
+export type { EpisodeContent, EpisodeContentInput, EpisodeInput } from './episode.ts'
 export { applyDistill, distillStateSchema, emptyDistill, parseVerdict } from './fold.ts'
 export type { DistillState } from './fold.ts'
 export { episodesToArchive, resolveRetention } from './retention.ts'

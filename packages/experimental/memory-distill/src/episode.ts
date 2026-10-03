@@ -36,6 +36,30 @@ export interface EpisodeInput {
 
 const NONE = '(none)'
 
+/** Inputs of {@link episodeContent}. */
+export interface EpisodeContentInput {
+  /** First human message of the turn, or null. */
+  readonly request: string | null
+  /** Visible text of the final response. */
+  readonly outcome: string
+  /** Markers of temporary statements. */
+  readonly markers: readonly string[]
+  /** Characters of the request kept. */
+  readonly maxRequestChars: number
+  /** Characters of the outcome kept. */
+  readonly maxOutcomeChars: number
+}
+
+/** The filtered, bounded text of one episode. */
+export interface EpisodeContent {
+  /** One line naming the request, at most 80 characters. */
+  readonly summary: string
+  /** The request without temporary sentences, bounded, or `(none)`. */
+  readonly request: string
+  /** The final response without temporary sentences, bounded, or `(none)`. */
+  readonly outcome: string
+}
+
 /**
  * Drop every sentence that contains a temporary marker, and blank lines.
  * @param text - response or request text.
@@ -75,27 +99,41 @@ export function episodeId(dir: string, sessionId: string, turn: number, date: st
 }
 
 /**
+ * Filter and bound the request and outcome of one verified turn.
+ * @param input - turn text and its limits.
+ * @returns the summary line, the request, and the outcome; an empty part reads `(none)`.
+ */
+export function episodeContent(input: EpisodeContentInput): EpisodeContent {
+  const request = filterTransient(input.request ?? '', input.markers)
+  const outcome = filterTransient(input.outcome, input.markers)
+  const first = request.split('\n', 1).join('').trim()
+  return {
+    summary: first === '' ? '(no request text)' : clip(first, 80),
+    request: request === '' ? NONE : clip(request, input.maxRequestChars),
+    outcome: outcome === '' ? NONE : clip(outcome, input.maxOutcomeChars),
+  }
+}
+
+/**
  * The episode entry of one verified turn.
  * @param input - turn facts.
  * @returns an `episode` page with no relations.
  */
 export function episodeEntry(input: EpisodeInput): KnowledgeEntry {
-  const request = filterTransient(input.request ?? '', input.markers)
-  const outcome = filterTransient(input.outcome, input.markers)
-  const first = request.split('\n', 1).join('').trim()
+  const content = episodeContent(input)
   return {
     id: episodeId(input.dir, input.sessionId, input.turn, input.date),
     type: 'episode',
-    title: `Turn ${input.turn}: ${first === '' ? '(no request text)' : clip(first, 80)}`,
+    title: `Turn ${input.turn}: ${content.summary}`,
     relations: [],
     body: [
       '## Request',
       '',
-      request === '' ? NONE : clip(request, input.maxRequestChars),
+      content.request,
       '',
       '## Outcome',
       '',
-      outcome === '' ? NONE : clip(outcome, input.maxOutcomeChars),
+      content.outcome,
       '',
       '## Files changed',
       '',

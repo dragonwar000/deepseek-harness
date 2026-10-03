@@ -978,6 +978,7 @@ flowchart TD
   pkg_experimental_knowledge_rules --> pkg_fs
   pkg_experimental_knowledge_rules --> pkg_tools
   pkg_experimental_memory_zeromem --> pkg_agent
+  pkg_experimental_memory_zeromem --> pkg_experimental_knowledge
   pkg_experimental_memory_zeromem --> pkg_llm
   pkg_experimental_memory_zeromem --> pkg_session
   pkg_experimental_memory_zeromem --> pkg_session_projection

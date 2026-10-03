@@ -85,6 +85,12 @@ Outside the bundle, mount `@deepseek-ai/dsh-experimental-memory-zeromem` after t
 | `timeoutMs` | `120000` | Deadline of one `zm` operation, including the ingestion of pending turns |
 | `graceMs` | `2000` | Grace before a terminated `zm` is killed |
 | `maxConcurrent` | `1` | Concurrent `zm` processes |
+| `ingestMode` | `conversation` | What each turn stores: `conversation` stores its user messages and final reply; `episodes` stores only the verified episode of a turn that changed files; `both` stores both |
+| `episodeChangeTools` | `write`, `edit` | Tools whose successful calls change their `file_path` or `path`, which makes the turn an episode candidate |
+| `episodeTransientMarkers` | `this session`, `for now`, `today only`, `temporarily`, `for this turn` | Markers of temporary sentences dropped from an episode's request and outcome |
+| `maxEpisodeRequestChars` | `1000` | Characters of an episode's request |
+| `maxEpisodeOutcomeChars` | `2000` | Characters of an episode's outcome |
+| `maxEpisodeChars` | `6000` | Characters of one episode text. The request and then the outcome shrink to fit; the identifiers, verdict reference, and changed files stay whole. Must cover the fixed lines of an episode |
 
 The explicit `resolveZm` step selects the executable in this order: a non-empty `zmPath`; otherwise a non-empty `DSH_ZEROMEM_ZM`, which must be an absolute path; otherwise `zm` on `PATH`. The bundle row keeps `zmPath` and `modelDir` empty with `embedder: default`, so Desktop runs the `zm` and model it carries; set `embedder: hash` for a `zm` built without fastembed or to run without the model.
 
@@ -93,6 +99,8 @@ Loading fails with a named error when the selected `zm` cannot be found (`Zerome
 ### What is stored, and where
 
 The plugin stores, verbatim and unencrypted, the text of each human user message and of the last assistant message of each completed turn, each cut to `maxIngestChars` characters. It never stores tool calls, tool results, reasoning, injected context, or subagent sessions (unless `ingestSubagentSessions`). With the `workspace` scope, a session's store is `<storeRoot>/workspaces/<first 16 hex digits of the SHA-256 of its working directory>`; with the `global` scope it is `<storeRoot>/global`. Each store holds `zeromem.db` (SQLite, written by `zm`), `spool/` (turn files waiting for ingestion), `dsh-forgotten/` (sessions deleted by `memory_forget_session`), and a `models` link to the model directory. The plugin creates directories owner-only and spool files with mode `0600`. A user message can contain secrets the user typed; delete a store directory to delete its memory. Sessions without a working directory are not stored under the `workspace` scope, with one warning per session.
+
+With `ingestMode` set to `episodes` or `both`, a turn that changed files can also be stored as one **verified episode**: a text of the form `# Verified episode`, the turn number, the event numbers of the final response and of the verdict, the request and outcome with temporary sentences dropped, the changed files each with the event of its successful change, and a verification line. A turn is stored as an episode only when it ended with reason `completed`, its final response is not interrupted, a verifier verdict `ok` names that response, and no user message or file change follows the verdict. A refused turn that changed files logs its reason once per session. No model is called, and tool output is never stored in an episode.
 
 -----
 
@@ -107,6 +115,8 @@ The plugin stores, verbatim and unencrypted, the text of each human user message
 The `zeromemTurn` projection folds the open turn's human `user/message` texts and its last uninterrupted assistant text, and keeps the last completed turn. On `turn/end` the plugin writes that turn as one spool file in zeromem's spool format: one JSON line `{session_id, speaker, text, ts, uuid}` per text, with `ts` in epoch seconds and `uuid` `dsh:<session id>:<event seq>`. The file is written under a temporary name and renamed into `spool/`, so `zm` never reads a partial file. Writes run one at a time, off the model request path, and never start `zm`. `zm` ingests every pending spool file before each operation and skips a line whose `uuid` it already stored, so ingestion is idempotent.
 
 Each plugin instance keeps the number of the last turn it spooled per session. On `turn/start` it also spools the last completed turn when that number is lower, which stores a turn whose ingestion a previous process did not finish once the resumed session starts its next turn; when the previous process had spooled it, zeromem drops the duplicate by `uuid`. A failed spool write is logged and retried at the next turn boundary of the session. Events inherited from a fork parent are not stored under the child's id. A session marked in `dsh-forgotten/` is not spooled again.
+
+With an episode mode the `zeromemEpisode` projection folds the open turn with memory-distill's fold, which keeps the first request, the latest successful change of each changed file, the final response, and the verdict tied to that response. The conversation records and the episode of one turn share one spool file. The episode record has `speaker: assistant`, `ts` of the final response, and `uuid` `dsh:episode:<session id>:<turn>:<response seq>`, so a replayed turn keeps its key. A turn whose episode is not verified is not stored as an episode, and the conversation records are stored regardless.
 
 ### Store operations
 
@@ -152,7 +162,7 @@ Each tool call starts one `zm [--no-model] mcp --home <store>` process through `
 
 #### What the model sees
 
-While the plugin is mounted, the model is offered [`memory_recall`](../../../docs/tool-catalog.md#deepseek-aidsh-experimental-memory-zeromem) with a required `query` string and an optional integer `limit` from 1 to `maxResults`. The description names the store scope (`in this workspace` or `in any workspace`) and whether the current session is left out or included. The result is compact JSON `{"turns":[{"session","time","speaker","text","kind","truncated"?}]}`, where `time` is ISO 8601 UTC, `kind` is `match` or `context`, and `truncated` marks text cut to `maxTurnChars`. A blank query, a `limit` outside the range, a store the session cannot use, and a `zm` failure are tool errors.
+While the plugin is mounted, the model is offered [`memory_recall`](../../../docs/tool-catalog.md#deepseek-aidsh-experimental-memory-zeromem) with a required `query` string and an optional integer `limit` from 1 to `maxResults`. The description names the store scope (`in this workspace` or `in any workspace`) and whether the current session is left out or included. With `ingestMode` set to `episodes` or `both`, the description names verified episodes as stored records, and the text may be an episode. The result is compact JSON `{"turns":[{"session","time","speaker","text","kind","truncated"?}]}`, where `time` is ISO 8601 UTC, `kind` is `match` or `context`, and `truncated` marks text cut to `maxTurnChars`. A blank query, a `limit` outside the range, a store the session cannot use, and a `zm` failure are tool errors.
 
 ##### Verbatim text for this field
 

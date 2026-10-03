@@ -8,7 +8,7 @@
  * scripted zm.
  */
 
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
@@ -16,6 +16,7 @@ import { STORE_WRITE_REASON } from '@deepseek-ai/dsh-experimental-knowledge-rule
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
+import { resolveStore } from '@deepseek-ai/dsh-experimental-memory-zeromem'
 import { boot, cleanup, FAKE_ZM, fakeModel, recallRoundTrip, storeRoot } from './loader-harness.ts'
 
 afterEach(async () => {
@@ -97,5 +98,32 @@ describe('knowledge bundle Loader composition', () => {
     const trip = await recallRoundTrip(ctx, workspace)
     expect(trip.isError).toBe(false)
     expect(trip.recall).toContain('Our retries use jittered backoff.')
+  })
+
+  it('stores both records of a turn that changed a file beside memory-distill, which writes nothing without a verdict', async () => {
+    const stores = storeRoot()
+    const { ctx, workspace } = await boot(new Map(), [{
+      id: 'memory-zeromem',
+      disabled: false,
+      config: { zmPath: process.execPath, zmArgs: [FAKE_ZM], embedder: 'hash', storeRoot: stores, ingestMode: 'both' },
+    }])
+    const adapter = new MockAdapter([
+      toolCallResponse('w1', 'write', { file_path: 'src/retry.ts', content: 'export const attempts = 3\n' }),
+      textResponse('Added retry with three attempts.'),
+    ])
+    ctx.llm.registerAdapter(['both'], adapter)
+    const agent = await ctx.agentLoop.create(SessionId('both-plugins'), { provider: 'both', model: 'mock' }, { cwd: workspace })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Add a retry to the client.' }], source: { kind: 'user' } }))
+    await agent.whenIdle()
+
+    const events = agent.session.snapshotEvents()
+    expect(events.filter(event => event.type === 'knowledge/write')).toEqual([])
+    expect(events.flatMap(event => (event.type === 'turn/end' ? [event.data.reason.kind] : []))).toEqual(['completed'])
+    const spool = join(resolveStore({ scope: 'workspace', storeRoot: stores, cwd: workspace, models: stores }).home, 'spool')
+    await vi.waitFor(() => { expect(existsSync(spool)).toBe(true) })
+    const speakers = readdirSync(spool).filter(name => name.endsWith('.jsonl')).sort()
+      .flatMap(name => readFileSync(join(spool, name), 'utf8').split('\n').filter(line => line !== ''))
+      .map(line => (JSON.parse(line) as { speaker: string }).speaker)
+    expect(speakers).toEqual(['user', 'assistant'])
   })
 })

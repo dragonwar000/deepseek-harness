@@ -78,6 +78,7 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
 - **通过归档保留。** `resolveRetention` 把 `maxEpisodes` 解析为不归档（`0`）或保持活跃的 episode 页面数。给定数量时，插件在写入前读取知识库索引；episode 写入后，把 `dir` 下除最新的 `maxEpisodes - 1` 个之外的其余 `episode` 页面全部归档（较新指 `updated` 较晚，其次 id 较大）。归档会读取页面，并经由 `ctx.knowledge.write` 以状态 `archived` 写回其标题、正文与关系，引用与新 episode 相同的工具结果，因此它经过知识库规则检查，并以 operation 为 `update` 的 `knowledge/write` 记录。已归档页面离开索引、查询结果与邻居层级，但仍可通过 `knowledge_read` 与 `knowledge_cite` 读取；插件从不删除页面。选用 frontmatter 状态而不是 `supersedes` 关系，是因为较新的 episode 并不取代较旧 episode 的事实，而且被取代的页面仍会留在索引中。在 `shadow` 模式下，插件为每个将要归档的页面记录一条 `knowledge/write`。
 - **引用来自变更。** 页面引用每个变更文件最近一次变更的成功 `tool/result`；没有变更文件的 turn 不会被提炼，因为它的页面无从引用。
 - **删除临时语句。** 请求与回复中包含已配置标记（不区分大小写）的句子会被删除。
+- **共享内容。** `episodeContent` 对一个轮次的请求与回复应用标记过滤和长度上限。它是纯函数导出：`memory-zeromem` 用它生成已验证 episode 的文本，因此两个存储删除相同的语句，而无需复制该规则。
 - **每个 turn 一次。** 折叠在本写入方的第一条 `knowledge/write` 时把 turn 标记为已提炼，因此同一 turn 中被引导继续的部分不会再次提炼。
 - **不接收压缩摘要。** 摘要是模型输出而不是工具结果，因此无法被引用。
 - **与校验门相互独立。** 校验门的 `loop/verdict` 按事件名读取并用 zod 校验；本包在运行时不依赖校验门。
@@ -90,7 +91,7 @@ memory-distill: the verifier gate recorded a verdict after memory-distill checke
 | [`src/index.ts`](src/index.ts) | `Config`、投影注册、turn-stopping 监听器与顺序警告 |
 | [`src/fold.ts`](src/fold.ts) | `memoryDistill` 投影折叠与结论解析 |
 | [`src/retention.ts`](src/retention.ts) | `maxEpisodes` 解析与待归档 episode 页面的选择 |
-| [`src/episode.ts`](src/episode.ts) | episode 页面 id、标记过滤与页面条目 |
+| [`src/episode.ts`](src/episode.ts) | episode 页面 id、标记过滤、共享的 `episodeContent` 与页面条目 |
 
 </details>
 
