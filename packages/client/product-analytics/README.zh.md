@@ -25,7 +25,7 @@ kind: "package-reference"
 
 渲染端和 Electron 通过现有认证流订阅 Host 策略变化及重连后的值；Electron 在原生启动上报前还会读取初始策略。欢迎窗口通过 IPC 获取当前策略。Host 在接收事件及读取身份后都检查当前 volatile 配置。`DSH_PRODUCT_ANALYTICS_OTLP_URL` 可覆盖导出目的地，用于隔离的接收端。[导出器](../../host/product-telemetry-otel/README.zh.md)负责批量发送、重试和退出时的交付。
 
-公共字段为 `device_id`、`user_id`、`os_version` 和 `app_version`。设备身份复用现有登录记录，不会生成新标识。Host 通过 `deepseekAccount.getDeviceIdentity()` 读取不含凭据的设备、账户和操作系统字段。缺失值会省略；API key、账户令牌、提示词和模型回复都不是事件字段。
+公共字段为 `device_id`、`user_id`、`os_version` 和 `app_version`。设备身份复用现有登录记录，不会生成新标识。Host 通过可选的 `deepseekAccount` 服务读取不含凭据的设备、账户和操作系统字段，每次上报都用 `ctx.get` 解析；未包含 DeepSeek 平台登录的组合（即已发布的 CTD Core 组合）会提交其余字段，而不会让本插件停留在未激活状态。缺失值会省略；API key、账户令牌、提示词和模型回复都不是事件字段。
 
 Electron 将构建内联的 `DSH_CLIENT_VERSION` 传给 Host；埋点与导出器复用这一客户端版本，导出器要求该值存在。[桌面组合](../../bundle/web-app/README.zh.md)负责批量发送与超时配置，包括达到关闭期限时的取消行为。
 

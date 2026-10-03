@@ -1,4 +1,4 @@
-/** Type-only Electron update declarations shared by the settings UI and Desktop compatibility checks. */
+/** Type-only Electron update and Settings request declarations shared by the settings UI and Desktop compatibility checks. */
 
 /** Classified failure copy selected by the Web locale without exposing raw updater diagnostics. */
 export type DesktopUpdateFailureKind =
@@ -25,6 +25,15 @@ export interface DesktopUpdateBridge {
   status(): Promise<DesktopUpdatePresentation>
   open(): Promise<void>
   subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
+}
+
+/** Optional carrier API through which the Desktop shell asks the Settings shell to open one section. */
+export interface DesktopSettingsBridge {
+  /**
+   * @param listener - Receives each requested section id once, including one made before subscribing.
+   * @returns Unsubscribe.
+   */
+  subscribe(listener: (sectionId: string) => void): () => void
 }
 
 /** Shared carrier status for the account row and collapsed sidebar badge. */

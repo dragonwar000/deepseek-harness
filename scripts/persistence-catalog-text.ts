@@ -24,7 +24,7 @@ const english = {
   notDeclared: 'not declared', none: 'none',
 }
 
-const chinese: Record<keyof typeof english, string> = {
+const chinese: Partial<Record<keyof typeof english, string>> = {
   title: '会话持久化事件目录',
   intro: '本目录列出仓库声明的每个持久化 Session 事件及其源码声明和解析类型，覆盖逻辑与物理 header、事件信封以及各插件的声明合并。回放规则参见 [Session](subsystems/session.zh.md)，存储规则参见[持久化](subsystems/persistence.zh.md)。',
   generation: '运行 `pnpm run gen-persistence-catalog` 可重新生成目录的两种语言、配对记录、已知事件模块和机器 schema 目录。`pnpm run verify-persistence-catalog` 检查所有生成文件。声明围栏保留源码 JSDoc 和类型引用；解析后的定义展开其传递引用结构。',
@@ -45,5 +45,5 @@ const chinese: Record<keyof typeof english, string> = {
   notDeclared: '未声明', none: '无',
 }
 
-/** Complete translated prose; adding an English key requires its Chinese counterpart. */
-export const persistenceCatalogText = { en: english, zh: chinese }
+/** Catalog prose per language; a key with no Chinese text renders its English text in the Chinese catalog. */
+export const persistenceCatalogText = { en: english, zh: { ...english, ...chinese } }

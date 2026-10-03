@@ -432,9 +432,9 @@ describe('PiAiAdapter provider routing', () => {
 })
 
 describe('provider profile lifecycle', () => {
-  it('keeps adapter helpers off the package root', () => {
+  it('keeps adapter helpers off the package root while exposing profile resolution to route plugins', () => {
+    expect(LlmPiAi.resolveProfiles).toBeTypeOf('function')
     for (const helper of [
-      'resolveProfiles',
       'toPiContext',
       'toPiReplayState',
       'toPiAssistant',

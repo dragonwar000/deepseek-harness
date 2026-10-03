@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-settings-coteccons-sso/README.md
+/:
+  en: 56f2c4d0dc092406
+  zh: 31af195daca7d281
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso:
+  en: 7c43d11bd4c031b4
+  zh: 2d2cd8b15aa5f113
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/summary:
+  en: ea4e5c521c8b273f
+  zh: e46caaea1cfc3d17
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/table-of-contents:
+  en: e6747830a09a09aa
+  zh: 76900a6bcd1bc756
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/use-this-package:
+  en: fa477119a98e7d9e
+  zh: c833f058f272ee70
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/understand-the-implementation:
+  en: 36622455934d7253
+  zh: aad62e8daea2148f
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/further-exploration:
+  en: 9b4acc1f4e8bd8b6
+  zh: 412473ecdeff272e
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/model-experience:
+  en: 98ad9003e4fce7e8
+  zh: 4379a4fe426ecbf4
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: 6c9e01d76d7ff3c7
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/known-limitations-and-deferred-work:
+  en: 4ecb41a050d03610
+  zh: 664586ea55b8d301
+/deepseek-ai-dsh-client-ui-settings-coteccons-sso/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 8ec3e73528ddb1a6

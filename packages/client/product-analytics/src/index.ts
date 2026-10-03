@@ -24,9 +24,16 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Authenticated event intake; disabled instances do not inspect identity or accept new events. */
+/**
+ * Event intake; disabled instances do not inspect identity or accept new
+ * events, and a composition without DeepSeek Platform sign-in reports without
+ * identity attributes.
+ */
 export default class ProductAnalytics extends TypertRemoteService {
-  static inject = ['deepseekAccount', 'productTelemetry']
+  // `deepseekAccount` is optional: CTD Core ships DeepSeek Platform sign-in
+  // disabled, so identity is read through `ctx.get` and its absence omits the
+  // identity attributes rather than leaving this row permanently pending.
+  static inject = ['productTelemetry']
   static Config = z.object({ enabled: z.boolean().default(true).volatile(), appVersion: z.string() })
   private active = true
   private readonly listeners = new Set<() => void>()
@@ -82,7 +89,7 @@ export default class ProductAnalytics extends TypertRemoteService {
   async report(event: ProductEvent): Promise<void> {
     if (!this.enabled()) return
     try {
-      const identity = await this.ctx.deepseekAccount.getDeviceIdentity().catch(() => undefined)
+      const identity = await this.ctx.get('deepseekAccount')?.getDeviceIdentity().catch(() => undefined)
       if (!this.enabled()) return
       this.ctx.productTelemetry.emit({
         ...event, body: event.eventName,

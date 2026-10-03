@@ -1,0 +1,5 @@
+# Removes the Coteccons SSO model route, which counts as a usable provider by
+# configuration, so first-run scenarios can cover the API-key onboarding dialog
+# that appears while no provider can serve requests.
+- id: llm-coteccons-sso
+  disabled: true

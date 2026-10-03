@@ -1,0 +1,10 @@
+version: 1
+scenario: knowledge-index
+profile: headless
+composition: knowledge-index
+recording: authored
+header:
+  class: knowledge-index
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn

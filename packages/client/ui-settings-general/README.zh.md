@@ -22,7 +22,7 @@ kind: "package-reference"
 
 -----
 
-设置面板采用各页面共享的 800 × 800 布局，并受视口大小约束。较长的页面在内容栏内部滚动；账号入口使用账号图标。面板挂载在 `#root` 之外而不是其内部，这样在文档序上更靠后的 chrome 行所声明的 macOS 窗口拖拽区不会吞掉它的控件。
+设置面板采用各页面共享的 800 × 800 布局，并受视口大小约束。较长的页面在内容栏内部滚动；AI 账号入口使用账号图标。打开已停用的 `account` 区块 id 的请求会打开 AI 账号，DeepSeek 账号分组位于其中。面板挂载在 `#root` 之外而不是其内部，这样在文档序上更靠后的 chrome 行所声明的 macOS 窗口拖拽区不会吞掉它的控件。
 
 <a id="use-this-package"></a>
 ## 使用本包
@@ -94,7 +94,7 @@ Web 与桌面端的通用设置底部显示当前发布版本，使用构建注�
 - [ui-sidebar](../ui-sidebar/README.zh.md)——承载 `sidebar.settings` 席位的侧边栏外壳。
 - [ui-settings-models](../ui-settings-models/README.zh.md)——贡献 DeepSeek 引导步骤的功能包。
 - [settings](../../settings/README.zh.md)——持久化用户设置 seam 及其文件提供方。
-- [slot 系统标准](../../../.agents/notes/implemented/architecture/2026-07-22-slot-type-chain-implementation.zh.md)——账本背后的组合模型。
+- [slot 系统标准](../../../.agents/notes/implemented/architecture/2026-07-22-slot-type-chain-implementation.md)——账本背后的组合模型。
 
 -----
 

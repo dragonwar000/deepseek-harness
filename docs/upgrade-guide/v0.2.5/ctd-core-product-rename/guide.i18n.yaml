@@ -1,0 +1,16 @@
+# Bilingual-pair consistency record for guide.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/upgrade-guide/v0.2.5/ctd-core-product-rename/guide.md
+/:
+  en: a11a6be13b70d2b8
+  zh: 3d846ed1db719989
+/deepseek-harness-desktop-becomes-ctd-core:
+  en: 739630eb7f3c797e
+  zh: 82c8f473a93811d8
+/deepseek-harness-desktop-becomes-ctd-core/change:
+  en: edfeb977b4183477
+  zh: 25435897122802fd
+/deepseek-harness-desktop-becomes-ctd-core/migration:
+  en: 06516ab835fa3e93
+  zh: 828eee56e55b99a5

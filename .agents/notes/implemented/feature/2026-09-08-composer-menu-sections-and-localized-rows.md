@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-08-composer-menu-sections-and-localized-rows.zh.md)
-
 ## Problem
 
 The composer's `+` button and a typed `/` listed every command in Host registration order as `name description`, all lowercase, with no glyphs and no grouping, beside a separate paperclip button for files. Under Chinese the rows stayed English because Host descriptors carry English text only, and a user who knew a command by its Chinese title could neither find it by that title nor see what to type. Issue #3567 and the design doc for it ask for two sections in usage order, a glyph and a left-aligned title per row with the description right-aligned, capitalized English titles, Chinese titles and descriptions that stay searchable in both languages and show the English command name, a Chinese fill for the Plan and Goal claims, and a File entry inside the menu.

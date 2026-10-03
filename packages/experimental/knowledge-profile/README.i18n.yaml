@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/knowledge-profile/README.md
+/:
+  en: 050dd47463ed8e2f
+  zh: 586e4372901da610
+/deepseek-ai-dsh-experimental-knowledge-profile:
+  en: f4258d02ba2eafb2
+  zh: 26e7f63832a208af
+/deepseek-ai-dsh-experimental-knowledge-profile/summary:
+  en: 4756be43253687ea
+  zh: 7159ca28b41c85bf
+/deepseek-ai-dsh-experimental-knowledge-profile/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/install-into-a-profile:
+  en: b57408b0ae499e44
+  zh: ded9a2b84f9eb99a
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/what-you-get:
+  en: 29258646f8b32fe3
+  zh: b53f00562733341b
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/order-with-the-loop-guards-bundle:
+  en: 8e97f17c9be000b6
+  zh: a497931ce0b67b7a
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/turn-on-writes:
+  en: 24fedc43424dc753
+  zh: b9d4c67f3d6ad795
+/deepseek-ai-dsh-experimental-knowledge-profile/use-this-package/turn-on-conversation-memory:
+  en: 434d270e3e3bda72
+  zh: 94cbec9118f2f566
+/deepseek-ai-dsh-experimental-knowledge-profile/understand-the-implementation:
+  en: 48fba0b4a858b504
+  zh: efb5b82b907dc337
+/deepseek-ai-dsh-experimental-knowledge-profile/further-exploration:
+  en: 122dbd1a8d289e7d
+  zh: 360be141eb67e88c
+/deepseek-ai-dsh-experimental-knowledge-profile/model-experience:
+  en: c60a83b20916550f
+  zh: 61b67209813baa95
+/deepseek-ai-dsh-experimental-knowledge-profile/model-experience/kv-cache-effect:
+  en: 83c73ed86e648dd3
+  zh: 74aefb4d7caa5d00
+/deepseek-ai-dsh-experimental-knowledge-profile/known-limitations-and-deferred-work:
+  en: 7e29d4b262e613a6
+  zh: 0341f3c6c5520950
+/deepseek-ai-dsh-experimental-knowledge-profile/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

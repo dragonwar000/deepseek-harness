@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-09-desktop-immediate-window-and-direct-start.zh.md)
-
 Plugin management and native recovery follow the [shared Web wrapper decision](2026-09-10-desktop-web-wrapper.md).
 
 ## Problem

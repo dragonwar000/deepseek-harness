@@ -13,6 +13,7 @@ import * as desktopOffice from './office.ts'
 import { installDesktopUpdateTaskControl } from './update-tasks.ts'
 import { installDesktopQuitInspection } from './quit-inspection.ts'
 import { installPlatformSessionPublisher } from './platform-session.ts'
+import { installAiAccountSignedOutPublisher } from './ai-account-status.ts'
 import { installOfficeEngineResolution } from './office-engine.ts'
 
 async function main(): Promise<void> {
@@ -99,6 +100,9 @@ async function main(): Promise<void> {
   })
   installPlatformSessionPublisher(ctx, (session) => {
     if (process.connected) process.send?.({ type: 'platform-session', session })
+  })
+  installAiAccountSignedOutPublisher(ctx, (kind) => {
+    if (process.connected) process.send?.({ type: 'ai-account-signed-out', kind })
   })
   const url = ctx.connection.authenticatedUrl(`http://127.0.0.1:${String(ctx.webServer.port)}`)
   if (process.connected) process.send?.({ type: 'ready', url, injections: ctx.webServer.collectIndexInjections() }, (error) => { if (error !== null) console.error(error) })

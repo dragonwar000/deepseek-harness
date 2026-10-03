@@ -21,6 +21,8 @@ getPlatformSession 仅在已存授权的 issuer 与 platformOrigin 一致时导�
 
 设备身份读取会校验已有登录设备记录，仅提供设备 ID、当前账户 ID 和与登录共用的操作系统版本字符串。
 
+已发布的组合将 base Bundle 的 `deepseek-account` 行保持禁用：在 CTD Core 中，[Coteccons SSO](../coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用该行。
+
 ## 目录
 
 - [使用此包](#use-this-package)
@@ -95,7 +97,7 @@ attemptTimeoutMs 包含初始化、等待浏览器和兑换的耗时。初始化
 <a id="dev-note"></a>
 ### 开发备注
 
-[桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.zh.md)记录取消和存储的职责。
+[桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.md)记录取消和存储的职责。
 
 登录后首次读取资料使用 auth_exchange 返回并经筛选的 user。user 为 null 或格式无效时回退到 current；后续刷新及 Host 重启也查询 current。current 请求失败时保留 Host 内存中同一凭证最近一次成功的资料；凭证变更或提供者销毁时清空。current 成功返回的稳定账号 ID 首次可用或变化时会通知 watch 订阅者，供标识使用方重新读取 getPlatformSession；重复相同 ID 的刷新不通知。exchange 负责登记提交的设备信息。
 

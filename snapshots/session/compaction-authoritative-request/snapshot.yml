@@ -1,0 +1,11 @@
+version: 1
+scenario: compaction-authoritative-request
+profile: headless
+composition: compaction-authoritative-request
+recording: authored
+header:
+  class: compaction-authoritative-request
+  pin: true
+  systemPromptSource: compaction-recovery
+  toolSchemasSource: compaction-recovery
+  changes: 1

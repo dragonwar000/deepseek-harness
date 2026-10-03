@@ -1,0 +1,97 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/graph-runner/README.md
+/:
+  en: 37707ed2d490d659
+  zh: 9f457b32bcafb036
+/deepseek-ai-dsh-experimental-graph-runner:
+  en: 7780b349c4d810bf
+  zh: 97d08de9260062b5
+/deepseek-ai-dsh-experimental-graph-runner/summary:
+  en: a137ba52608c9f91
+  zh: 118823282958f847
+/deepseek-ai-dsh-experimental-graph-runner/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-graph-runner/use-this-package:
+  en: b71d2b6acca544da
+  zh: 2f505fd85f1fb3de
+/deepseek-ai-dsh-experimental-graph-runner/use-this-package/when-to-choose-it:
+  en: b9b09db0705c32ea
+  zh: 8ae7d5ee0187f1a6
+/deepseek-ai-dsh-experimental-graph-runner/use-this-package/minimal-configuration:
+  en: da27fa4027359aab
+  zh: 9c1b9203e6d05e78
+/deepseek-ai-dsh-experimental-graph-runner/use-this-package/what-you-get:
+  en: 8eed2f7b4bf829ca
+  zh: b9e62217a5a08f17
+/deepseek-ai-dsh-experimental-graph-runner/understand-the-implementation:
+  en: 26e92286d4e18211
+  zh: 9e4e61e2309de322
+/deepseek-ai-dsh-experimental-graph-runner/understand-the-implementation/design-notes:
+  en: 50f7f01c1fdcf55e
+  zh: 2add073c8032de24
+/deepseek-ai-dsh-experimental-graph-runner/understand-the-implementation/source-map:
+  en: 169d0b2f5a66b19a
+  zh: 4a6a90ccba6d29de
+/deepseek-ai-dsh-experimental-graph-runner/further-exploration:
+  en: 2e9de29009d5729e
+  zh: 56f09abebc33f6cf
+/deepseek-ai-dsh-experimental-graph-runner/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-tool:
+  en: 71ce36700d973dca
+  zh: 0232b9be715ce757
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-tool/what-the-model-sees:
+  en: 4038f08fba2c19f4
+  zh: f09a581d88a09e3a
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-tool/token-effect:
+  en: 3eb81006bb71063b
+  zh: cc90dc5cb741e959
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-tool/kv-cache-effect:
+  en: 2ff9e7b19c4a7918
+  zh: da42949d517fe47c
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-result:
+  en: 281dc7617df9698c
+  zh: 5dea9341ea20042d
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-result/what-the-model-sees:
+  en: fc411118826edf68
+  zh: d5c56fbf87b432cb
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-result/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-result/token-effect:
+  en: ed84667feff10465
+  zh: 876bde86557ddc0f
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-graph-run-result/kv-cache-effect:
+  en: 97d5c01ac4c08a2c
+  zh: 5108448b962e2d48
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-node-brief:
+  en: 5f0c4b2a59667058
+  zh: c50b7c6a2cfcb92c
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-node-brief/what-the-model-sees:
+  en: f85adc2876ef9310
+  zh: 9ba87f848a5b6fbe
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-node-brief/what-the-model-sees/verbatim-text-for-the-interrupted-note:
+  en: 0d7b928d305ce722
+  zh: ed10cc5c63868a6a
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-node-brief/what-the-model-sees/verbatim-text-for-the-loop-feedback:
+  en: 273478a9a843d9fe
+  zh: 9edf5f583e704e06
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-node-brief/token-effect:
+  en: 5ff32407b7294296
+  zh: 6fca5f4fdd8c61fc
+/deepseek-ai-dsh-experimental-graph-runner/model-experience/the-node-brief/kv-cache-effect:
+  en: f69c2e60962dffe3
+  zh: 6dc38cf3e8f8ee98
+/deepseek-ai-dsh-experimental-graph-runner/known-limitations-and-deferred-work:
+  en: 6300be4556a54738
+  zh: b2365507499ba8b3
+/deepseek-ai-dsh-experimental-graph-runner/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

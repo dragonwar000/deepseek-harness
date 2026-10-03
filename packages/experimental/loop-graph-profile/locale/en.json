@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Loop guards",
+    "description": "Verifier gate, stationarity guard, denial budget, loop budget, and the graph plan audit and runner in shadow mode, plus an infra snapshot per agent and the graph_query tool; replaces the repeat-tool reminder."
+  }
+}

@@ -1,0 +1,106 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/tool-knowledge/README.md
+/:
+  en: ec56679e75ffa1ce
+  zh: 0751d5948090f90b
+/deepseek-ai-dsh-experimental-tool-knowledge:
+  en: 845981bdc2ada044
+  zh: 0560db2c22e1c920
+/deepseek-ai-dsh-experimental-tool-knowledge/summary:
+  en: 2b0d711d7d341390
+  zh: f1463781258a4f3b
+/deepseek-ai-dsh-experimental-tool-knowledge/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-tool-knowledge/use-this-package:
+  en: 916a375d4b4857a0
+  zh: 34359a178843a5c7
+/deepseek-ai-dsh-experimental-tool-knowledge/use-this-package/when-to-choose-it:
+  en: 9c01b42c60ae7b1c
+  zh: 29999d151f2eb5b8
+/deepseek-ai-dsh-experimental-tool-knowledge/use-this-package/minimal-configuration:
+  en: 3ec4b7e4253708bf
+  zh: abca8761f5388e0d
+/deepseek-ai-dsh-experimental-tool-knowledge/understand-the-implementation:
+  en: b37ca393383986e4
+  zh: d6af97afe1f0f59a
+/deepseek-ai-dsh-experimental-tool-knowledge/understand-the-implementation/design-notes:
+  en: 262eab1d04318af8
+  zh: be864d7da96e6e34
+/deepseek-ai-dsh-experimental-tool-knowledge/understand-the-implementation/source-map:
+  en: 634d76f4a4d675c8
+  zh: d90211b5242ed4e9
+/deepseek-ai-dsh-experimental-tool-knowledge/further-exploration:
+  en: 756822b234fc598c
+  zh: c560042c59b7d402
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-query-tool:
+  en: 5ab7b8689b944569
+  zh: 4aa483540e7522be
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-query-tool/what-the-model-sees:
+  en: 8fcdc6eaeaa358f9
+  zh: 35a41c029e568996
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-query-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-query-tool/token-effect:
+  en: a56e11c21e033626
+  zh: a36af629faf7d626
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-query-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 403a6e5195258cce
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-read-tool:
+  en: e8fa23c6bcb13e26
+  zh: 10263d36512b07b5
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-read-tool/what-the-model-sees:
+  en: 1399c42145bd457f
+  zh: 59f080e37430b9ea
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-read-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-read-tool/token-effect:
+  en: b9977b83087f3d28
+  zh: c2af06b7b41e32ee
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-read-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 403a6e5195258cce
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-cite-tool:
+  en: b350a7e21388bd0a
+  zh: dea46a6bc257271a
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-cite-tool/what-the-model-sees:
+  en: 93dd9bfa073a9074
+  zh: 9571bc4ee7b2de6d
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-cite-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-cite-tool/token-effect:
+  en: e9ff853e28e4a777
+  zh: 4d7608acfc2d858a
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-cite-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 403a6e5195258cce
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-write-tool:
+  en: b725832e40ddbb79
+  zh: f38e2660dfc60d47
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-write-tool/what-the-model-sees:
+  en: 6a7933474022415d
+  zh: 0b063b3d0e35dc11
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-write-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-write-tool/token-effect:
+  en: c69bbc5ec94aece7
+  zh: ee40513e0a22c6bd
+/deepseek-ai-dsh-experimental-tool-knowledge/model-experience/the-knowledge-write-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 403a6e5195258cce
+/deepseek-ai-dsh-experimental-tool-knowledge/known-limitations-and-deferred-work:
+  en: 0a7c366ec99dab52
+  zh: b4ac9f752d2f2061
+/deepseek-ai-dsh-experimental-tool-knowledge/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 975625e42085937f

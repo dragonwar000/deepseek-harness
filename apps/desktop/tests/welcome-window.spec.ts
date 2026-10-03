@@ -6,13 +6,13 @@ import { needsWelcome, WELCOME_IPC } from '../src/welcome-api.ts'
 const electron = vi.hoisted(() => ({
   create: vi.fn<(options: unknown) => ReturnType<typeof createWindow>>(),
   root: '/desktop-app',
-  handlers: new Map<string, (event: unknown, value?: unknown, attributes?: unknown) => Promise<unknown>>(),
+  handlers: new Map<string, (event: unknown, ...args: unknown[]) => Promise<unknown>>(),
 }))
 vi.mock('electron', () => ({
   app: { getAppPath: () => electron.root },
   BrowserWindow: vi.fn(function (options: unknown) { return electron.create(options) }),
   ipcMain: {
-    handle: (name: string, handler: (event: unknown, value?: unknown, attributes?: unknown) => Promise<unknown>) => {
+    handle: (name: string, handler: (event: unknown, ...args: unknown[]) => Promise<unknown>) => {
       if (electron.handlers.has(name)) throw new Error(`duplicate IPC handler: ${name}`)
       electron.handlers.set(name, handler)
     },
@@ -42,11 +42,12 @@ beforeEach(() => { electron.create.mockReset(); electron.handlers.clear() })
 const operations = {
   analyticsEnabled: async () => true,
   takeNotice: async () => undefined,
-  startSignIn: async () => ({ links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out' as const, attempt: null }),
-  cancelSignIn: async () => ({ links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out' as const, attempt: null }),
+  startSignIn: async () => ({ status: 'signed-out' as const }),
+  cancelSignIn: async () => ({ status: 'signed-out' as const }),
   copySignInLink: async () => undefined,
   saveApiKey: () => Promise.resolve({ ok: true as const }),
   skip: () => Promise.resolve(),
+  getWritableProviders: () => Promise.resolve(['llm-deepseek', 'llm-pi-ai'] as const),
 }
 
 describe('desktop welcome window', () => {
@@ -126,11 +127,11 @@ describe('desktop welcome window', () => {
     expect(await take(own)).toBe('session-expired')
     expect(takeNotice).toHaveBeenCalledOnce()
     const save = electron.handlers.get(WELCOME_IPC.saveApiKey)!
-    await expect(save({ sender: {}, senderFrame: {} }, 'sk-test')).rejects.toThrow('unowned frame')
-    await expect(save({ ...own, senderFrame: {} }, 'sk-test')).rejects.toThrow('unowned frame')
-    expect(await save(own, 'bad key')).toEqual({ ok: false })
+    await expect(save({ sender: {}, senderFrame: {} }, 'llm-deepseek', 'sk-test')).rejects.toThrow('unowned frame')
+    await expect(save({ ...own, senderFrame: {} }, 'llm-deepseek', 'sk-test')).rejects.toThrow('unowned frame')
+    expect(await save(own, 'llm-deepseek', 'bad key')).toEqual({ ok: false })
     expect(saveApiKey).not.toHaveBeenCalled()
-    expect(await save(own, 'sk-test')).toEqual({ ok: true })
+    expect(await save(own, 'llm-deepseek', 'sk-test')).toEqual({ ok: true })
     await electron.handlers.get(WELCOME_IPC.skip)!(own)
     expect(skip).toHaveBeenCalledOnce()
     const copy = electron.handlers.get(WELCOME_IPC.copyLink)!
@@ -181,10 +182,10 @@ describe('desktop welcome window', () => {
   })
 
   it('shows the entry after logout only without a separately configured API key', () => {
-    expect(needsWelcome({ loggedIn: true, hasApiKey: false })).toBe(false)
-    expect(needsWelcome({ loggedIn: false, hasApiKey: false })).toBe(true)
-    expect(needsWelcome({ loggedIn: false, hasApiKey: true })).toBe(false)
-    expect(needsWelcome({ loggedIn: true, hasApiKey: true })).toBe(false)
+    expect(needsWelcome({ loggedIn: true, hasApiKey: false, writableProviders: ['llm-deepseek'] })).toBe(false)
+    expect(needsWelcome({ loggedIn: false, hasApiKey: false, writableProviders: [] })).toBe(true)
+    expect(needsWelcome({ loggedIn: false, hasApiKey: true, writableProviders: ['llm-deepseek'] })).toBe(false)
+    expect(needsWelcome({ loggedIn: true, hasApiKey: true, writableProviders: ['llm-deepseek'] })).toBe(false)
   })
 })
 

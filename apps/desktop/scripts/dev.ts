@@ -11,6 +11,7 @@ import { developmentRuntimeDirectory, resolveDesktopBuildTarget } from './deskto
 import { prepareDevelopmentProject } from './development-project.ts'
 import { prepareDevelopmentApp } from './development-app.ts'
 import { preparePrimaryRuntime } from './prepare-primary-runtime.ts'
+import { prepareDesktopZeromem, ZeromemBuildError } from './prepare-zeromem.ts'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
@@ -121,6 +122,11 @@ async function main(): Promise<void> {
     target: resolveDesktopBuildTarget(),
   })
   await preparePrimaryRuntime()
+  // Development continues without zm; an enabled memory-zeromem then fails its load with a named error.
+  await prepareDesktopZeromem().catch((error: unknown) => {
+    if (!(error instanceof ZeromemBuildError)) throw error
+    console.warn(`${error.message}; memory-zeromem needs zm on PATH and a model directory in this development launch`)
+  })
   await launchElectron()
 }
 

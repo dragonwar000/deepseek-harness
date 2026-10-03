@@ -9,6 +9,12 @@ export interface ToolResultPruneConfig {
   headChars?: number
   /** Maximum trailing Unicode code points retained. Defaults to `1024`. */
   tailChars?: number
+  /**
+   * Under the `pressure` trigger, keep tool results that follow the latest
+   * assistant message on the surface verbatim: the model has not answered
+   * them yet. `context-overflow` still prunes them. Defaults to `false`.
+   */
+  protectUnseen?: boolean
 }
 
 /** Validated, detached, deeply immutable pruning configuration. */
@@ -16,6 +22,7 @@ export interface ResolvedConfig {
   readonly thresholdChars: number
   readonly headChars: number
   readonly tailChars: number
+  readonly protectUnseen: boolean
 }
 
 /** Cited source event and size accounting for one landed surface replacement. */

@@ -1,0 +1,32 @@
+# Default-account provider patch over the shipped headless profile and the
+# package's public Bundle patch. The account root is a driver-owned temporary
+# directory; no product process starts in this test.
+- id: headless-startup
+  disabled: true
+
+- id: headless-runner
+  disabled: true
+
+- id: ai-account
+  config:
+    root: !!js "process.env.AI_ACCOUNT_FIXTURE_ROOT"
+
+- insert:
+    - id: fixture
+      name: './fixture.ts'
+
+    - id: tool-subagent-codex
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: codex
+        toolName: subagent_codex
+        backgroundMode: one-shot
+        maxDepth: 'provider-managed'
+
+    - id: tool-subagent-claude-code
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: claude-code
+        toolName: subagent_claude_code
+        backgroundMode: one-shot
+        maxDepth: 'provider-managed'

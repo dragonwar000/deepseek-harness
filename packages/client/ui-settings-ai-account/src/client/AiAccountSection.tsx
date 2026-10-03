@@ -1,0 +1,251 @@
+/** AI Account settings section: contributed account groups, then official-CLI accounts by kind with defaults, removal, and sign-in. */
+import { useState } from 'react'
+import { Button, Input, Tag, usePendingAction } from '@deepseek-ai/dsh-client-ui-primitives'
+import type {
+  AiAccountId, AiAccountKind, AiAccountSignInError, AiAccountSignInId, AiAccountSignInView, AiAccountView, AiAccountsView,
+} from '@deepseek-ai/dsh-ai-account/types'
+import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { AiAccountLocaleKey } from './locales.ts'
+import type {} from './slot-contract.ts'
+import css from './AiAccountSection.module.css'
+
+/** Latest Host account state as the section sees it. */
+export interface AiAccountSnapshot {
+  /** Latest Host snapshot; `null` until the account stream delivers one. */
+  readonly view: AiAccountsView | null
+  /** Whether the account stream stopped; `view` then keeps the last delivered snapshot. */
+  readonly failed: boolean
+}
+
+/** Account snapshot and commands supplied by the plugin's apply closure. */
+export interface AiAccountSectionInjected {
+  hooks: { accounts: HostObservable<AiAccountSnapshot> }
+  /** Start or join the official-CLI sign-in for one kind. */
+  startSignIn: (kind: AiAccountKind) => Promise<void>
+  /** Cancel the named sign-in attempt. */
+  cancelSignIn: (id: AiAccountSignInId) => Promise<void>
+  /** Hand the authorization code the vendor's browser page displayed to the waiting login command. */
+  submitSignInCode: (id: AiAccountSignInId, code: string) => Promise<void>
+  /** Make one account the default of its kind. */
+  setDefault: (id: AiAccountId) => Promise<void>
+  /** Sign one account out and forget it. */
+  remove: (id: AiAccountId) => Promise<void>
+  /** Ask the Host to run every account's status check now. */
+  checkStatus: () => Promise<void>
+}
+
+/** Props bound by the settings-section renderer. */
+export type AiAccountSectionProps =
+  PropsRuntime<'settings.section'>
+  & PropsLocale<'settings.aiAccount'>
+  & PropsRenderSlots<'settings.ai-account.group'>
+  & InjectFace<AiAccountSectionInjected>
+
+const KINDS: readonly AiAccountKind[] = ['claude', 'chatgpt']
+const ACTIVE_PHASES: ReadonlySet<AiAccountSignInView['phase']> = new Set(['starting', 'waiting-browser', 'waiting-device-code', 'verifying'])
+
+/**
+ * Render the AI Account settings page: contributed groups (Coteccons SSO) first, then the official-CLI groups.
+ * @param props - locale, contributed-group renderer, account stream, and account commands.
+ * @returns the section content.
+ */
+export function AiAccountSection(props: AiAccountSectionProps) {
+  const { t, useAccounts, renderSlot } = props
+  const { view, failed } = useAccounts(value => value)
+  const { pending, failed: actionFailed, run } = usePendingAction()
+
+  if (view === null) {
+    return (
+      <section className={css.section}>
+        <h3 className={css.heading}>{t('title')}</h3>
+        <p className={css.hint}>{t('intro')}</p>
+        {renderSlot('settings.ai-account.group', {})}
+        {failed ? <p className={css.error} role="alert">{t('unavailable')}</p> : <p className={css.hint}>{t('loading')}</p>}
+      </section>
+    )
+  }
+  const signIn = view.signIn
+  const signingIn = signIn !== null && ACTIVE_PHASES.has(signIn.phase)
+
+  return (
+    <section className={css.section}>
+      <h3 className={css.heading}>{t('title')}</h3>
+      <p className={css.hint}>{t('intro')}</p>
+      {renderSlot('settings.ai-account.group', {})}
+      {failed && <p className={css.error} role="alert">{t('unavailable')}</p>}
+      {signIn !== null && signingIn && (
+        <SignInCard
+          signIn={signIn}
+          t={t}
+          pending={pending}
+          onCancel={() => { run(() => props.cancelSignIn(signIn.id)) }}
+          onSubmitCode={(code) => { run(() => props.submitSignInCode(signIn.id, code)) }}
+        />
+      )}
+      {signIn?.phase === 'failed' && <p className={css.error} role="alert">{t(failureKey(signIn))}</p>}
+      {actionFailed && <p className={css.error} role="alert">{t('errorAction')}</p>}
+      {view.accounts.length > 0 && (
+        <div>
+          <Button variant="outline" size="sm" disabled={pending} onClick={() => { run(() => props.checkStatus()) }}>{t('checkStatus')}</Button>
+        </div>
+      )}
+      {KINDS.map((kind) => {
+        const accounts = view.accounts.filter(account => account.kind === kind)
+        return (
+          <div className={css.group} key={kind} data-kind={kind}>
+            <div className={css.groupHeader}>
+              <h4 className={css.groupTitle}>{t(kind === 'claude' ? 'claudeGroup' : 'chatgptGroup')}</h4>
+              <Button variant="outline" size="sm" disabled={pending || signingIn} onClick={() => { run(() => props.startSignIn(kind)) }}>
+                {t(kind === 'claude' ? 'addClaude' : 'addChatgpt')}
+              </Button>
+            </div>
+            {/* Stated per group rather than once in the intro: the reason is
+                the vendor's, and the API key that replaces it is a different
+                one for each, so a reader who only came for Claude still gets
+                both halves. */}
+            <p className={css.hint}>{t(kind === 'claude' ? 'claudeMainModel' : 'chatgptMainModel')}</p>
+            {accounts.length === 0
+              ? <p className={css.hint}>{t('empty')}</p>
+              : (
+                <ul className={css.list}>
+                  {accounts.map(account => (
+                    <AccountRow
+                      key={account.id}
+                      account={account}
+                      t={t}
+                      disabled={pending}
+                      signInDisabled={pending || signingIn}
+                      onSignIn={() => { run(() => props.startSignIn(kind)) }}
+                      onSetDefault={() => { run(() => props.setDefault(account.id)) }}
+                      onRemove={() => { run(() => props.remove(account.id)) }}
+                    />
+                  ))}
+                </ul>
+              )}
+          </div>
+        )
+      })}
+    </section>
+  )
+}
+
+const FAILURE_KEYS: Readonly<Record<Exclude<AiAccountSignInError, 'executable-missing'>, AiAccountLocaleKey>> = {
+  'login-failed': 'errorLoginFailed',
+  timeout: 'errorTimeout',
+  'identity-unavailable': 'errorIdentity',
+  'store-failed': 'errorStoreFailed',
+}
+
+/**
+ * Select the failure message for a failed attempt.
+ * @param signIn - failed attempt.
+ * @returns the dictionary key for its error code.
+ */
+function failureKey(signIn: AiAccountSignInView): AiAccountLocaleKey {
+  if (signIn.errorCode === 'executable-missing') return signIn.kind === 'claude' ? 'errorExecutableClaude' : 'errorExecutableChatgpt'
+  return FAILURE_KEYS[signIn.errorCode ?? 'login-failed']
+}
+
+/** One registered account with its default badge, signed-out notice, and commands. */
+function AccountRow({ account, t, disabled, signInDisabled, onSignIn, onSetDefault, onRemove }: {
+  account: AiAccountView
+  t: AiAccountSectionProps['t']
+  disabled: boolean
+  signInDisabled: boolean
+  onSignIn: () => void
+  onSetDefault: () => void
+  onRemove: () => void
+}) {
+  const signedOut = account.status.status === 'signedOut'
+  return (
+    <li className={css.account} data-account={account.id} data-status={account.status.status}>
+      <div className={css.row}>
+        <div className={css.identity}>
+          <span className={css.email}>{account.email ?? t('unnamedAccount')}</span>
+          {account.plan !== null && <Tag tone="neutral">{account.plan}</Tag>}
+          {account.isDefault && <Tag tone="success">{t('defaultBadge')}</Tag>}
+          {signedOut && <Tag tone="warning">{t('signedOutBadge')}</Tag>}
+        </div>
+        <div className={css.actions}>
+          {signedOut && <Button size="sm" variant="outline" disabled={signInDisabled} onClick={onSignIn}>{t('signInAgain')}</Button>}
+          {!account.isDefault && <Button size="sm" disabled={disabled} onClick={onSetDefault}>{t('setDefault')}</Button>}
+          <Button size="sm" disabled={disabled} onClick={onRemove}>{t('remove')}</Button>
+        </div>
+      </div>
+      {signedOut && (
+        <div className={css.statusDetail}>
+          <p className={css.hint}>{t('signedOutHint')}</p>
+          {account.status.message !== null && <p className={css.cliMessage}>{account.status.message}</p>}
+        </div>
+      )}
+    </li>
+  )
+}
+
+/** Progress of the active sign-in: the CLI's browser URL, or its device URL and one-time code. */
+function SignInCard({ signIn, t, pending, onCancel, onSubmitCode }: {
+  signIn: AiAccountSignInView
+  t: AiAccountSectionProps['t']
+  pending: boolean
+  onCancel: () => void
+  onSubmitCode: (code: string) => void
+}) {
+  return (
+    <div className={css.card} role="status">
+      <h4 className={css.groupTitle}>{t(signIn.kind === 'claude' ? 'signingInClaude' : 'signingInChatgpt')}</h4>
+      {signIn.phase === 'starting' && <p className={css.hint}>{t('starting')}</p>}
+      {signIn.phase === 'verifying' && <p className={css.hint}>{t('verifying')}</p>}
+      {signIn.phase === 'waiting-browser' && <p className={css.hint}>{t('waitingBrowser')}</p>}
+      {signIn.phase === 'waiting-device-code' && (
+        <p className={css.hint}>{t(signIn.userCode === null ? 'waitingDeviceCodePending' : 'waitingDeviceCode')}</p>
+      )}
+      {(signIn.phase === 'waiting-browser' || signIn.phase === 'waiting-device-code') && signIn.url !== null && (
+        <a className={css.link} href={signIn.url} target="_blank" rel="noreferrer noopener">{signIn.url}</a>
+      )}
+      {signIn.phase === 'waiting-device-code' && signIn.userCode !== null && (
+        <div className={css.code}>
+          <span className={css.hint}>{t('userCodeLabel')}</span>
+          <code className={css.codeValue}>{signIn.userCode}</code>
+        </div>
+      )}
+      {signIn.awaitingCode && <CodeForm t={t} pending={pending} onSubmit={onSubmitCode} />}
+      <Button variant="outline" size="sm" className={css.cancel} onClick={onCancel}>{t('cancel')}</Button>
+    </div>
+  )
+}
+
+/** Authorization code the vendor's browser page displayed, on its way to the waiting login command. */
+function CodeForm({ t, pending, onSubmit }: {
+  t: AiAccountSectionProps['t']
+  pending: boolean
+  onSubmit: (code: string) => void
+}) {
+  const [code, setCode] = useState('')
+  const trimmed = code.trim()
+  const submit = () => {
+    if (trimmed.length === 0) return
+    onSubmit(trimmed)
+    setCode('')
+  }
+  return (
+    <div className={css.codeForm}>
+      <p className={css.hint}>{t('codeHint')}</p>
+      <div className={css.codeEntry}>
+        <Input
+          value={code}
+          aria-label={t('codeLabel')}
+          placeholder={t('codePlaceholder')}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => { setCode(event.target.value) }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            submit()
+          }}
+        />
+        <Button size="sm" disabled={pending || trimmed.length === 0} onClick={submit}>{t('codeSubmit')}</Button>
+      </div>
+    </div>
+  )
+}

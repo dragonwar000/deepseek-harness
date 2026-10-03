@@ -28,6 +28,7 @@ import { ModelDirectoryResolver } from './service.ts'
 import type { ModelSelectInjected } from './slots.ts'
 import { ModelSelect } from './ModelSelect.tsx'
 import { en, zh, type ModelKey } from './locales.ts'
+import { providerCopy } from './provider-copy.ts'
 import { orderModelProviders } from './provider-order.ts'
 
 export { ModelDirectory } from './directory.ts'
@@ -35,6 +36,8 @@ export type { ModelDirectoryState } from './directory.ts'
 export { ModelDirectoryResolver } from './service.ts'
 export type { ModelSelectInjected } from './slots.ts'
 export type { ModelKey } from './locales.ts'
+export { providerCopy } from './provider-copy.ts'
+export type { ProviderCopy } from './provider-copy.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -52,12 +55,14 @@ function rowId(providerId: string, modelId: string): string {
 function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): SelectOption[] {
   const rows: SelectOption[] = []
   for (const group of orderModelProviders(directory.groups)) {
-    const name = group.id === 'deepseek-account' ? t('provider.account') : group.name
+    const copy = providerCopy(group.id, t)
+    const name = copy.label ?? group.name
     for (const model of group.models) {
       rows.push({
         id: rowId(group.id, model.id),
         label: model.name,
         group: { name: group.id, label: name },
+        ...(copy.note === undefined ? {} : { detail: copy.note }),
         ...(directory.current !== null
           && directory.current.provider === group.id
           && directory.current.model === model.id
@@ -68,7 +73,7 @@ function optionsOf(directory: ModelDirectoryState, t: TranslateNS<'model'>): Sel
   for (const failure of directory.failures) {
     rows.push({
       id: `failure/${failure.id}`,
-      label: failure.id === 'deepseek-account' ? t('provider.account') : failure.name,
+      label: providerCopy(failure.id, t).label ?? failure.name,
       detail: t('option.loadError', { message: failure.message }),
     })
   }

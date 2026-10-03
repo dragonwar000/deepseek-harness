@@ -1,0 +1,39 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../verifier-gate"
+    },
+    {
+      "path": "../infra-snapshot"
+    },
+    {
+      "path": "../stationarity-guard"
+    },
+    {
+      "path": "../denial-budget"
+    },
+    {
+      "path": "../loop-budget"
+    },
+    {
+      "path": "../graph-contract"
+    },
+    {
+      "path": "../graph-projection"
+    },
+    {
+      "path": "../graph-runner"
+    }
+  ]
+}

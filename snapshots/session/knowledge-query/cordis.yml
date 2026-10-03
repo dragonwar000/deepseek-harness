@@ -1,0 +1,20 @@
+# The ordinary headless composition plus the knowledge store, its write guard,
+# and the read-only knowledge tools. The model searches the store once.
+
+- insert:
+    - id: knowledge-wiki-filesystem
+      name: '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
+      config:
+        root: knowledge
+    - id: knowledge-rules
+      name: '@deepseek-ai/dsh-experimental-knowledge-rules'
+      config:
+        shellTools: [bash, pwsh]
+    - id: tool-knowledge
+      name: '@deepseek-ai/dsh-experimental-tool-knowledge'
+      config:
+        mode: read-only
+        evidenceTools: [read]
+        maxResults: 10
+        maxPageChars: 20000
+        maxDepth: 2

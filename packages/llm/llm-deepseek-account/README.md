@@ -13,6 +13,8 @@ Register authentication and model discovery for `deepseek-account`. This plugin 
 
 Authentication resolution returns `x-dsh-auth-token` and a failure callback capturing the same token. HTTP 401 classification and rejection stay in this provider; a rejected older request cannot clear a replacement login.
 
+The shipped composition keeps row `llm-deepseek-account` (base Bundle) disabled: [Coteccons SSO](../../credentials/coteccons-sso/README.md) replaces DeepSeek Platform sign-in in CTD Core. A profile patch can re-enable the row.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

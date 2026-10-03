@@ -1,0 +1,14 @@
+# The ordinary headless composition plus the knowledge store and the index
+# context: the first step of the turn receives the store index as a snapshot
+# user message. No knowledge tool is mounted, so tool schemas do not change.
+
+- insert:
+    - id: knowledge-wiki-filesystem
+      name: '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
+      config:
+        root: knowledge
+    - id: context-knowledge
+      name: '@deepseek-ai/dsh-experimental-context-knowledge'
+      config:
+        maxLines: 200
+        maxBytes: 25600

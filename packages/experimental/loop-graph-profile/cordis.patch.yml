@@ -1,0 +1,103 @@
+# Experimental loop-engineering guards. Apply after dsh-base. Every guard row starts
+# in shadow mode: it records what it would do (loop/verdict, loop/stationarity,
+# loop/denial, loop/budget) and never changes a model request, rejects a step, or
+# touches a goal. Flip `mode: enforce` per row from your profile patch once the
+# shadow records show zero unwanted interventions over your own turns.
+# repeat-tool-reminder from dsh-base keeps running while stationarity-guard is in
+# shadow. When you flip stationarity-guard to enforce, disable repeat-tool-reminder
+# in the same profile patch so the model gets one repeat reminder, not two.
+# verifier-gate precedes loop-budget so the work floor sees the gate's steer.
+# verifier-gate also records blank responses (no tool call, no visible text) in shadow mode.
+# graph-contract and graph-projection add the graph_audit and graph_query tools to
+# every request. graph-contract starts in shadow mode: it records each plan version
+# (graph/plan) and reports findings but admits every version. allowedTools starts
+# empty, so every tool a plan node declares is reported until your profile patch
+# names the tools graph nodes may use.
+# graph-runner adds the graph_run tool. It starts in shadow mode: it runs admitted
+# plans with a fresh subagent per node and records node writes outside a node's
+# write scopes (graph/node violations) without refusing them. No capability route
+# is configured, so every node runs on the calling agent's model.
+# graph-projection also adds the read-only graph_cite and history_read tools.
+# graph_cite checks which tool records of the turn mention a path or command;
+# history_read reads compacted spans back as a new tool result at the end of
+# the context, so the cached prompt prefix is unchanged. verifier-gate records
+# the evidence check of each final answer (loop/verdict evidence) in shadow
+# mode. graph-contract warns when a node declares bash or pwsh, whose writes
+# bypass the write-scope check, and caps loop edges at 8 iterations.
+
+- insert:
+    - id: infra-snapshot
+      name: '@deepseek-ai/dsh-experimental-infra-snapshot'
+
+    - id: verifier-gate
+      name: '@deepseek-ai/dsh-experimental-verifier-gate'
+      config:
+        mode: shadow
+        assumption: "the model declares a task done before its verify commands pass"
+        verify:
+          commands: []
+          timeoutMs: 300000
+          stdoutTailChars: 2000
+        blankResponse:
+          maxSteers: 1
+        evidence:
+          mode: shadow
+          require: every
+          maxClaims: 32
+        maxContinuations: 8
+
+    - id: stationarity-guard
+      name: '@deepseek-ai/dsh-experimental-stationarity-guard'
+      config:
+        mode: shadow
+        assumption: "the model repeats tool calls that return identical results instead of changing approach"
+        remindAt: { sideEffect: 4, readOnly: 8 }
+        stopAt: { sideEffect: 8, readOnly: 12 }
+        noopStopAt: 4
+
+    - id: denial-budget
+      name: '@deepseek-ai/dsh-experimental-denial-budget'
+      config:
+        mode: shadow
+        assumption: "the model retries denied actions or works around a denial instead of changing approach"
+        maxConsecutive: 3
+        maxTotal: 20
+
+    - id: loop-budget
+      name: '@deepseek-ai/dsh-experimental-loop-budget'
+      config:
+        mode: shadow
+        assumption: "the model does not stop spending on a turn or goal by itself"
+        turn: { maxSteps: 0, maxTokens: 0, maxUsd: 0, maxWallMs: 0 }
+        goal: { maxSteps: 0, maxTokens: 0, maxUsd: 0, maxWallMs: 0 }
+        floor: { minSteps: 0, minTokens: 0 }
+        prices: []
+
+    - id: graph-contract
+      name: '@deepseek-ai/dsh-experimental-graph-contract'
+      config:
+        mode: shadow
+        assumption: "the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them"
+        allowedTools: []
+        runBudget: { steps: 0, tokens: 0, wallMs: 0 }
+        shellTools: [bash, pwsh]
+        maxCycleIterations: 8
+
+    - id: graph-projection
+      name: '@deepseek-ai/dsh-experimental-graph-projection'
+      config:
+        history: { maxChars: 8000, maxListed: 20, readWindow: 50 }
+
+    - id: graph-runner
+      name: '@deepseek-ai/dsh-experimental-graph-runner'
+      config:
+        mode: shadow
+        assumption: "node agents report completion without proof unless a verifier or a command confirms it"
+        provider: spawn
+        maxConcurrent: 2
+        maxDispatches: 0
+        maxWallMs: 0
+        maxPlanVersions: 8
+        verifyTimeoutMs: 300000
+        outputTailChars: 2000
+        humanTimeoutMs: 0

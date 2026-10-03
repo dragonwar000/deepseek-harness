@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/knowledge-wiki-filesystem/README.md
+/:
+  en: 183bdba6d69457f6
+  zh: 27bf1f9d20303a19
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem:
+  en: 2b3b0901b7eff843
+  zh: e38a03a34fd397b3
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/summary:
+  en: bc17b1fabac199ff
+  zh: 927e4038acbb6075
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/use-this-package:
+  en: a20d2778bbda8391
+  zh: 81fca5b3fb917d2d
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/use-this-package/when-to-choose-it:
+  en: 74906f450774ecf6
+  zh: c2ab71e858044385
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/use-this-package/minimal-configuration:
+  en: ea297c53bac773d7
+  zh: 6759bc6872bce593
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/use-this-package/page-format:
+  en: bb7d6977bc69f0c6
+  zh: e70ebe933804493c
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: c8011788e17a2cd6
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/understand-the-implementation/design-notes:
+  en: ad31aff392aceff5
+  zh: 35de22b1ea5c6aa2
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/understand-the-implementation/source-map:
+  en: 73b523a55106fd85
+  zh: e7e9b73570ec4b9e
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/further-exploration:
+  en: 04ebb66018604172
+  zh: aaae857011c72b61
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/model-experience:
+  en: 0ac732c71b46c4af
+  zh: d059a7da56e24076
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/model-experience/kv-cache-effect:
+  en: 85d3f09224caa133
+  zh: 5954499a63154073
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/known-limitations-and-deferred-work:
+  en: 4e9663ba1c119980
+  zh: ee4194dd88c43d0c
+/deepseek-ai-dsh-experimental-knowledge-wiki-filesystem/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 975625e42085937f

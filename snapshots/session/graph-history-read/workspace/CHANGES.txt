@@ -1,0 +1,44 @@
+# Changes
+
+This file lists the changes of the last release cycle, one per line, for context only.
+
+- The ingest pipeline now retries transient network errors three times before it fails the batch.
+- The parser accepts trailing commas in configuration arrays and reports the line of every syntax error.
+- The planner orders independent jobs by their declared priority before it considers their age.
+- The scheduler skips a run when the previous run of the same job is still active.
+- The executor streams command output to the log while the command runs instead of after it exits.
+- The cache evicts the least recently used entry when it reaches its configured size.
+- The ledger records the operator name with every manual correction.
+- The exporter writes one file per day and compresses files older than a week.
+- The auditor flags configuration files that changed outside a release window.
+- The notifier batches alerts that arrive within one minute into a single message.
+- The gateway rejects requests whose body exceeds the configured limit with a clear error.
+- The archiver moves closed tickets to cold storage after ninety days.
+- The indexer rebuilds its index in the background and swaps it in when it is complete.
+- The renderer escapes every user value before it inserts the value into a template.
+- The validator checks that every required field is present before it checks formats.
+- The migrator refuses to run a migration twice and names the migration that already ran.
+- The tracer samples one request in a hundred unless a request carries a debug header.
+- The limiter counts requests per client over a sliding window of sixty seconds.
+- The router retries an unavailable backend on the next healthy backend once.
+- The signer rotates its key every thirty days and keeps the previous key for verification.
+- The packer sorts archive entries by path so that archives are reproducible.
+- The mirror copies new objects within five minutes and reports objects it could not copy.
+- The janitor removes temporary files older than one day at midnight.
+- The reporter includes the number of skipped records in every summary.
+- The compressor chooses the fastest level for files smaller than one megabyte.
+- The decoder reports the byte offset of the first invalid sequence it meets.
+- The encoder normalizes line endings before it computes a checksum.
+- The balancer drains a backend for one minute before it removes the backend.
+- The crawler respects the crawl delay that a site publishes.
+- The sampler keeps a fixed seed per job so that samples can be repeated.
+- The profiler writes one flame graph per run and names it after the run.
+- The watcher ignores editor swap files when it reports changed files.
+- The fetcher stops following redirects after five hops.
+- The linker reports every unresolved symbol instead of stopping at the first one.
+- The merger keeps both versions of a conflicting line and marks the conflict.
+- The splitter never cuts a record across two output files.
+- The tagger adds the release number to every artifact it publishes.
+- The ranker breaks ties by the earlier submission time.
+- The mailer retries a failed delivery after one, five, and thirty minutes.
+- The pinger marks a host as down after three missed replies in a row.

@@ -1,0 +1,64 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/loop-budget/README.md
+/:
+  en: cb4c143153912f21
+  zh: 5190c1d2584d6e2f
+/deepseek-ai-dsh-experimental-loop-budget:
+  en: ab46c497584f4a0f
+  zh: 6c7b1a1008324c9e
+/deepseek-ai-dsh-experimental-loop-budget/summary:
+  en: 73fa306f06a6b24e
+  zh: a1ae8089a63e9fe0
+/deepseek-ai-dsh-experimental-loop-budget/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-loop-budget/use-this-package:
+  en: abb588b683b662a8
+  zh: 3fe5c3c6dad287bd
+/deepseek-ai-dsh-experimental-loop-budget/use-this-package/when-to-choose-it:
+  en: dee7624f3d29c758
+  zh: b541ead3993ce8b0
+/deepseek-ai-dsh-experimental-loop-budget/use-this-package/minimal-configuration:
+  en: 9194406e939e0a93
+  zh: b467af81db70f318
+/deepseek-ai-dsh-experimental-loop-budget/use-this-package/what-you-get:
+  en: 25279f198cba9d1f
+  zh: 1dcf013fed24dac0
+/deepseek-ai-dsh-experimental-loop-budget/understand-the-implementation:
+  en: ab86feb57c020ade
+  zh: 5ac008ee786f2c00
+/deepseek-ai-dsh-experimental-loop-budget/understand-the-implementation/design-notes:
+  en: dd8ef1768b37aca2
+  zh: 5181390170864a52
+/deepseek-ai-dsh-experimental-loop-budget/understand-the-implementation/source-map:
+  en: d7e58d2b8286d26c
+  zh: bafe0834cf7ec25a
+/deepseek-ai-dsh-experimental-loop-budget/further-exploration:
+  en: bc4bdfb2ded53e3b
+  zh: 3fc74bd78d74a168
+/deepseek-ai-dsh-experimental-loop-budget/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-loop-budget/model-experience/work-floor-steer:
+  en: 94644b2ed2c95664
+  zh: ce9b4728beaafefc
+/deepseek-ai-dsh-experimental-loop-budget/model-experience/work-floor-steer/what-the-model-sees:
+  en: 14da1fc624819931
+  zh: 4b10a8f7b5625d8d
+/deepseek-ai-dsh-experimental-loop-budget/model-experience/work-floor-steer/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-loop-budget/model-experience/work-floor-steer/token-effect:
+  en: 73e572bc7bd789fb
+  zh: c618ccf58fcb8a08
+/deepseek-ai-dsh-experimental-loop-budget/model-experience/work-floor-steer/kv-cache-effect:
+  en: 5eafb9c18d210b94
+  zh: 0add80647249f254
+/deepseek-ai-dsh-experimental-loop-budget/known-limitations-and-deferred-work:
+  en: 755ccd64684287a7
+  zh: 8442820e9b50e4ee
+/deepseek-ai-dsh-experimental-loop-budget/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 9c6918ce849f6c93

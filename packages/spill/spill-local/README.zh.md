@@ -104,7 +104,7 @@ kind: "package-reference"
 - [spill 包映射](../README.zh.md)——三包家族与各自职责。
 - [dsh-spill-policy](../spill-policy/README.zh.md)——结果过大时调用此后端的策略。
 - [spill 子系统](../../../docs/subsystems/spill.zh.md)——穷尽式词汇与归属。
-- [工具输出 spill 决策](../../../.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.zh.md)——能力边界与设计依据。
+- [工具输出 spill 决策](../../../.agents/notes/implemented/architecture/2026-07-08-tool-output-spill-files.md)——能力边界与设计依据。
 
 -----
 

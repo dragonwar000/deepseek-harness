@@ -1,0 +1,12 @@
+version: 1
+scenario: verifier-gate-evaluator-count
+profile: headless
+composition: verifier-gate-evaluator-count
+recording: authored
+header:
+  class: verifier-gate-evaluator-count
+  pin: true
+  systemPromptSource: text-turn
+  toolSchemasSource: text-turn
+  childSystemPrompts: [1, 2, 3, 4]
+  childToolSchemas: [1, 2, 3, 4]

@@ -180,6 +180,45 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-agent-tool-presentation -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->
+<a id="deepseek-aidsh-ai-account-platform"></a>
+
+## `@deepseek-ai/dsh-ai-account-platform`
+
+- `inject`: `subprocess`
+- `source`: [`packages/credentials/ai-account-platform/src/index.ts:21`](../packages/credentials/ai-account-platform/src/index.ts)
+
+```ts config-catalog
+/** Deployment choices for the account root, CLI executables, and command deadlines. */
+export interface Config {
+  /** Directory holding `accounts.json` and the per-account CLI configuration directories; defaults to `<Harness home>/ai-accounts`. */
+  root?: string
+  /** Claude Code executable: an absolute path or a bare name resolved from `PATH`. */
+  claudeCliPath?: string
+  /** Codex executable: an absolute path or a bare name resolved from `PATH`. */
+  codexCliPath?: string
+  /** Deadline for one complete login, including the time the user spends authorizing, in milliseconds. */
+  loginTimeoutMs?: number
+  /** Deadline for one status or logout command, in milliseconds. */
+  commandTimeoutMs?: number
+  /** Grace between termination tiers when a CLI command is cancelled, in milliseconds. */
+  graceMs?: number
+  /** Rows of the terminal allocated for the login command. */
+  loginRows?: number
+  /** Columns of the terminal allocated for the login command; a narrow terminal can wrap the URL the CLI prints. */
+  loginCols?: number
+  /** Terminal type advertised to the login command through `TERM`; the Host must have its terminfo entry. */
+  loginTerminalType?: string
+  /** Interval between periodic sign-in status checks of every account, in milliseconds; `0` disables periodic checks. */
+  statusCheckIntervalMs?: number
+  /** Deadline for one account's status command during a sign-in status check, in milliseconds. */
+  statusCheckTimeoutMs?: number
+  /** Accounts whose status commands one sign-in status check runs at the same time. */
+  statusCheckConcurrency?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-ai-account-platform -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-api-gateway -->
 <a id="deepseek-aidsh-api-gateway"></a>
 
@@ -500,7 +539,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-client-product-analytics`
 
-- `inject`: `deepseekAccount` · `productTelemetry`
+- `inject`: `productTelemetry`
 - `refs`: `Volatile` (`@deepseek-ai/cordis`)
 - `source`: [`packages/client/product-analytics/src/index.ts:14`](../packages/client/product-analytics/src/index.ts)
 
@@ -679,7 +718,7 @@ export type ThemePreference = typeof THEME_PREFERENCES[number]
 ## `@deepseek-ai/dsh-compaction-basic`
 
 - `inject`: `llm` · `tokenMeter` · `sessions`
-- `source`: [`packages/compaction/compaction-basic/src/types.ts:40`](../packages/compaction/compaction-basic/src/types.ts)
+- `source`: [`packages/compaction/compaction-basic/src/types.ts:53`](../packages/compaction/compaction-basic/src/types.ts)
 
 ```ts config-catalog
 /** Basic compaction configuration with an optional exact-target policy table. */
@@ -688,6 +727,15 @@ export interface BasicCompactionConfig extends CompactionPolicyConfig {
   modelPolicies?: ModelCompactPolicyConfig[]
   /** Enable automatic step-boundary pressure and overflow-recovery listeners. Defaults to `true`. */
   auto?: boolean
+  /**
+   * What automatic compaction does with a span whose framed summary was not
+   * smaller than the span: `retry` summarizes it again at the next trigger;
+   * `refuse` remembers the exact span in this process and skips it until the
+   * span changes. Manual `/compact` always tries. Defaults to `retry`.
+   */
+  convergence?: 'retry' | 'refuse'
+  /** Checkpoint framing; see {@link AuthoritativeRequestConfig}. */
+  authoritativeRequest?: AuthoritativeRequestConfig
 }
 
 /** Policy fields shared by the default policy and exact model overrides. */
@@ -719,6 +767,19 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
   /** Exact routed model id to match within `provider`. */
   model: string
 }
+
+/** Framing of the checkpoint message that replaces a summarized span. */
+export interface AuthoritativeRequestConfig {
+  /**
+   * `off` frames the model-written summary alone. `split` also quotes the
+   * span's human requests verbatim in an `<authoritative-request>` block,
+   * carries that block forward from earlier split checkpoints, and marks the
+   * summary as untrusted reference state. Defaults to `off`.
+   */
+  mode?: 'off' | 'split'
+  /** Unicode code points of quoted request text kept, newest first. Defaults to `4000`. */
+  maxChars?: number
+}
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-compaction-basic -->
 
@@ -739,6 +800,12 @@ export interface ToolResultPruneConfig {
   headChars?: number
   /** Maximum trailing Unicode code points retained. Defaults to `1024`. */
   tailChars?: number
+  /**
+   * Under the `pressure` trigger, keep tool results that follow the latest
+   * assistant message on the surface verbatim: the model has not answered
+   * them yet. `context-overflow` still prunes them. Defaults to `false`.
+   */
+  protectUnseen?: boolean
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-compaction-tool-result-pruner -->
@@ -761,6 +828,51 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-cordis-host-runner -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-coteccons-sso-msal -->
+<a id="deepseek-aidsh-coteccons-sso-msal"></a>
+
+## `@deepseek-ai/dsh-coteccons-sso-msal`
+
+- `inject`: `credentials`
+- `refs`: [`M365ConnectorId`](subsystems/credentials.zh.md)
+- `source`: [`packages/credentials/coteccons-sso-msal/src/index.ts:30`](../packages/credentials/coteccons-sso-msal/src/index.ts)
+
+```ts config-catalog
+/** Deployment settings for the Entra ID app registration and the tokens it requests. */
+export interface Config {
+  /** Directory (tenant) id or verified domain; unset leaves the provider `not-configured`. */
+  tenantId?: string
+  /** Application (client) id of the public-client app registration; unset leaves the provider `not-configured`. */
+  clientId?: string
+  /** Authority URL; defaults to `https://login.microsoftonline.com/<tenantId>`. */
+  authority?: string
+  /** Scopes requested at sign-in besides {@link aiScope}. */
+  scopes?: string[]
+  /** Azure AI resource scope consented at sign-in and used for model requests. */
+  aiScope?: string
+  /** Lowercase email domains allowed to sign in; empty allows every account of the tenant. */
+  allowedDomains?: string[]
+  /** Open the sign-in page in the Host's default browser; the URL is always also published in the sign-in state. */
+  openBrowser?: boolean
+  /** Deadline for one interactive sign-in, including the time the user spends in the browser, in milliseconds. */
+  signInTimeoutMs?: number
+  /**
+   * Microsoft 365 connectors, one Entra ID enterprise app per data kind. IT grants or revokes a kind by
+   * assigning users to that app; an omitted connector stays `not-configured`.
+   */
+  m365?: Partial<Record<M365ConnectorId, M365ConnectorConfig>>
+}
+
+/** One Microsoft 365 connector's enterprise app. */
+export interface M365ConnectorConfig {
+  /** Application (client) id of the connector's public-client app registration; unset leaves the connector `not-configured`. */
+  clientId?: string
+  /** Microsoft Graph delegated scopes; unset or empty uses the read-only scopes of the data kind. */
+  scopes?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-coteccons-sso-msal -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-credentials-local -->
 <a id="deepseek-aidsh-credentials-local"></a>
@@ -965,6 +1077,194 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-context-knowledge -->
+<a id="deepseek-aidsh-experimental-context-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-context-knowledge`
+
+- `inject`: `knowledge` · `sessionProjections`
+- `source`: [`packages/experimental/context-knowledge/src/index.ts:53`](../packages/experimental/context-knowledge/src/index.ts)
+
+```ts config-catalog
+/** Caps of the index message. Invalid values fail plugin load. */
+export interface Config {
+  /** Most lines of the index message, header and footers included; at least 3 (default 200). */
+  maxLines?: number
+  /** Most UTF-8 bytes of the index message; at least 1024 (default 25600). */
+  maxBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-context-knowledge -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-denial-budget -->
+<a id="deepseek-aidsh-experimental-denial-budget"></a>
+
+## `@deepseek-ai/dsh-experimental-denial-budget`
+
+- `source`: [`packages/experimental/denial-budget/src/index.ts:34`](../packages/experimental/denial-budget/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the budget assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records only; `enforce` advises, asks, and stops. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Denied calls in a row that trip the budget (default 3). */
+  maxConsecutive?: number
+  /** Denied calls since the last human message that trip the budget (default 20). */
+  maxTotal?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-denial-budget -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-contract -->
+<a id="deepseek-aidsh-experimental-graph-contract"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-contract`
+
+- `inject`: `tools` · `sessionProjections`
+- `source`: [`packages/experimental/graph-contract/src/index.ts:110`](../packages/experimental/graph-contract/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the audit assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /**
+   * `off` registers nothing; `shadow` admits every version and reports findings; `enforce` admits only
+   * versions without a `reject` finding. Default `shadow`.
+   */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Global tools a graph node may declare; default none. */
+  allowedTools?: string[]
+  /** Tools a node may declare that run shell commands; the audit warns for each such declaration. Default none. */
+  shellTools?: string[]
+  /** Run limits per kind for one plan's worst case; 0 (default) is unlimited. */
+  runBudget?: GraphNodeBudget
+  /** Capability routes: a node's category selects the provider and model of its subagent. */
+  routes?: GraphRouteConfig[]
+  /** Highest `cycleGuard.maxIterations` a plan may declare (default 8). */
+  maxCycleIterations?: number
+}
+
+/** Worst-case spend of one attempt of an agent node; an absent field is unbounded. */
+export interface GraphNodeBudget {
+  /** Agent steps. */
+  steps?: number
+  /** Model tokens. */
+  tokens?: number
+  /** Wall-clock milliseconds. */
+  wallMs?: number
+}
+
+/** One configured capability route. */
+export interface GraphRouteConfig {
+  /** Category a plan node declares; unique across routes. */
+  category: string
+  /** Provider that runs the node's subagent. */
+  provider: string
+  /** Model id that runs the node's subagent. */
+  model: string
+  /** Deployment reliability label (default `unverified`). */
+  reliability?: 'verified' | 'unverified'
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-contract -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-projection -->
+<a id="deepseek-aidsh-experimental-graph-projection"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-projection`
+
+- `inject`: `tools` · `sessionProjections`
+- `source`: [`packages/experimental/graph-projection/src/index.ts:66`](../packages/experimental/graph-projection/src/index.ts)
+
+```ts config-catalog
+/** Plugin config. The package constrains nothing, so it has no mode or assumption. */
+export interface Config {
+  /** history_read limits. */
+  history?: HistoryConfig
+}
+
+/** Limits of history_read. */
+export interface HistoryConfig {
+  /** Characters of transcript per history_read page (default 8000). */
+  maxChars?: number
+  /** Spans a listing returns, newest first (default 20). */
+  maxListed?: number
+  /** Events after the target in one session query read; at most the query service's readWindowMax (default 50). */
+  readWindow?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-projection -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-runner -->
+<a id="deepseek-aidsh-experimental-graph-runner"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-runner`
+
+- `inject`: `tools` · `sessionProjections` · `subagents`
+- `source`: [`packages/experimental/graph-runner/src/index.ts:45`](../packages/experimental/graph-runner/src/index.ts)
+
+```ts config-catalog
+/** Plugin config. `assumption` is mandatory outside `off`. */
+export interface Config {
+  /** `off` registers nothing; `shadow` records writes outside a node's scopes; `enforce` refuses them. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Subagent provider for agent nodes; it must support `toolFilter` and `outputSchema`. Default `spawn`. */
+  provider?: string
+  /** Nodes running at once (default 2). */
+  maxConcurrent?: number
+  /** Agent-node dispatches per run; 0 (default) is unlimited. */
+  maxDispatches?: number
+  /** Wall time per run in milliseconds; 0 (default) is unlimited. */
+  maxWallMs?: number
+  /** Highest plan version that may run (default 8). */
+  maxPlanVersions?: number
+  /** Timeout per verify command in milliseconds (default 300000). */
+  verifyTimeoutMs?: number
+  /** Characters of command output kept per check (default 2000). */
+  outputTailChars?: number
+  /** Human gate timeout in milliseconds; 0 (default) waits until the run stops. */
+  humanTimeoutMs?: number
+  /**
+   * Shell command whose last stdout line measures a failed node attempt. Blank (default) turns the keep-best ratchet
+   * off; set it to keep a node's best attempt across its retries.
+   */
+  ratchetMetric?: string
+  /** Which direction of the metric is better (default `max`). */
+  ratchetDirection?: 'max' | 'min'
+  /** Most bytes of write-scope text one ratchet snapshot may hold (default 1048576). */
+  ratchetMaxBytes?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-graph-runner -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
+<a id="deepseek-aidsh-experimental-infra-snapshot"></a>
+
+## `@deepseek-ai/dsh-experimental-infra-snapshot`
+
+- `source`: [`packages/experimental/infra-snapshot/src/index.ts:20`](../packages/experimental/infra-snapshot/src/index.ts)
+
+```ts config-catalog
+/** Plugin config: the event is appended only for agents matching `sources` (default: every source). */
+export interface Config {
+  /** Session start sources to snapshot (`startup` | `resume` | `clear` | `compact`); empty means all. */
+  sources?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-infra-snapshot -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
 <a id="deepseek-aidsh-experimental-inspector"></a>
 
@@ -1033,6 +1333,235 @@ export interface InspectorOptions {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-inspector -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-rules -->
+<a id="deepseek-aidsh-experimental-knowledge-rules"></a>
+
+## `@deepseek-ai/dsh-experimental-knowledge-rules`
+
+- `inject`: `knowledge` · `fs` · `tools`
+- `source`: [`packages/experimental/knowledge-rules/src/index.ts:28`](../packages/experimental/knowledge-rules/src/index.ts)
+
+```ts config-catalog
+/** Guard settings. */
+export interface Config {
+  /** Tool names whose `command` argument is a shell command line (default `bash`, `pwsh`). */
+  shellTools?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-rules -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem -->
+<a id="deepseek-aidsh-experimental-knowledge-wiki-filesystem"></a>
+
+## `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem`
+
+- `inject`: `fs`
+- `source`: [`packages/experimental/knowledge-wiki-filesystem/src/index.ts:36`](../packages/experimental/knowledge-wiki-filesystem/src/index.ts)
+
+```ts config-catalog
+/** Store location, layout, and limits. Invalid values fail plugin load. */
+export interface Config {
+  /** Store directory, relative to the session working directory (default `knowledge`). */
+  root?: string
+  /** Top-level directories that hold pages (default `concepts`, `entities`, `sources`, `architecture`, `tours`, `episodes`). */
+  contentDirs?: string[]
+  /** Top-level directories only people change; writes into them are refused (default `raw`). */
+  readOnlyDirs?: string[]
+  /**
+   * File extensions of backticked code paths that become `touches` edges when the file exists
+   * (default `py`, `js`, `ts`, `sh`, `yaml`, `yml`, `json`, `html`).
+   */
+  codeExtensions?: string[]
+  /** Most pages one read loads before it fails (default 2000). */
+  maxPages?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-loop-budget -->
+<a id="deepseek-aidsh-experimental-loop-budget"></a>
+
+## `@deepseek-ai/dsh-experimental-loop-budget`
+
+- `source`: [`packages/experimental/loop-budget/src/index.ts:78`](../packages/experimental/loop-budget/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the budget assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records only; `enforce` rejects, pauses, and steers. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Per-turn limits. */
+  turn?: BudgetLimits
+  /** Per-active-goal limits. */
+  goal?: BudgetLimits
+  /** Per-turn work floor. */
+  floor?: WorkFloor
+  /** Route prices; required when any `maxUsd` is above 0. */
+  prices?: RoutePrice[]
+}
+
+/** Limits for one scope; 0 disables a limit. */
+export interface BudgetLimits {
+  /** Started steps. */
+  maxSteps?: number
+  /** Provider-reported tokens: uncached input, cache read, cache write, and output. */
+  maxTokens?: number
+  /** USD priced through `prices`. */
+  maxUsd?: number
+  /** Milliseconds since the turn started, or since the goal was first tracked (default 900000 per turn, 3600000 per goal). */
+  maxWallMs?: number
+}
+
+/** Minimum work per turn before it may end; 0 disables a floor. */
+export interface WorkFloor {
+  /** Started steps. */
+  minSteps?: number
+  /** Provider-reported tokens. */
+  minTokens?: number
+}
+
+/** USD per million tokens for one exact provider/model route. */
+export interface RoutePrice {
+  /** Provider route as logged in `request/header`. */
+  provider: string
+  /** Model id as logged in `request/header`. */
+  model: string
+  /** Uncached input tokens. */
+  inputPerMTok: number
+  /** Output tokens. */
+  outputPerMTok: number
+  /** Cache-read tokens (default 0). */
+  cacheReadPerMTok?: number
+  /** Cache-write tokens (default 0). */
+  cacheWritePerMTok?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-loop-budget -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-distill -->
+<a id="deepseek-aidsh-experimental-memory-distill"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-distill`
+
+- `inject`: `knowledge` · `sessionProjections`
+- `source`: [`packages/experimental/memory-distill/src/index.ts:41`](../packages/experimental/memory-distill/src/index.ts)
+
+```ts config-catalog
+/** Distillation settings. `assumption` is mandatory outside `off`. */
+export interface Config {
+  /** `off` registers nothing; `shadow` records the write it would make; `enforce` writes. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Distill only after a `loop/verdict` of `ok` for the final response (default true). */
+  requireVerdict?: boolean
+  /** Store directory for episode pages; must be a content directory of the store (default `episodes`). */
+  dir?: string
+  /**
+   * Active episode pages kept. `0` archives none (default `0`); a positive value archives the oldest other episode
+   * pages after each written episode, so at most that many stay in the store index.
+   */
+  maxEpisodes?: number
+  /** Tools whose successful calls change their `file_path` or `path` (default `write`, `edit`). */
+  changeTools?: string[]
+  /** Characters of the request kept (default 1000). */
+  maxRequestChars?: number
+  /** Characters of the final response kept (default 2000). */
+  maxOutcomeChars?: number
+  /**
+   * Markers of temporary statements, dropped sentence by sentence
+   * (default `this session`, `for now`, `today only`, `temporarily`, `for this turn`).
+   */
+  transientMarkers?: string[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-distill -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-zeromem -->
+<a id="deepseek-aidsh-experimental-memory-zeromem"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-zeromem`
+
+- `inject`: `tools` · `subprocess` · `sessionProjections`
+- `source`: [`packages/experimental/memory-zeromem/src/index.ts:122`](../packages/experimental/memory-zeromem/src/index.ts)
+
+```ts config-catalog
+/** Config with every default applied. */
+type ValidConfig = Required<Config>
+
+/** Deployment settings. Invalid values fail plugin load. */
+export interface Config {
+  /** `zm` executable: a name on `PATH` or an absolute path; empty selects `DSH_ZEROMEM_ZM`, then `zm` on `PATH` (default empty). */
+  zmPath?: string
+  /** Arguments placed before zeromem's own, for a `zm` run through an interpreter (default none). */
+  zmArgs?: string[]
+  /**
+   * `default` runs bge-small-en-v1.5 from `modelDir` and needs a `zm` built with zeromem's fastembed feature;
+   * `hash` passes `--no-model` for lexical recall (default `default`).
+   */
+  embedder?: 'default' | 'hash'
+  /** Absolute directory holding the embedding model; empty selects `DSH_ZEROMEM_MODELS`, then `<store root>/models` (default empty). */
+  modelDir?: string
+  /** `workspace` keeps one store per session working directory; `global` shares one store (default `workspace`). */
+  scope?: StoreScope
+  /** Absolute directory holding the stores; empty selects `<harness home>/zeromem` (default empty). */
+  storeRoot?: string
+  /** Leave the calling session's turns out of `memory_recall` results (default true). */
+  excludeCurrentSession?: boolean
+  /** Store turns of subagent child sessions too (default false). */
+  ingestSubagentSessions?: boolean
+  /** Register the approval-gated `memory_forget_session` tool (default false). */
+  allowForget?: boolean
+  /** Turns `memory_recall` returns when the call names no `limit` (default 5). */
+  defaultResults?: number
+  /** Largest `limit` of `memory_recall` (default 10). */
+  maxResults?: number
+  /** Characters of text per recalled turn (default 2000). */
+  maxTurnChars?: number
+  /** Characters stored per message (default 16000). */
+  maxIngestChars?: number
+  /** Deadline of one `zm` operation, including the ingestion of pending turns (default 120000). */
+  timeoutMs?: number
+  /** Grace before a terminated `zm` is killed (default 2000). */
+  graceMs?: number
+  /** Concurrent `zm` processes this plugin runs (default 1). */
+  maxConcurrent?: number
+  /**
+   * What each turn stores: `conversation` stores the user messages and final reply; `episodes` stores only the
+   * verified episode of a turn that changed files; `both` stores both (default `conversation`).
+   */
+  ingestMode?: IngestMode
+  /** Tools whose successful calls change their `file_path` or `path` and so make a turn an episode candidate (default `write`, `edit`). */
+  episodeChangeTools?: string[]
+  /**
+   * Markers of temporary statements, dropped sentence by sentence from an episode's request and outcome
+   * (default `this session`, `for now`, `today only`, `temporarily`, `for this turn`).
+   */
+  episodeTransientMarkers?: string[]
+  /** Characters of the request an episode keeps (default 1000). */
+  maxEpisodeRequestChars?: number
+  /** Characters of the outcome an episode keeps (default 2000). */
+  maxEpisodeOutcomeChars?: number
+  /**
+   * Characters of one whole episode text (default 6000). The request and then the outcome shrink to fit; the
+   * identifiers, verdict reference, and changed files are never cut. Must cover the fixed lines of an episode.
+   */
+  maxEpisodeChars?: number
+}
+
+/** Which conversations share one store. */
+export type StoreScope = 'workspace' | 'global'
+
+/** Which records one turn stores. */
+export type IngestMode = 'conversation' | 'episodes' | 'both'
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-memory-zeromem -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-ptc-runtime-python -->
 <a id="deepseek-aidsh-experimental-ptc-runtime-python"></a>
@@ -1180,6 +1709,51 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-speech-to-text-sensevoice -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-stationarity-guard -->
+<a id="deepseek-aidsh-experimental-stationarity-guard"></a>
+
+## `@deepseek-ai/dsh-experimental-stationarity-guard`
+
+- `inject`: `tools` · `fs`
+- `source`: [`packages/experimental/stationarity-guard/src/index.ts:57`](../packages/experimental/stationarity-guard/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the guard assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records decisions only; `enforce` reminds and stops. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Signature occurrences that add one reminder (default side-effect 4, read-only 8). */
+  remindAt?: TierThresholds
+  /** Signature occurrences that stop the turn (default side-effect 8, read-only 12). */
+  stopAt?: TierThresholds
+  /** Consecutive read-only steps without new evidence that stop the turn (default 4). */
+  noopStopAt?: number
+  /** Tools whose `file_path` or `path` argument names a file the turn writes (default `write`, `edit`). */
+  writeTools?: string[]
+  /** Occurrences of one written-file state, since the last human message, that stop the turn (default 2). */
+  stateRepeatStopAt?: number
+  /**
+   * Largest file read to hash its content. A larger file, or one whose size the backend does not report, hashes its
+   * version token instead (default 262144).
+   */
+  maxHashBytes?: number
+}
+
+/** Per-tier repeat thresholds. */
+export interface TierThresholds {
+  /** Steps with at least one exclusive (side-effecting) call. */
+  sideEffect?: number
+  /** Steps whose every call is concurrency-safe (read-only). */
+  readOnly?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-stationarity-guard -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
 <a id="deepseek-aidsh-experimental-tool-agent-team"></a>
 
@@ -1198,6 +1772,121 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-knowledge -->
+<a id="deepseek-aidsh-experimental-tool-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-knowledge`
+
+- `inject`: `knowledge` · `fs` · `tools` · `sessionProjections`
+- `source`: [`packages/experimental/tool-knowledge/src/index.ts:31`](../packages/experimental/tool-knowledge/src/index.ts)
+
+```ts config-catalog
+/** Tool settings. Invalid values fail plugin load. */
+export interface Config {
+  /** `read-only` registers the three read tools; `read-write` adds `knowledge_write`. Default `read-only`. */
+  mode?: 'read-only' | 'read-write'
+  /** Tools whose successful calls count as reads of their `file_path` or `path` argument (default `read`). */
+  evidenceTools?: string[]
+  /** Most hits one `knowledge_query` returns (default 10). */
+  maxResults?: number
+  /** Characters of page text one `knowledge_read` returns (default 20000). */
+  maxPageChars?: number
+  /** Largest `depth` of `knowledge_cite` (default 2). */
+  maxDepth?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-knowledge -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->
+<a id="deepseek-aidsh-experimental-verifier-gate"></a>
+
+## `@deepseek-ai/dsh-experimental-verifier-gate`
+
+- `source`: [`packages/experimental/verifier-gate/src/index.ts:171`](../packages/experimental/verifier-gate/src/index.ts)
+
+```ts config-catalog
+/**
+ * Plugin config. `assumption` is mandatory outside `off`: the sentence naming
+ * what the gate assumes about the model, so a later model can retire it.
+ */
+export interface Config {
+  /** `off` registers nothing; `shadow` records verdicts only; `enforce` steers. Default `shadow`. */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** The assumption this mechanism encodes about the model; blank is a load error. */
+  assumption?: string
+  /** Verify-command settings. */
+  verify?: VerifyConfig
+  /** Blank-response settings. */
+  blankResponse?: BlankResponseConfig
+  /** Evaluator settings. */
+  evaluator?: EvaluatorConfig
+  /** Evidence settings. */
+  evidence?: EvidenceConfig
+  /** Maximum steers per turn before the gate records `budget-exhausted` (default 8). */
+  maxContinuations?: number
+}
+
+/** Verify-command settings. */
+export interface VerifyConfig {
+  /** Commands run in order at every turn-stopping boundary; empty records `no-commands`. */
+  commands?: string[]
+  /** Per-command timeout in milliseconds, handed to the shell seam (default 300000). */
+  timeoutMs?: number
+  /** Characters of the stdout and stderr tail kept in the verdict and steer (default 2000). */
+  stdoutTailChars?: number
+}
+
+/** Blank-response settings. */
+export interface BlankResponseConfig {
+  /** Steers per turn after a response with no tool call and no visible text; `0` disables the check (default 1). */
+  maxSteers?: number
+}
+
+/** Evaluator settings; the evaluator runs only with `enabled`. */
+export interface EvaluatorConfig {
+  /** Start a fresh evaluator after the verify commands pass (default false). */
+  enabled?: boolean
+  /** `ctx.subagents` provider for evaluator children; it must start children without the parent conversation (default `spawn`). */
+  provider?: string
+  /** Fixed criteria `c1`, `c2`, …; empty lets the first evaluator of a turn write them (default none). */
+  rubric?: string[]
+  /** Global tools the evaluator may call; list read-only tools only (default none). */
+  tools?: string[]
+  /** Persona that replaces the deployment persona for the evaluator child. */
+  persona?: string
+  /** Output-token cap for each evaluator request; unset inherits the parent route. Needs the provider's `agentOptions` capability. */
+  maxOutputTokens?: number
+  /** Evaluation rounds per turn (default 3). */
+  maxRounds?: number
+  /** Wall-clock limit per evaluator run in milliseconds (default 300000). */
+  timeoutMs?: number
+  /** Characters of the human request and of the goal objective quoted to the evaluator (default 4000). */
+  maxSpecChars?: number
+  /** Characters of the evaluator reason kept in the verdict and the steer (default 2000). */
+  maxFeedbackChars?: number
+  /** Independent evaluators per round, run one after another; above 1 needs `rubric` (default 1). */
+  count?: number
+  /** With `count` above 1, the ceiling on evaluator runs per turn; `count × maxRounds` above it fails the load (default 3). */
+  maxRuns?: number
+  /** Seed of each evaluator's order of criteria and verify results when `count` is above 1 (default 0). */
+  seed?: number
+}
+
+/** Evidence settings; the check runs only outside `off`. */
+export interface EvidenceConfig {
+  /**
+   * `off` skips the check; `shadow` records it on every verdict; `enforce` also steers an unsupported answer and needs
+   * gate `mode: enforce`. Default `off`.
+   */
+  mode?: 'off' | 'shadow' | 'enforce'
+  /** `every`: each claim needs a record; `any`: at least one claim does (default `every`). */
+  require?: 'every' | 'any'
+  /** Claims recorded and checked per answer, in answer order (default 32). */
+  maxClaims?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-verifier-gate -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-file-reference-local -->
 <a id="deepseek-aidsh-file-reference-local"></a>
@@ -1564,6 +2253,91 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-jobs-local -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-claude-cli -->
+<a id="deepseek-aidsh-llm-claude-cli"></a>
+
+## `@deepseek-ai/dsh-llm-claude-cli`
+
+- `inject`: `llm` · `subprocess`
+- `source`: [`packages/llm/llm-claude-cli/src/index.ts:106`](../packages/llm/llm-claude-cli/src/index.ts)
+
+```ts config-catalog
+/** Config with every default applied. */
+type ValidConfig = Required<Config>
+
+/** Deployment choices for the route. */
+export interface Config {
+  /** Provider route registered on `ctx.llm`. */
+  providerName?: string
+  /** Route name shown wherever the picker does not localize it. */
+  displayName?: string
+  /** Executable name on `PATH`, or an absolute path. */
+  cliPath?: string
+  /** Arguments appended after the fixed ones; a flag that would break subscription auth is refused. */
+  extraArgs?: string[]
+  /** Working directory for every CLI child; a fixed empty directory keeps the run reproducible. */
+  workingDirectory?: string
+  /** Register the route when an AI Account of kind `claude` has a default. */
+  autoActivate?: boolean
+  /** Deadline for `claude auth status --json` and `claude --version`. */
+  authTimeoutMs?: number
+  /** Deadline for the one-shot `list_models` probe. */
+  catalogTimeoutMs?: number
+  /** Deadline for one inference run. */
+  requestTimeoutMs?: number
+  /** Concurrent CLI children this route may hold. */
+  maxConcurrent?: number
+  /** Grace before a terminated child is killed. */
+  graceMs?: number
+  /**
+   * How a request that declares tools is served. `prompt` declares the tools as system-prompt text
+   * and reads the model's fenced call back as a real tool call; `refuse` fails the request with
+   * `TOOL_CALLS_UNSUPPORTED`, which is what the route did before emulation existed.
+   */
+  toolCalls?: 'refuse' | 'prompt'
+  /** Tool-call blocks accepted from one emulated reply; the preamble states this number. */
+  toolCallMaxCalls?: number
+  /** Bytes accepted inside one tool-call block; the preamble states this number. */
+  toolCallMaxBytes?: number
+  /** Correction runs allowed after a rejected reply that handed over no answer text yet. */
+  toolCallRetries?: number
+  /**
+   * Accept a call the model wrote in one of three near-miss forms instead of rejecting it. Two are
+   * JSON: a block opened with `json` or no info string, and a bare object followed by a closing
+   * fence, either holding exactly `name` and `arguments` with object `arguments`. The third is a
+   * complete XML `<invoke>` element each of whose parameters the tool declares one type for. All
+   * three must name a declared tool; `false` rejects them as `TOOL_CALL_UNFENCED`.
+   */
+  toolCallLenient?: boolean
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-claude-cli -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-coteccons-sso -->
+<a id="deepseek-aidsh-llm-coteccons-sso"></a>
+
+## `@deepseek-ai/dsh-llm-coteccons-sso`
+
+- `inject`: `llm`
+- `refs`: [`PiAiModelProfile`](../packages/llm/llm-pi-ai/src/index.ts)
+- `source`: [`packages/llm/llm-coteccons-sso/src/index.ts:51`](../packages/llm/llm-coteccons-sso/src/index.ts)
+
+```ts config-catalog
+/** Deployment choices with every default applied. */
+type ValidConfig = Required<Config>
+
+/** Deployment choices for the endpoint and its model catalog. */
+export interface Config {
+  /** Name shown in model selectors. */
+  displayName?: string
+  /** OpenAI-compatible v1 endpoint of the Azure OpenAI or Foundry resource. */
+  baseURL?: string
+  /** Deployments served on the endpoint; each `id` is sent as the request's `model`. */
+  models?: PiAiModelProfile[]
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-llm-coteccons-sso -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-llm-deepseek-account -->
 <a id="deepseek-aidsh-llm-deepseek-account"></a>
 
@@ -1615,6 +2389,19 @@ export interface Config {
    * and registers them the moment a settings section supplies profiles.
    */
   providers: Volatile<Record<string, PiAiProviderProfile>>
+  /**
+   * Whether a sanctioned sign-in activates a route for its provider on its
+   * own, serving that provider's installed catalog under the stored
+   * credential. Disabling it leaves {@link providers} the only source of
+   * routes, which is what a deployment that pins its endpoints — an egress
+   * allowlist, a billing boundary, a curated model list — needs, because
+   * signing in is a per-user action and a route is a deployment fact.
+   *
+   * It never affects a route {@link providers} declares, and it never widens
+   * what may be sent: a consumer subscription grant stays delegated-only
+   * either way.
+   */
+  signInRoutes: Volatile<boolean>
 }
 
 /** Configuration for one pi-ai provider route; the `providers` dict key IS the route. */
@@ -3154,6 +3941,26 @@ export type PermissionPolicy = 'allow' | 'reject'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-subagent-acp -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-subagent-ai-account -->
+<a id="deepseek-aidsh-subagent-ai-account"></a>
+
+## `@deepseek-ai/dsh-subagent-ai-account`
+
+- `inject`: `aiAccount`
+- `refs`: [`claudeCode`](../packages/subagent/subagent-claude-code/src/index.ts) · [`codex`](../packages/subagent/subagent-codex/src/index.ts)
+- `source`: [`packages/subagent/subagent-ai-account/src/index.ts:19`](../packages/subagent/subagent-ai-account/src/index.ts)
+
+```ts config-catalog
+/** Provider row configuration for each product; the account directory is layered over each `env`. */
+export interface Config {
+  /** `@deepseek-ai/dsh-subagent-claude-code` configuration for the default Claude account (provider name defaults to `claude-code`). */
+  claudeCode?: claudeCode.Config
+  /** `@deepseek-ai/dsh-subagent-codex` configuration for the default ChatGPT account (provider name defaults to `codex`). */
+  codex?: codex.Config
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-subagent-ai-account -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-subagent-claude-code -->
 <a id="deepseek-aidsh-subagent-claude-code"></a>
 
@@ -3320,7 +4127,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:247`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:248`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */
@@ -3664,6 +4471,33 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-lsp -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-m365 -->
+<a id="deepseek-aidsh-tool-m365"></a>
+
+## `@deepseek-ai/dsh-tool-m365`
+
+- `inject`: `tools` · `systemPrompt`
+- `source`: [`packages/web/tool-m365/src/index.ts:48`](../packages/web/tool-m365/src/index.ts)
+
+```ts config-catalog
+type ResolvedConfig = Required<Config>
+
+/** Plugin config: result and size caps, retry budget, and the cooperative timeout. */
+export interface Config {
+  /** Upper bound on results per source in one `m365_search` call. */
+  searchMaxResults?: number
+  /** Cap on characters of one read result. */
+  maxOutputChars?: number
+  /** Largest file downloaded by `m365_read_file`, in bytes. */
+  maxFileBytes?: number
+  /** Retries for Graph 429/503 responses. */
+  maxRetries?: number
+  /** Cooperative timeout budget (ms) for each tool. */
+  timeoutMs?: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-m365 -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-present -->
 <a id="deepseek-aidsh-tool-present"></a>
@@ -4334,6 +5168,8 @@ export interface Config {
 | `@deepseek-ai/dsh-acp-app` | `cmdlineArgs` | [`packages/bundle/acp-app/src/index.ts`](../packages/bundle/acp-app/src/index.ts) |
 | `@deepseek-ai/dsh-agent` | — | [`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts) |
 | `@deepseek-ai/dsh-api-account-controller` | `deepseekAccount` · `agents` | [`packages/api/account-controller/src/index.ts`](../packages/api/account-controller/src/index.ts) |
+| `@deepseek-ai/dsh-api-ai-account-controller` | `aiAccount` | [`packages/api/ai-account-controller/src/index.ts`](../packages/api/ai-account-controller/src/index.ts) |
+| `@deepseek-ai/dsh-api-coteccons-sso-controller` | `cotecconsSso` | [`packages/api/coteccons-sso-controller/src/index.ts`](../packages/api/coteccons-sso-controller/src/index.ts) |
 | `@deepseek-ai/dsh-api-remotes` | `typertGateway` | [`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts) |
 | `@deepseek-ai/dsh-authorization` | `credentials` | [`packages/credentials/authorization/src/index.ts`](../packages/credentials/authorization/src/index.ts) |
 | `@deepseek-ai/dsh-browser-use` | — | [`packages/browser-use/browser-use/src/index.ts`](../packages/browser-use/browser-use/src/index.ts) |
@@ -4367,6 +5203,8 @@ export interface Config {
 | `@deepseek-ai/dsh-client-ui-session` | — | [`packages/client/ui-session/src/index.ts`](../packages/client/ui-session/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings` | — | [`packages/client/ui-settings/src/index.ts`](../packages/client/ui-settings/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-agent-loop` | — | [`packages/client/ui-settings-agent-loop/src/index.ts`](../packages/client/ui-settings-agent-loop/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-settings-ai-account` | — | [`packages/client/ui-settings-ai-account/src/index.ts`](../packages/client/ui-settings-ai-account/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-settings-coteccons-sso` | — | [`packages/client/ui-settings-coteccons-sso/src/index.ts`](../packages/client/ui-settings-coteccons-sso/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-general` | — | [`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-plugin-inventory` | — | [`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-plugins` | — | [`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts) |
@@ -4432,15 +5270,18 @@ export interface Config {
 
 ## Seam 包（不可直接加载）
 
-抽象服务类——部署时应改为加载具体的实现包（参见[能力 seam](../.agents/notes/implemented/architecture/2026-06-13-capability-seams.zh.md)）。
+抽象服务类——部署时应改为加载具体的实现包（参见[能力 seam](../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md)）。
 
 <!-- BEGIN GENERATED config-catalog:seam -->
 | `package` | `class` | `inject` | `source` |
 | --- | --- | --- | --- |
+| `@deepseek-ai/dsh-ai-account` | `AiAccount` | — | [`packages/credentials/ai-account/src/index.ts`](../packages/credentials/ai-account/src/index.ts) |
 | `@deepseek-ai/dsh-attachment` | `AttachmentStore` | — | [`packages/attachment/attachment/src/index.ts`](../packages/attachment/attachment/src/index.ts) |
 | `@deepseek-ai/dsh-compaction` | `CompactionEngine` | — | [`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts) |
+| `@deepseek-ai/dsh-coteccons-sso` | `CotecconsSso` | — | [`packages/credentials/coteccons-sso/src/index.ts`](../packages/credentials/coteccons-sso/src/index.ts) |
 | `@deepseek-ai/dsh-credentials` | `CredentialProvider` | — | [`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts) |
 | `@deepseek-ai/dsh-deepseek-account` | `DeepSeekAccount` | — | [`packages/credentials/deepseek-account/src/index.ts`](../packages/credentials/deepseek-account/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-knowledge` | `KnowledgeService` | — | [`packages/experimental/knowledge/src/index.ts`](../packages/experimental/knowledge/src/index.ts) |
 | `@deepseek-ai/dsh-file-reference` | `FileReferenceService` | — | [`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts) |
 | `@deepseek-ai/dsh-fs` | `FileSystem` | — | [`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts) |
 | `@deepseek-ai/dsh-host-directory-picker` | `DirectoryPicker` | — | [`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts) |
@@ -4479,6 +5320,8 @@ export interface Config {
 | `@deepseek-ai/dsh-deque` | — | [`packages/util/deque/src/index.ts`](../packages/util/deque/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-agent-team-profile` | — | [`packages/experimental/agent-team-profile/src/index.ts`](../packages/experimental/agent-team-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-browser-use-runtime` | — | [`packages/experimental/browser-use-runtime/src/index.ts`](../packages/experimental/browser-use-runtime/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-knowledge-profile` | — | [`packages/experimental/knowledge-profile/src/index.ts`](../packages/experimental/knowledge-profile/src/index.ts) |
+| `@deepseek-ai/dsh-experimental-loop-graph-profile` | — | [`packages/experimental/loop-graph-profile/src/index.ts`](../packages/experimental/loop-graph-profile/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-schedule-bundle` | — | [`packages/experimental/schedule-bundle/src/index.ts`](../packages/experimental/schedule-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-voice-input-bundle` | — | [`packages/experimental/voice-input-bundle/src/index.ts`](../packages/experimental/voice-input-bundle/src/index.ts) |
 | `@deepseek-ai/dsh-experimental-webworker-packer` | — | [`packages/experimental/webworker-packer/src/index.ts`](../packages/experimental/webworker-packer/src/index.ts) |

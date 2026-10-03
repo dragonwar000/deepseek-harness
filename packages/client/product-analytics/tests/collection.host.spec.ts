@@ -11,12 +11,12 @@ import Analytics from '../src/index.ts'
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of cleanup.splice(0).reverse()) await dispose() })
 
-async function setup(enabled: boolean) {
+async function setup(enabled: boolean, account = true) {
   const ctx = new Context()
   cleanup.push(() => ctx.fiber.dispose())
   const getDeviceIdentity = vi.fn().mockResolvedValue({ deviceId: 'login-device', userId: 'user-1', osVersion: 'fixture-os', ignored: 'private-field' })
   const emit = vi.fn<(record: ProductTelemetryRecord) => void>()
-  ctx.provide('deepseekAccount', { getDeviceIdentity } as never)
+  if (account) ctx.provide('deepseekAccount', { getDeviceIdentity } as never)
   ctx.provide('webServer', {} as never)
   ctx.provide('productTelemetry', { emit } as never)
   const fiber = await ctx.plugin(Analytics, { enabled, appVersion: 'test-version' })
@@ -40,6 +40,14 @@ it('reuses login identity and copies only approved common fields', async () => {
     attributes: { button_name: 'sign_in', device_id: 'login-device', user_id: 'user-1', app_version: 'test-version', os_version: expect.any(String) as string },
   })
   expect(JSON.stringify(b.emit.mock.calls)).not.toContain('private-')
+})
+
+it('submits without identity attributes when the composition provides no account service', async () => {
+  const b = await setup(true, false)
+  expect(b.ctx.productAnalytics.enabled()).toBe(true)
+  await b.ctx.productAnalytics.report({ eventName: 'desktop_app_launch', timestamp: 100, attributes: {} })
+  expect(b.getDeviceIdentity).not.toHaveBeenCalled()
+  expect(b.emit.mock.calls[0]?.[0].attributes).toEqual({ app_version: 'test-version' })
 })
 
 it('missing identity does not discard an otherwise valid event', async () => {

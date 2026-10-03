@@ -122,7 +122,7 @@ Host 装配以转发给消费方的 Cordis 事件扩展 `TypertRemoteEventSelect
 - [Typert 子系统参考](../../../docs/subsystems/typert.zh.md)——从协议与 Gateway 类型记录的字面公共约定。
 - [Typert 注册表](../registry/README.zh.md)——描述符与提供方在运行时存放的位置。
 - [Typert 生成器](../generator/README.zh.md)——生成消费方声明与描述符的包。
-- [Remote 调用 Agent Note](../../../.agents/notes/implemented/architecture/2026-08-02-typert-remote-method-calls.zh.md)——Remote 调用背后的架构与传输决策。
+- [Remote 调用 Agent Note](../../../.agents/notes/implemented/architecture/2026-08-02-typert-remote-method-calls.md)——Remote 调用背后的架构与传输决策。
 
 -----
 

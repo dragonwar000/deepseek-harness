@@ -103,6 +103,35 @@ export async function captureWorkspaceSnapshot(
   return visit(root, [])
 }
 
+/** Volatile values of one run that a `workspace.tokens` scenario replaces in final text files. */
+export interface WorkspaceTokenContext {
+  /** Session ids the run issued, in header order; the n-th becomes `{{session:n}}`. */
+  readonly sessionIds: readonly string[]
+}
+
+const ISO_INSTANT_RE = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g
+
+/**
+ * Replace a run's volatile identities and clock readings in captured text
+ * files: each session id with the same `{{session:<n>}}` token the committed
+ * session log uses, and each ISO-8601 UTC instant with `{{time}}`. Binary
+ * files, links, and empty directories are returned unchanged.
+ * @param entries - Captured final workspace entries.
+ * @param ctx - The run's session ids.
+ * @returns Entries with tokenized text content.
+ */
+export function tokenizeWorkspaceSnapshot(
+  entries: readonly WorkspaceSnapshotEntry[],
+  ctx: WorkspaceTokenContext,
+): WorkspaceSnapshotEntry[] {
+  return entries.map((entry) => {
+    if (entry.kind !== 'text') return entry
+    let content = entry.content
+    ctx.sessionIds.forEach((id, index) => { content = content.split(id).join(`{{session:${index + 1}}}`) })
+    return { ...entry, content: content.replace(ISO_INSTANT_RE, '{{time}}') }
+  })
+}
+
 /**
  * Capture a committed `workspace.expected/` tree, excluding its Git-only empty marker.
  * @param root - Absolute expected-workspace directory.

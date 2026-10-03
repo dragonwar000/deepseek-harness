@@ -69,6 +69,87 @@ AccountDetails.balance 将充值钱包投影为 value、赠送钱包投影为 bo
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
+<a id="ctxaiaccount--aiaccount-abstract-seam"></a>
+
+### `ctx.aiAccount` — `AiAccount` (abstract seam)
+
+Account registry whose credentials never leave the official Claude Code and Codex CLIs. Each account owns one CLI configuration directory; implementations sign in, identify, and sign out only by running the official CLI against that directory.
+
+```ts cordis-catalog
+/**
+ * Read the registered accounts and the latest sign-in attempt.
+ * @returns a snapshot without credentials or directory paths.
+ */
+abstract getState(): Promise<AiAccountsView>
+
+/**
+ * Join the active sign-in attempt or start the official CLI login for a new account.
+ * @param kind - account kind to add.
+ * @returns the snapshot after the attempt starts, without waiting for authorization.
+ */
+abstract startSignIn(kind: AiAccountKind): Promise<AiAccountsView>
+
+/**
+ * Cancel the named attempt and discard its unfinished configuration directory.
+ * @param id - attempt identity from this Host; any other id leaves state unchanged.
+ * @returns the snapshot after the attempt settles.
+ */
+abstract cancelSignIn(id: AiAccountSignInId): Promise<AiAccountsView>
+
+/**
+ * Deliver the authorization code the vendor's browser page displayed to the login
+ * command that is reading one, completing the attempt. Implementations pass the code
+ * to the official CLI and never store or inspect it.
+ * @param id - attempt identity from this Host; any other id, or an attempt whose
+ * `awaitingCode` is false, leaves state unchanged.
+ * @param code - code the user copied from the vendor's page.
+ * @returns the snapshot after the code is delivered, without waiting for the CLI to finish.
+ */
+abstract submitSignInCode(id: AiAccountSignInId, code: string): Promise<AiAccountsView>
+
+/**
+ * Make one account the default of its kind.
+ * @param id - registered account.
+ * @returns the snapshot after the default changes.
+ * @throws when no account has this id.
+ */
+abstract setDefault(id: AiAccountId): Promise<AiAccountsView>
+
+/**
+ * Sign the account out through its official CLI, delete its configuration directory, and forget it.
+ * Removing the default promotes the oldest remaining account of the same kind.
+ * @param id - registered account.
+ * @returns the snapshot after removal.
+ * @throws when no account has this id.
+ */
+abstract remove(id: AiAccountId): Promise<AiAccountsView>
+
+/**
+ * Run every registered account's official CLI status command now and record each conclusive
+ * answer in `AiAccountView.status`, emitting `ai-account/status-changed` once per transition.
+ * A call while a check runs joins that check instead of starting another.
+ * @returns the snapshot after the check settles.
+ */
+abstract checkStatus(): Promise<AiAccountsView>
+
+/**
+ * Subscribe to complete snapshots, starting with the current one.
+ * @param signal - subscription lifetime; ending it never cancels a sign-in.
+ * @returns snapshots as accounts or the attempt change.
+ */
+abstract watch(signal: AbortSignal): AsyncIterable<AiAccountsView>
+
+/**
+ * Resolve the configuration directory of the default account of one kind, for launching that
+ * kind's official CLI (`CLAUDE_CONFIG_DIR` for Claude Code, `CODEX_HOME` for Codex).
+ * @param kind - account kind.
+ * @returns the absolute directory, or `undefined` when the kind has no default account.
+ */
+abstract defaultHome(kind: AiAccountKind): string | undefined
+```
+
+Source: [`packages/credentials/ai-account/src/index.ts`](../../packages/credentials/ai-account/src/index.ts)
+
 <a id="ctxauthorization--authorizationservice"></a>
 
 ### `ctx.authorization` — `AuthorizationService`
@@ -129,6 +210,105 @@ async begin(request: AuthorizationRequest): Promise<AuthorizationOutcome>
 ```
 
 Source: [`packages/credentials/authorization/src/index.ts`](../../packages/credentials/authorization/src/index.ts)
+
+<a id="ctxcotecconssso--cotecconssso-abstract-seam"></a>
+
+### `ctx.cotecconsSso` — `CotecconsSso` (abstract seam)
+
+One Entra ID sign-in per Host. Views never carry tokens; getAccessToken is Host-only and its result must never be sent to a Client, logged, or stored outside the provider's token cache.
+
+```ts cordis-catalog
+/**
+ * Read the current sign-in state.
+ * @returns a snapshot without tokens.
+ */
+abstract getState(): Promise<CotecconsSsoView>
+
+/**
+ * Join the active attempt or start an interactive browser sign-in. While the deployment is not configured
+ * or an account is signed in, the state is returned unchanged.
+ * @returns the snapshot after the attempt starts, without waiting for the user.
+ */
+abstract startSignIn(): Promise<CotecconsSsoView>
+
+/**
+ * Cancel the named attempt.
+ * @param id - attempt identity from this Host; any other id leaves state unchanged.
+ * @returns the snapshot after the attempt settles.
+ */
+abstract cancelSignIn(id: CotecconsSsoSignInId): Promise<CotecconsSsoView>
+
+/**
+ * Forget the signed-in account and delete its stored token cache.
+ * @returns the signed-out snapshot.
+ */
+abstract signOut(): Promise<CotecconsSsoView>
+
+/**
+ * Subscribe to complete snapshots, starting with the current one.
+ * @param signal - subscription lifetime; ending it never cancels a sign-in.
+ * @returns snapshots as the state changes.
+ */
+abstract watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView>
+
+/**
+ * Return a current access token for the signed-in account, refreshing it silently when it expired.
+ * @param scope - resource scope the token is for.
+ * @param signal - caller cancellation.
+ * @returns the bearer token value.
+ * @throws CotecconsSsoTokenUnavailableError when the deployment is not configured, nobody is signed in,
+ * or Entra ID requires the user to sign in again.
+ */
+abstract getAccessToken(scope: string, signal?: AbortSignal): Promise<string>
+
+/**
+ * Read every Microsoft 365 connector's state, in `mail`, `chat`, `files` order.
+ * @returns one token-free view per connector.
+ */
+abstract getM365State(): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Join the connector's active attempt or start an interactive browser sign-in against its enterprise app.
+ * Entra ID refuses the sign-in when IT has not assigned the user, which leaves the connector `blocked`.
+ * @param id - connector to connect.
+ * @returns every connector's state after the attempt starts.
+ */
+abstract connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Cancel the named connector attempt.
+ * @param id - connector whose attempt to cancel.
+ * @param attemptId - attempt identity; any other id leaves state unchanged.
+ * @returns every connector's state after the attempt settles.
+ */
+abstract cancelM365Connect(id: M365ConnectorId, attemptId: M365ConnectAttemptId): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Forget the connector's stored sign-in on this Host. IT-side assignment is unchanged.
+ * @param id - connector to disconnect.
+ * @returns every connector's state afterwards.
+ */
+abstract disconnectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>
+
+/**
+ * Subscribe to complete connector snapshots, starting with the current one.
+ * @param signal - subscription lifetime; ending it never cancels an attempt.
+ * @returns snapshots as any connector changes.
+ */
+abstract watchM365(signal: AbortSignal): AsyncIterable<readonly M365ConnectorView[]>
+
+/**
+ * Return a current Microsoft Graph token for one connector, refreshing it silently. Host-only; the token must
+ * never reach a Client, a log, or the session log.
+ * @param id - connector whose enterprise app issues the token.
+ * @param signal - caller cancellation.
+ * @returns the bearer token value.
+ * @throws M365AccessUnavailableError when the connector is not configured, not connected, or blocked by Entra ID.
+ */
+abstract getM365AccessToken(id: M365ConnectorId, signal?: AbortSignal): Promise<string>
+```
+
+Source: [`packages/credentials/coteccons-sso/src/index.ts`](../../packages/credentials/coteccons-sso/src/index.ts)
 
 <a id="ctxcredentials--credentialprovider-abstract-seam"></a>
 
@@ -365,6 +545,45 @@ abstract getDeviceIdentity(): Promise<{ deviceId?: string; userId?: AccountUserI
 ```
 
 Source: [`packages/credentials/deepseek-account/src/index.ts`](../../packages/credentials/deepseek-account/src/index.ts)
+
+<a id="ai-account-events"></a>
+
+### `ai-account/*` events
+
+<a id="ai-accountdefault-changed--emit"></a>
+
+#### `ai-account/default-changed` — emit
+
+The default account of one kind changed, including to no default.
+
+```ts cordis-catalog
+/**
+ * The default account of one kind changed, including to no default.
+ * @mode emit
+ * @param kind - account kind whose default changed.
+ */
+'ai-account/default-changed'(kind: AiAccountKind): void
+```
+
+Source: [`packages/credentials/ai-account/src/types.ts`](../../packages/credentials/ai-account/src/types.ts)
+
+<a id="ai-accountstatus-changed--emit"></a>
+
+#### `ai-account/status-changed` — emit
+
+A status check changed one registered account's sign-in status. Emitted once per transition, never for a check that confirms the previous status or answers inconclusively.
+
+```ts cordis-catalog
+/**
+ * A status check changed one registered account's sign-in status. Emitted once per
+ * transition, never for a check that confirms the previous status or answers inconclusively.
+ * @mode emit
+ * @param change - account, previous status, and the new status view.
+ */
+'ai-account/status-changed'(change: AiAccountStatusChange): void
+```
+
+Source: [`packages/credentials/ai-account/src/types.ts`](../../packages/credentials/ai-account/src/types.ts)
 
 <a id="authorization-events"></a>
 

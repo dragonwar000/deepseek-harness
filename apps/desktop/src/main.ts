@@ -3,7 +3,7 @@ import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Electron shell: desktop project ownership, custom protocol, windows, and lifecycle. */
 
 import { readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   app,
@@ -53,12 +53,15 @@ import { DesktopMandatoryUpdateWindow } from './mandatory-update-window.ts'
 import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
+import { zeromemHostEnvironment } from './zeromem.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { DesktopUpdateOverlays } from './update-overlay.ts'
 import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { DesktopTray } from './tray.ts'
 import { DesktopBackgroundNotice } from './background-notice.ts'
+import { DesktopAiAccountAttention } from './ai-account-attention.ts'
+import { DesktopSettingsRequest } from './settings-request.ts'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -190,21 +193,18 @@ function chromeFallbackFill(): string {
 }
 
 /**
- * Add the effective Desktop palette to a Platform authorization URL so the
- * login page opens in the application's theme. `system` resolves through
- * `nativeTheme.shouldUseDarkColors`, which follows the theme source the
- * application preload publishes.
- * @param authorizeUrl - validated Platform authorization URL.
- * @returns the authorization URL carrying `theme=light` or `theme=dark`.
+ * Platform icon artwork inside the unpackaged application directory. A
+ * packaged build carries its icon in the executable or bundle instead.
+ * @returns the absolute path of the platform icon PNG under `resources/`.
  */
-function platformLoginUrl(authorizeUrl: string): string {
-  const url = new URL(authorizeUrl)
-  url.searchParams.set('theme', nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
-  return url.href
+function developmentIconPath(): string {
+  return join(app.getAppPath(), 'resources', process.platform === 'darwin' ? 'icon-macos.png' : 'icon-windows.png')
 }
 
 function createWindow(preload: string, show = false, primary = false): BrowserWindow {
   const window = new BrowserWindow({
+    // An unpackaged Windows launch runs electron.exe, whose icon the taskbar would show.
+    ...(!app.isPackaged && process.platform === 'win32' ? { icon: developmentIconPath() } : {}),
     width: 1280,
     height: 820,
     minWidth: 520,
@@ -410,11 +410,9 @@ async function main(): Promise<void> {
       if (analyticsEnabled) await welcomeBackend?.report(event)
     } catch (_error) { /* Analytics cannot interrupt native actions. */ }
   }
-  let stopAccount: (() => void) | undefined
-  let openedAttempt: string | undefined
-  let returnedAttempt: string | undefined
+  let stopSso: (() => void) | undefined
   let pendingWelcomeNotice: WelcomeNotice | undefined
-  let previousAccountStatus: string | undefined
+  let previousSsoStatus: string | undefined
   const assertProductSender = (event: IpcMainInvokeEvent): void => {
     assertDesktopSender(event, ['app'])
     if (mainWindow === undefined || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents
@@ -439,12 +437,21 @@ async function main(): Promise<void> {
   }
   const platformView = new DesktopPlatformView(join(app.getAppPath(), 'lib', 'preload-platform-account.cjs'),
     () => locale.id === 'zh-CN' ? 'zh_CN' : 'en_US', process.platform === 'win32' ? 'win32' : 'darwin')
+  const settingsRequest = new DesktopSettingsRequest(() => mainWindow?.webContents)
+  const aiAccountAttention = new DesktopAiAccountAttention(() => locale, () => mainWindow, (sectionId) => {
+    focusPrimaryWindow()
+    settingsRequest.open(sectionId)
+  })
   const backend = new DesktopBackendController((onFailure) => {
     const hostInspectPort = developmentHostInspectPort(development)
     const host = new DesktopHostProcess(resources.node, resources.dsh, activeProject,
-      hostInspectPort, { ...hostEnvironment, DSH_CLIENT_VERSION: desktopClientVersion() }, onFailure,
+      hostInspectPort, {
+        ...hostEnvironment,
+        ...zeromemHostEnvironment(dirname(primaryRuntime), hostEnvironment),
+        DSH_CLIENT_VERSION: desktopClientVersion(),
+      }, onFailure,
       primaryRuntime,
-      resources, (next) => { platformView.setSession(next) })
+      resources, (next) => { platformView.setSession(next) }, (kind) => { aiAccountAttention.signedOut(kind) })
     return {
       start: async () => {
         const ready = await host.start()
@@ -455,48 +462,34 @@ async function main(): Promise<void> {
         welcomeBackend = await connectDesktopWelcome(ready.url, (input, init) => net.fetch(input, init), async () => (await session.defaultSession.cookies.get({ url: ready.url })).map(cookie => `${cookie.name}=${cookie.value}`).join('; '))
         analyticsEnabled = await welcomeBackend.analyticsEnabled().catch(() => false)
         if (!reportedLaunch) { reportedLaunch = true; void track('desktop_app_launch', {}) }
-        stopAccount?.()
-        const accountBackend = welcomeBackend.account
-        stopAccount = accountBackend.watch((state) => {
+        stopSso?.()
+        const ssoBackend = welcomeBackend.sso
+        // The Host opens the Microsoft sign-in page itself and receives the loopback redirect; Desktop follows the state.
+        stopSso = ssoBackend.watch((state) => {
           if (quitting) return
           if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.webContents.send(WELCOME_IPC.state, state)
-          const attempt = state.attempt
-          if (attempt?.phase === 'waiting-browser' && attempt.authorizeUrl !== undefined && openedAttempt !== attempt.id) {
-            openedAttempt = attempt.id
-            void shell.openExternal(platformLoginUrl(attempt.authorizeUrl)).catch(() => undefined)
+          if (previousSsoStatus === 'signing-in' && state.status === 'error') focusPrimaryWindow()
+          if (previousSsoStatus === 'signing-in' && state.status === 'signed-in' && welcomeWindow !== undefined) {
+            void ssoBackend.selectDefaultModel().catch(() => undefined)
+              .then(() => enterWorkspace({ activate: false })).catch(() => undefined)
           }
-          if ((attempt?.phase === 'failed' || attempt?.phase === 'expired') && returnedAttempt !== attempt.id) {
-            returnedAttempt = attempt.id
-            focusPrimaryWindow()
-          }
-          if (state.status === 'credential-stored' && attempt?.phase === 'succeeded' && welcomeWindow !== undefined) void enterWorkspace({ activate: false }).catch(() => undefined)
-          if (previousAccountStatus === 'credential-stored' && state.status === 'signed-out') {
+          if (previousSsoStatus === 'signed-in' && (state.status === 'signed-out' || state.status === 'error')) {
             void readWelcomeState().then(async (value) => {
-              if (needsWelcome(value) && !quitting) {
-                enteredWorkspace = false
-                await showWelcome()
-                if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.webContents.send(WELCOME_IPC.state, state)
-              }
-              return undefined
+              if (!needsWelcome(value) || quitting) return
+              if (state.status === 'error' && state.errorCode === 'session-expired') pendingWelcomeNotice = 'session-expired'
+              enteredWorkspace = false
+              await showWelcome()
+              if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.webContents.send(WELCOME_IPC.state, state)
             }).catch(() => undefined)
           }
-          previousAccountStatus = state.status
+          previousSsoStatus = state.status
         }, () => {
-          // The stream reconnects; a transport failure does not change account state.
-        }, () => {
-          void readWelcomeState().then(async (value) => {
-            if (!needsWelcome(value) || quitting) return
-            pendingWelcomeNotice = 'session-expired'
-            enteredWorkspace = false
-            await showWelcome()
-            const state = await accountBackend.state()
-            if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.webContents.send(WELCOME_IPC.state, state)
-          }).catch(() => undefined)
+          // The stream reconnects; a transport failure does not change sign-in state.
         }, (enabled) => { analyticsEnabled = enabled })
       },
       stop: async () => {
         analyticsEnabled = false
-        stopAccount?.()
+        stopSso?.()
         try { await host.stop(requireCleanStop) }
         catch (error) {
           if (!requireCleanStop || !(error instanceof DesktopHostUncleanExitError)) throw error
@@ -787,6 +780,10 @@ async function main(): Promise<void> {
       if (width < 960) window.setSize(960, height)
     }
   })
+  ipcMain.handle(DESKTOP_IPC.settingsTake, (event) => {
+    assertProductSender(event)
+    return settingsRequest.take()
+  })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, async (event) => {
     assertProductSender(event)
     await openUpdatePrompt()
@@ -922,10 +919,12 @@ async function main(): Promise<void> {
     updates.dispose()
   })
 
-  const applicationIconPath = development ? join(app.getAppPath(), 'resources', 'icon-windows.png')
-    : join(process.resourcesPath, 'icon.png')
+  const applicationIconPath = development ? developmentIconPath() : join(process.resourcesPath, 'icon.png')
+  // An unpackaged launch runs inside Electron's own bundle, whose icon macOS
+  // shows in the Dock; set the platform artwork explicitly.
+  if (development && process.platform === 'darwin') app.dock?.setIcon(nativeImage.createFromPath(applicationIconPath))
   app.setAboutPanelOptions({
-    applicationName: 'DeepSeek Harness',
+    applicationName: 'CTD Core',
     applicationVersion: app.getVersion(),
     // The release has no separate build number; omit Electron's bundle version.
     version: '',
@@ -1152,32 +1151,36 @@ async function main(): Promise<void> {
         },
         startSignIn: async () => {
           if (welcomeBackend === undefined) throw new Error('desktop welcome: backend unavailable')
-          return welcomeBackend.account.start(desktopClientMetadata(locale.id))
+          return welcomeBackend.sso.start()
         },
         cancelSignIn: async (id) => {
           if (welcomeBackend === undefined) throw new Error('desktop welcome: backend unavailable')
-          return welcomeBackend.account.cancel(id)
+          return welcomeBackend.sso.cancel(id)
         },
         copySignInLink: async (id) => {
-          const state = await welcomeBackend?.account.state()
-          if (state?.attempt?.id !== id || state.attempt.phase !== 'waiting-browser' || state.attempt.authorizeUrl === undefined) {
-            throw new Error('desktop welcome: login link is unavailable')
+          const state = await welcomeBackend?.sso.state()
+          if (state?.status !== 'signing-in' || state.attemptId !== id || state.url === null) {
+            throw new Error('desktop welcome: sign-in link is unavailable')
           }
-          await clipboard.writeText(platformLoginUrl(state.attempt.authorizeUrl))
+          await clipboard.writeText(state.url)
         },
-        saveApiKey: async (apiKey) => {
+        saveApiKey: async (settingsNs, apiKey) => {
           if (backend.host === undefined || welcomeBackend === undefined) return { ok: false }
-          const saved = await welcomeBackend.save(apiKey)
+          const saved = await welcomeBackend.save(settingsNs, apiKey)
           if (!saved.ok) return saved
           await enterWorkspace()
           return { ok: true }
+        },
+        getWritableProviders: async () => {
+          if (welcomeBackend === undefined) return []
+          return (await welcomeBackend.read()).writableProviders
         },
         skip: enterWorkspace,
       })
       const window = welcomeWindow
       window.once('closed', () => {
-        void welcomeBackend?.account.state().then((state) => {
-          if (state.attempt !== null && !enteredWorkspace) return welcomeBackend?.account.cancel(state.attempt.id)
+        void welcomeBackend?.sso.state().then((state) => {
+          if (state.status === 'signing-in' && !enteredWorkspace) return welcomeBackend?.sso.cancel(state.attemptId)
           return undefined
         }).catch(() => undefined)
       })
@@ -1201,7 +1204,7 @@ async function main(): Promise<void> {
     locale = resolveDesktopStartupLocale(state.localePreference, systemLanguages)
     windowsLanguage = locale.id
     refreshApplicationMenu()
-    if (!enteredWorkspace && needsWelcome({ loggedIn: state.loggedIn, hasApiKey: state.hasApiKey })) {
+    if (!enteredWorkspace && needsWelcome(state)) {
       // A later login must retain its own activation policy instead of replaying startup focus.
       raiseAfterUpdate = false
       await showWelcome()
@@ -1244,8 +1247,9 @@ async function main(): Promise<void> {
     updateJournal?.action('quit-requested')
     quitConfirmation.dispose()
     backgroundNotice?.dispose()
+    aiAccountAttention.dispose()
     tray?.dispose()
-    stopAccount?.()
+    stopSso?.()
     if (welcomeWindow !== undefined && !welcomeWindow.isDestroyed()) welcomeWindow.hide()
     if (mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.hide()
     updateSchedule.dispose()

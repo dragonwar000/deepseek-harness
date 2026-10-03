@@ -1,0 +1,46 @@
+{
+  "repository": "https://github.com/ptaranat/zeromem",
+  "rev": "eda212665a35cd01c188121e759de282728238d5",
+  "crate": "zeromem",
+  "version": "0.3.0",
+  "license": "MIT",
+  "licenseSha256": "3c8c50e35e6e033ef25651bf5bb22729859e7bd7d205396bef6e64372f98f45b",
+  "onnxruntime": {
+    "version": "1.20.0",
+    "repository": "https://github.com/microsoft/onnxruntime",
+    "rev": "c4fb724e810bb496165b9015c77f402727392933",
+    "license": "MIT",
+    "licenseSha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+    "noticesSha256": "cf7342f7ba482ef715ae58f5f497a8d3564fa255164175aea324cd293c5701a0",
+    "archives": {
+      "mac-arm64": {
+        "url": "https://parcel.pyke.io/v2/delivery/ortrs/packages/msort-binary/1.20.0/ortrs_static-v1.20.0-aarch64-apple-darwin.tgz",
+        "sha256": "5eafa0af54d630c4d4d9f459cb95e3cff442993f0ffa50402695186f9b1a38a5"
+      },
+      "mac-x64": {
+        "url": "https://parcel.pyke.io/v2/delivery/ortrs/packages/msort-binary/1.20.0/ortrs_static-v1.20.0-x86_64-apple-darwin.tgz",
+        "sha256": "876174aec9dc8422e9a757a0d1c5f0df4f0a32b2fed6e4c7e4183dfd80f65aef"
+      },
+      "win-x64": {
+        "url": "https://parcel.pyke.io/v2/delivery/ortrs/packages/msort-binary/1.20.0/ortrs_static-v1.20.0-x86_64-pc-windows-msvc.tgz",
+        "sha256": "bb02d856f2747e4863c344be38af2a645e660e9055c871ee9984907497be590a"
+      }
+    }
+  },
+  "model": {
+    "name": "bge-small-en-v1.5",
+    "repository": "Xenova/bge-small-en-v1.5",
+    "rev": "ea104dacec62c0de699686887e3f920caeb4f3e3",
+    "license": "MIT",
+    "licenseRepository": "https://github.com/FlagOpen/FlagEmbedding",
+    "licenseRev": "fd1a2bdf69488ffebe0327999d4400d8c8058a0b",
+    "licenseSha256": "587a673933425dbc36ec61268d3b954051b2d3ef3c9b322ede357976055ffdd5",
+    "files": {
+      "onnx/model.onnx": "828e1496d7fabb79cfa4dcd84fa38625c0d3d21da474a00f08db0f559940cf35",
+      "tokenizer.json": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66",
+      "config.json": "fa73f90bf92c8cace1fbcb709626306f2bdbc9ea3e5b5f94b440df9b6aa56350",
+      "special_tokens_map.json": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3",
+      "tokenizer_config.json": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3"
+    }
+  }
+}

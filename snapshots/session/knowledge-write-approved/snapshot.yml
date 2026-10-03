@@ -1,0 +1,12 @@
+version: 1
+scenario: knowledge-write-approved
+profile: headless
+composition: knowledge-write-approved
+recording: live
+header:
+  class: knowledge-write-approved
+  pin: true
+permission: workspace-write
+workspace:
+  final: true
+  tokens: true

@@ -23,6 +23,8 @@ getUnnotifiedBonuses 返回平台尚未记录为已展示的赠金及其所属�
 
 `getDeviceIdentity()` 返回已有设备和账户 ID 以及登录使用的操作系统版本字符串，不返回凭据，也不创建设备标识。
 
+已发布的 Bundle 将此服务定义的提供者与使用方行保持禁用：在 CTD Core 中，[Coteccons SSO](../coteccons-sso/README.zh.md) 取代了 DeepSeek Platform 登录。profile patch 可以重新启用这些行。
+
 ## 目录
 
 - [使用此包](#use-this-package)
@@ -70,6 +72,6 @@ AccountDetails.balance 就绪时，value 保存充值钱包，bonusWallets 保�
 <a id="dev-note"></a>
 ### 开发备注
 
-[桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.zh.md)记录取消和存储的职责。
+[桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.md)记录取消和存储的职责。
 
 PlatformSession 可将仅限 Host 的 requestHeaders 从 Host 传至 Electron 主进程，其中只有部署请求头，因为内嵌文档的客户端身份在其语言、时区和版本可知处组装。消费者必须从渲染层 bootstrap 排除这些请求头，并将其限定于配置来源。userId 同样仅限 Host，绝不进入渲染层 bootstrap。mergePlatformCookies 替换同名 Cookie，同时保留其他 Cookie。

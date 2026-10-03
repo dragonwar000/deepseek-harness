@@ -1,0 +1,55 @@
+{
+  "initial": [
+    {
+      "name": "structured_output",
+      "description": "Report your final structured result. Call this exactly once, when your answer is complete; the arguments must match this tool's parameter schema exactly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not-ok",
+              "impossible",
+              "unverifiable"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "met": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "met"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "verdict",
+          "reason",
+          "criteria"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "changes": []
+}

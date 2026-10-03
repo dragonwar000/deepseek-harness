@@ -11,6 +11,8 @@ import {
 import { openSettings, ZH_BROWSER_LOCALE } from './support.ts'
 
 const EXPECTED = fileURLToPath(new URL('./expected/settings-appearance', import.meta.url))
+/** The account cards under test belong to the DeepSeek account rows, which the shipped composition disables. */
+const ACCOUNT_ROWS = fileURLToPath(new URL('./fixtures/deepseek-account/cordis.patch.yml', import.meta.url))
 
 /** @param element - Rendered control or card. @returns Its visible geometry and material. */
 function appearance(element: Locator) {
@@ -24,7 +26,7 @@ function appearance(element: Locator) {
 }
 
 it('shares settings card materials and control sizes in both palettes', async () => {
-  const scaffold = await launchWebScaffold({})
+  const scaffold = await launchWebScaffold({ extraOverlayPath: ACCOUNT_ROWS })
   onTestFinished(() => scaffold.close())
   await scaffold.ctx.settings.mutate('ui-settings-account', [
     { op: 'set', path: ['step'], value: 'done' },
@@ -68,8 +70,8 @@ it('shares settings card materials and control sizes in both palettes', async ()
     expect(selector.radius).toBe('12px')
     expect((await appearance(dialog)).radius).toBe('28px')
 
-    await dialog.getByRole('button', { name: '账号与余额', exact: true }).click()
-    const section = dialog.getByRole('region', { name: '账号与余额', exact: true })
+    await dialog.getByRole('button', { name: 'AI 账号', exact: true }).click()
+    const section = dialog.getByRole('region', { name: 'DeepSeek — 用于主模型', exact: true })
     await expect.poll(() => section.innerText()).toContain('¥128.50')
     const cards = section.locator(':scope > div')
     expect(await cards.count()).toBe(2)
@@ -84,7 +86,7 @@ it('shares settings card materials and control sizes in both palettes', async ()
     expect(usage).toMatchObject({ radius: '12px', height: 36 })
     expect(topUp).toMatchObject({ radius: '12px', height: 36 })
     await compareOrRefreshGolden(join(EXPECTED, 'account.expected.md'),
-      await captureStableAria(page, 'section[aria-label="账号与余额"]', scaffold.workspaceCwd), webSnapshotMode())
+      await captureStableAria(page, 'section[aria-label="DeepSeek — 用于主模型"]', scaffold.workspaceCwd), webSnapshotMode())
 
     await dialog.getByRole('button', { name: '内置插件', exact: true }).click()
     await dialog.getByRole('button', { name: /^全局/ }).click()

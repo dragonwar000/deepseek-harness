@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-15-bundled-office-skills.zh.md)
-
 ## Problem
 
 Office tasks need format-specific editing guidance and dependable file checks. Requiring users to install interpreters, package managers, or rendering command-line tools interrupts ordinary document delivery. Structural heuristics can also reject valid merged tables, multi-section documents, or Chinese text without observing an actual layout defect.

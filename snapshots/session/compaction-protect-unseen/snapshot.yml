@@ -1,0 +1,11 @@
+version: 1
+scenario: compaction-protect-unseen
+profile: headless
+composition: compaction-protect-unseen
+recording: live
+header:
+  class: compaction-protect-unseen
+  pin: true
+  systemPromptSource: compaction-recovery
+  toolSchemasSource: compaction-recovery
+  changes: 1

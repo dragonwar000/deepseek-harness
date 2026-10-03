@@ -385,6 +385,69 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'aiAccount',
+    summary: 'Account registry whose credentials never leave the official Claude Code and Codex CLIs.',
+    description: 'Account registry whose credentials never leave the official Claude Code and Codex CLIs. Each account owns one CLI configuration directory; implementations sign in, identify, and sign out only by running the official CLI against that directory.',
+    methods: [
+      {
+        signature: 'abstract getState(): Promise<AiAccountsView>',
+        description: 'Read the registered accounts and the latest sign-in attempt.',
+        parameters: [],
+        returns: 'a snapshot without credentials or directory paths.',
+      },
+      {
+        signature: 'abstract startSignIn(kind: AiAccountKind): Promise<AiAccountsView>',
+        description: 'Join the active sign-in attempt or start the official CLI login for a new account.',
+        parameters: [{ name: 'kind', description: 'account kind to add.' }],
+        returns: 'the snapshot after the attempt starts, without waiting for authorization.',
+      },
+      {
+        signature: 'abstract cancelSignIn(id: AiAccountSignInId): Promise<AiAccountsView>',
+        description: 'Cancel the named attempt and discard its unfinished configuration directory.',
+        parameters: [{ name: 'id', description: 'attempt identity from this Host; any other id leaves state unchanged.' }],
+        returns: 'the snapshot after the attempt settles.',
+      },
+      {
+        signature: 'abstract submitSignInCode(id: AiAccountSignInId, code: string): Promise<AiAccountsView>',
+        description: 'Deliver the authorization code the vendor\'s browser page displayed to the login command that is reading one, completing the attempt. Implementations pass the code to the official CLI and never store or inspect it.',
+        parameters: [{ name: 'id', description: 'attempt identity from this Host; any other id, or an attempt whose `awaitingCode` is false, leaves state unchanged.' }, { name: 'code', description: 'code the user copied from the vendor\'s page.' }],
+        returns: 'the snapshot after the code is delivered, without waiting for the CLI to finish.',
+      },
+      {
+        signature: 'abstract setDefault(id: AiAccountId): Promise<AiAccountsView>',
+        description: 'Make one account the default of its kind.',
+        parameters: [{ name: 'id', description: 'registered account.' }],
+        returns: 'the snapshot after the default changes.',
+        throws: ['when no account has this id.'],
+      },
+      {
+        signature: 'abstract remove(id: AiAccountId): Promise<AiAccountsView>',
+        description: 'Sign the account out through its official CLI, delete its configuration directory, and forget it. Removing the default promotes the oldest remaining account of the same kind.',
+        parameters: [{ name: 'id', description: 'registered account.' }],
+        returns: 'the snapshot after removal.',
+        throws: ['when no account has this id.'],
+      },
+      {
+        signature: 'abstract checkStatus(): Promise<AiAccountsView>',
+        description: 'Run every registered account\'s official CLI status command now and record each conclusive answer in `AiAccountView.status`, emitting `ai-account/status-changed` once per transition. A call while a check runs joins that check instead of starting another.',
+        parameters: [],
+        returns: 'the snapshot after the check settles.',
+      },
+      {
+        signature: 'abstract watch(signal: AbortSignal): AsyncIterable<AiAccountsView>',
+        description: 'Subscribe to complete snapshots, starting with the current one.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels a sign-in.' }],
+        returns: 'snapshots as accounts or the attempt change.',
+      },
+      {
+        signature: 'abstract defaultHome(kind: AiAccountKind): string | undefined',
+        description: 'Resolve the configuration directory of the default account of one kind, for launching that kind\'s official CLI (`CLAUDE_CONFIG_DIR` for Claude Code, `CODEX_HOME` for Codex).',
+        parameters: [{ name: 'kind', description: 'account kind.' }],
+        returns: 'the absolute directory, or `undefined` when the kind has no default account.',
+      },
+    ],
+  },
+  {
     key: 'approval',
     summary: 'Approval service that applies session policy before answerers and logs every ask/outcome pair to the requesting session.',
     description: 'Approval service that applies session policy before answerers and logs every ask/outcome pair to the requesting session. It exposes deterministic policy changes to the model through the runtime-context snapshot and switch notices.',
@@ -755,6 +818,92 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Add the fresh process token to an ordinary Web application URL.',
         parameters: [{ name: 'baseUrl', description: 'clean application URL whose authority and mount are preserved.' }],
         returns: 'tokenized URL for initial login; a mount proxy strips its prefix before {@link authorizeIndex}.',
+      },
+    ],
+  },
+  {
+    key: 'cotecconsSso',
+    summary: 'One Entra ID sign-in per Host.',
+    description: 'One Entra ID sign-in per Host. Views never carry tokens; getAccessToken is Host-only and its result must never be sent to a Client, logged, or stored outside the provider\'s token cache.',
+    methods: [
+      {
+        signature: 'abstract readonly aiScope: string',
+        description: 'Resource scope consented at sign-in for Azure AI requests, such as `https://cognitiveservices.azure.com/.default`. Model routes request tokens for exactly this scope.',
+        parameters: [],
+      },
+      {
+        signature: 'abstract getState(): Promise<CotecconsSsoView>',
+        description: 'Read the current sign-in state.',
+        parameters: [],
+        returns: 'a snapshot without tokens.',
+      },
+      {
+        signature: 'abstract startSignIn(): Promise<CotecconsSsoView>',
+        description: 'Join the active attempt or start an interactive browser sign-in. While the deployment is not configured or an account is signed in, the state is returned unchanged.',
+        parameters: [],
+        returns: 'the snapshot after the attempt starts, without waiting for the user.',
+      },
+      {
+        signature: 'abstract cancelSignIn(id: CotecconsSsoSignInId): Promise<CotecconsSsoView>',
+        description: 'Cancel the named attempt.',
+        parameters: [{ name: 'id', description: 'attempt identity from this Host; any other id leaves state unchanged.' }],
+        returns: 'the snapshot after the attempt settles.',
+      },
+      {
+        signature: 'abstract signOut(): Promise<CotecconsSsoView>',
+        description: 'Forget the signed-in account and delete its stored token cache.',
+        parameters: [],
+        returns: 'the signed-out snapshot.',
+      },
+      {
+        signature: 'abstract watch(signal: AbortSignal): AsyncIterable<CotecconsSsoView>',
+        description: 'Subscribe to complete snapshots, starting with the current one.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels a sign-in.' }],
+        returns: 'snapshots as the state changes.',
+      },
+      {
+        signature: 'abstract getAccessToken(scope: string, signal?: AbortSignal): Promise<string>',
+        description: 'Return a current access token for the signed-in account, refreshing it silently when it expired.',
+        parameters: [{ name: 'scope', description: 'resource scope the token is for.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the bearer token value.',
+        throws: ['CotecconsSsoTokenUnavailableError when the deployment is not configured, nobody is signed in, or Entra ID requires the user to sign in again.'],
+      },
+      {
+        signature: 'abstract getM365State(): Promise<readonly M365ConnectorView[]>',
+        description: 'Read every Microsoft 365 connector\'s state, in `mail`, `chat`, `files` order.',
+        parameters: [],
+        returns: 'one token-free view per connector.',
+      },
+      {
+        signature: 'abstract connectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>',
+        description: 'Join the connector\'s active attempt or start an interactive browser sign-in against its enterprise app. Entra ID refuses the sign-in when IT has not assigned the user, which leaves the connector `blocked`.',
+        parameters: [{ name: 'id', description: 'connector to connect.' }],
+        returns: 'every connector\'s state after the attempt starts.',
+      },
+      {
+        signature: 'abstract cancelM365Connect(id: M365ConnectorId, attemptId: M365ConnectAttemptId): Promise<readonly M365ConnectorView[]>',
+        description: 'Cancel the named connector attempt.',
+        parameters: [{ name: 'id', description: 'connector whose attempt to cancel.' }, { name: 'attemptId', description: 'attempt identity; any other id leaves state unchanged.' }],
+        returns: 'every connector\'s state after the attempt settles.',
+      },
+      {
+        signature: 'abstract disconnectM365(id: M365ConnectorId): Promise<readonly M365ConnectorView[]>',
+        description: 'Forget the connector\'s stored sign-in on this Host. IT-side assignment is unchanged.',
+        parameters: [{ name: 'id', description: 'connector to disconnect.' }],
+        returns: 'every connector\'s state afterwards.',
+      },
+      {
+        signature: 'abstract watchM365(signal: AbortSignal): AsyncIterable<readonly M365ConnectorView[]>',
+        description: 'Subscribe to complete connector snapshots, starting with the current one.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime; ending it never cancels an attempt.' }],
+        returns: 'snapshots as any connector changes.',
+      },
+      {
+        signature: 'abstract getM365AccessToken(id: M365ConnectorId, signal?: AbortSignal): Promise<string>',
+        description: 'Return a current Microsoft Graph token for one connector, refreshing it silently. Host-only; the token must never reach a Client, a log, or the session log.',
+        parameters: [{ name: 'id', description: 'connector whose enterprise app issues the token.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the bearer token value.',
+        throws: ['M365AccessUnavailableError when the connector is not configured, not connected, or blocked by Entra ID.'],
       },
     ],
   },
@@ -1362,6 +1511,55 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'knowledge',
+    summary: 'Abstract knowledge store.',
+    description: 'Abstract knowledge store. Subclass it and load the subclass as a plugin; it registers as `ctx.knowledge` (one provider per context: loading a second throws). Every provider honors:\n\n- A page whose entry was written with status `archived` is left out of `index`, `query`, and `neighbors`; `read` and `cite` still return it.\n- Reads derive edges, staleness, and ranking from the stored pages on every call; nothing derivable is stored.\n- `write` returns `refused` for an entry that breaks a store rule, including an empty `citation.sourceEventSeqs`, and throws only on I/O failure.\n- `includes` answers whether a workspace path lies inside the store, so a guard can refuse writes that bypass `write`.',
+    methods: [
+      {
+        signature: 'abstract index(scope: KnowledgeScope): Promise<KnowledgeIndex>',
+        description: 'List the readable pages that are not archived, newest first, and the quarantined ones.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }],
+        returns: 'the store listing.',
+      },
+      {
+        signature: 'abstract query(scope: KnowledgeScope, text: string, limit: number): Promise<KnowledgeHit[]>',
+        description: 'Rank pages that are not archived by the query words they contain.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'text', description: 'query text.' }, { name: 'limit', description: 'maximum hits.' }],
+        returns: 'hits with a score above zero, best first.',
+      },
+      {
+        signature: 'abstract read(scope: KnowledgeScope, ref: string): Promise<KnowledgePage | undefined>',
+        description: 'Read one page by id, id without `.md`, or a file name unique in the store.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference.' }],
+        returns: 'the page, or `undefined` when the reference names no readable page.',
+      },
+      {
+        signature: 'abstract cite(scope: KnowledgeScope, ref: string): Promise<KnowledgeEdge[]>',
+        description: 'Edges that start or end at one page, or the one edge with an edge id.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference or `e:` edge id.' }],
+        returns: 'matching edges; empty when the reference matches nothing.',
+      },
+      {
+        signature: 'abstract neighbors(scope: KnowledgeScope, ref: string, depth: number): Promise<KnowledgeNeighbors | undefined>',
+        description: 'Pages that are not archived within `depth` links of one page, in either direction; links through an archived page are not followed.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'ref', description: 'page reference.' }, { name: 'depth', description: 'maximum link distance, at least 1.' }],
+        returns: 'the pages by distance, or `undefined` when the reference names no readable page.',
+      },
+      {
+        signature: 'abstract write(scope: KnowledgeScope, entry: KnowledgeEntry, citation: KnowledgeCitation): Promise<KnowledgeWriteResult>',
+        description: 'Create or replace one page after checking every store rule.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'entry', description: 'page to write.' }, { name: 'citation', description: 'the session events the page is based on.' }],
+        returns: '`written` with the pages that became stale, or `refused` with the broken rule.',
+      },
+      {
+        signature: 'abstract includes(scope: KnowledgeScope, path: string): Promise<boolean>',
+        description: 'Whether a workspace path lies inside the store.',
+        parameters: [{ name: 'scope', description: 'session working directory and cancellation.' }, { name: 'path', description: 'absolute path, or a path relative to `scope.cwd`.' }],
+        returns: 'true for the store root and every path below it.',
+      },
+    ],
+  },
+  {
     key: 'llm',
     summary: 'The abstract `llm` service: an adapter registry plus a streaming model-call API, interceptable via the `llm/stream` waterfall.',
     description: 'The abstract `llm` service: an adapter registry plus a streaming model-call API, interceptable via the `llm/stream` waterfall.',
@@ -1724,8 +1922,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'productAnalytics',
-    summary: 'Authenticated event intake; disabled instances do not inspect identity or accept new events.',
-    description: 'Authenticated event intake; disabled instances do not inspect identity or accept new events.',
+    summary: 'Event intake; disabled instances do not inspect identity or accept new events, and a composition without DeepSeek Platform sign-in reports without identity attributes.',
+    description: 'Event intake; disabled instances do not inspect identity or accept new events, and a composition without DeepSeek Platform sign-in reports without identity attributes.',
     methods: [
       {
         signature: '@Remote enabled(): boolean',
@@ -1944,10 +2142,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'the normalized selection installed for the Session, without waiting for default persistence.',
       },
       {
-        signature: '@Remote async initializeDefaultModel(): Promise<void>',
-        description: 'Select the first available account model after login when no provider API key is configured.',
-        parameters: [],
-        returns: 'after saving the first available model or retaining the existing default.',
+        signature: '@Remote async initializeDefaultModel(provider: string): Promise<void>',
+        description: 'Save the first available model of an account route as the Agent default after that account signs in.',
+        parameters: [{ name: 'provider', description: 'account route whose first model becomes the default, such as `coteccons`.' }],
+        returns: 'after the selection is saved.',
       },
       {
         signature: '@Remote(\'modelCatalog\') modelCatalog(): Promise<ModelCatalog>',
@@ -3253,9 +3451,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'pruned content, or `null` when the text is within budget.',
       },
       {
-        signature: 'pruneSession(session: Session): PruneResult',
-        description: 'Prune every over-budget tool result from one stable current-surface snapshot. Each replacement preserves the complete event data except for `content`, cites the shadowed node so replay can recover the replacement input, and is immediately preceded by a `compaction/prune` shadow-price event pricing the shadowed node through the injected token meter, so pure consumers can subtract it without per-node state.',
-        parameters: [{ name: 'session', description: 'session whose current surface is rewritten.' }],
+        signature: 'pruneSession(session: Session, trigger: CompactionTrigger): PruneResult',
+        description: 'Prune over-budget tool results from one stable current-surface snapshot. With `protectUnseen` and the `pressure` trigger, results after the latest assistant message on the surface stay verbatim because the model has not answered them yet; `context-overflow` prunes every over-budget result. Each replacement preserves the complete event data except for `content`, cites the shadowed node so replay can recover the replacement input, and is immediately preceded by a `compaction/prune` shadow-price event pricing the shadowed node through the injected token meter, so pure consumers can subtract it without per-node state.',
+        parameters: [{ name: 'session', description: 'session whose current surface is rewritten.' }, { name: 'trigger', description: 'the compaction trigger that qualified this pass.' }],
         returns: 'landed replacements and aggregate Unicode-code-point savings.',
         throws: ['when the session rejects a replacement; replacements committed earlier in the pass remain durable.'],
       },
@@ -3868,6 +4066,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'The turn is about to close: the model owes no response (no live tool calls, no fresh steering).',
     description: 'The turn is about to close: the model owes no response (no live tool calls, no fresh steering). Awaited before the boundary commits — a listener that objects steers (`agent.steer(...)`) and the machine re-reads its inbox: fresh steering runs another step, none closes the turn. Data decides, so listener order cannot change the outcome. The inverse control (stop a tool loop early) is data too: a tool result carrying `concludesTurn` ends the turn at its step. The conclusion never short-circuits already-submitted next-step work: same-step `additionalContexts` or racing steering still runs, and the turn closes only when that inbox drains.',
     parameters: [{ name: 'payload', description: '.signal - the current turn\'s explicit abort signal. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): agent-scoped listeners receive only that agent.' }],
+  },
+  {
+    name: 'ai-account/default-changed',
+    mode: 'emit',
+    signature: '\'ai-account/default-changed\'(kind: AiAccountKind): void',
+    summary: 'The default account of one kind changed, including to no default.',
+    description: 'The default account of one kind changed, including to no default.',
+    parameters: [{ name: 'kind', description: 'account kind whose default changed.' }],
+  },
+  {
+    name: 'ai-account/status-changed',
+    mode: 'emit',
+    signature: '\'ai-account/status-changed\'(change: AiAccountStatusChange): void',
+    summary: 'A status check changed one registered account\'s sign-in status.',
+    description: 'A status check changed one registered account\'s sign-in status. Emitted once per transition, never for a check that confirms the previous status or answers inconclusively.',
+    parameters: [{ name: 'change', description: 'account, previous status, and the new status view.' }],
   },
   {
     name: 'api-session/activity',
@@ -4518,6 +4732,50 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type AgentStatus = \'idle\' | \'running\';',
   },
   {
+    name: 'AiAccountId',
+    declaration: 'export type AiAccountId = Branded<\'AiAccountId\'>;',
+  },
+  {
+    name: 'AiAccountKind',
+    declaration: 'export type AiAccountKind = \'claude\' | \'chatgpt\';',
+  },
+  {
+    name: 'AiAccountSignInError',
+    declaration: 'export type AiAccountSignInError = \'executable-missing\' | \'login-failed\' | \'timeout\' | \'identity-unavailable\' | \'store-failed\';',
+  },
+  {
+    name: 'AiAccountSignInId',
+    declaration: 'export type AiAccountSignInId = Branded<\'AiAccountSignInId\'>;',
+  },
+  {
+    name: 'AiAccountSignInPhase',
+    declaration: 'export type AiAccountSignInPhase = \'starting\' | \'waiting-browser\' | \'waiting-device-code\' | \'verifying\' | \'succeeded\' | \'cancelled\' | \'failed\';',
+  },
+  {
+    name: 'AiAccountSignInView',
+    declaration: 'export interface AiAccountSignInView {\n    readonly id: AiAccountSignInId;\n    readonly kind: AiAccountKind;\n    readonly phase: AiAccountSignInPhase;\n    readonly url: string | null;\n    readonly userCode: string | null;\n    readonly awaitingCode: boolean;\n    readonly errorCode: AiAccountSignInError | null;\n}',
+  },
+  {
+    name: 'AiAccountStatus',
+    declaration: 'export type AiAccountStatus = \'signedIn\' | \'signedOut\' | \'unknown\';',
+  },
+  {
+    name: 'AiAccountStatusChange',
+    declaration: 'export interface AiAccountStatusChange {\n    readonly id: AiAccountId;\n    readonly kind: AiAccountKind;\n    readonly isDefault: boolean;\n    readonly previous: AiAccountStatus;\n    readonly current: AiAccountStatusView;\n}',
+  },
+  {
+    name: 'AiAccountStatusView',
+    declaration: 'export interface AiAccountStatusView {\n    readonly status: AiAccountStatus;\n    readonly checkedAt: number | null;\n    readonly message: string | null;\n}',
+  },
+  {
+    name: 'AiAccountsView',
+    declaration: 'export interface AiAccountsView {\n    readonly accounts: readonly AiAccountView[];\n    readonly signIn: AiAccountSignInView | null;\n}',
+  },
+  {
+    name: 'AiAccountView',
+    declaration: 'export interface AiAccountView {\n    readonly id: AiAccountId;\n    readonly kind: AiAccountKind;\n    readonly email: string | null;\n    readonly plan: string | null;\n    readonly createdAt: number;\n    readonly isDefault: boolean;\n    readonly status: AiAccountStatusView;\n}',
+  },
+  {
     name: 'ApiKeyRecord',
     declaration: 'export interface ApiKeyRecord {\n    readonly kind: \'api-key\';\n    readonly key?: string;\n    readonly env?: Readonly<Record<string, string>>;\n}',
   },
@@ -4948,6 +5206,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CordisRuntimeTreeReader',
     declaration: 'export interface CordisRuntimeTreeReader {\n    getTree(): Promise<CordisRuntimeTree>;\n}',
+  },
+  {
+    name: 'CotecconsSsoAccountView',
+    declaration: 'export interface CotecconsSsoAccountView {\n    readonly name: string | null;\n    readonly username: string;\n    readonly tenantId: string;\n}',
+  },
+  {
+    name: 'CotecconsSsoError',
+    declaration: 'export type CotecconsSsoError = \'sign-in-failed\' | \'timeout\' | \'domain-not-allowed\' | \'session-expired\';',
+  },
+  {
+    name: 'CotecconsSsoSetting',
+    declaration: 'export type CotecconsSsoSetting = \'tenantId\' | \'clientId\';',
+  },
+  {
+    name: 'CotecconsSsoSignInId',
+    declaration: 'export type CotecconsSsoSignInId = Branded<\'CotecconsSsoSignInId\'>;',
+  },
+  {
+    name: 'CotecconsSsoView',
+    declaration: 'export type CotecconsSsoView = {\n    readonly status: \'not-configured\';\n    readonly missing: readonly CotecconsSsoSetting[];\n} | {\n    readonly status: \'signed-out\';\n} | {\n    readonly status: \'signing-in\';\n    readonly attemptId: CotecconsSsoSignInId;\n    readonly url: string | null;\n} | {\n    readonly status: \'signed-in\';\n    readonly account: CotecconsSsoAccountView;\n} | {\n    readonly status: \'error\';\n    readonly errorCode: CotecconsSsoError;\n};',
   },
   {
     name: 'CreateAgentOptions',
@@ -5558,6 +5836,82 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type JsonValue = null | boolean | number | string | JsonValue[] | {\n    [key: string]: JsonValue;\n};',
   },
   {
+    name: 'KnowledgeCitation',
+    declaration: 'export interface KnowledgeCitation {\n    sessionId: SessionId;\n    sourceEventSeqs: readonly SessionSeq[];\n    sources: readonly string[];\n    writer: KnowledgeWriter;\n}',
+  },
+  {
+    name: 'KnowledgeDeclaredRelation',
+    declaration: 'export type KnowledgeDeclaredRelation = \'derives-from\' | \'depends-on\' | \'implements\' | \'supports\' | \'contradicts\' | \'supersedes\';',
+  },
+  {
+    name: 'KnowledgeEdge',
+    declaration: 'export interface KnowledgeEdge {\n    eid: KnowledgeEdgeId;\n    from: KnowledgePageId;\n    to: string;\n    toKind: KnowledgeNodeKind;\n    relation: KnowledgeRelation;\n}',
+  },
+  {
+    name: 'KnowledgeEdgeId',
+    declaration: 'export type KnowledgeEdgeId = Branded<\'KnowledgeEdgeId\'>;',
+  },
+  {
+    name: 'KnowledgeEntry',
+    declaration: 'export interface KnowledgeEntry {\n    id: KnowledgePageId;\n    type: string;\n    title: string;\n    body: string;\n    relations: readonly KnowledgeRelationDeclaration[];\n    status?: KnowledgePageStatus;\n}',
+  },
+  {
+    name: 'KnowledgeHit',
+    declaration: 'export interface KnowledgeHit extends KnowledgeIndexEntry {\n    score: number;\n}',
+  },
+  {
+    name: 'KnowledgeIndex',
+    declaration: 'export interface KnowledgeIndex {\n    entries: KnowledgeIndexEntry[];\n    quarantined: KnowledgePageId[];\n}',
+  },
+  {
+    name: 'KnowledgeIndexEntry',
+    declaration: 'export interface KnowledgeIndexEntry {\n    id: KnowledgePageId;\n    title: string;\n    type: string;\n    updated?: string;\n    stale: boolean;\n}',
+  },
+  {
+    name: 'KnowledgeNeighbors',
+    declaration: 'export interface KnowledgeNeighbors {\n    id: KnowledgePageId;\n    levels: KnowledgePageId[][];\n}',
+  },
+  {
+    name: 'KnowledgeNodeKind',
+    declaration: 'export type KnowledgeNodeKind = \'page\' | \'code\';',
+  },
+  {
+    name: 'KnowledgePage',
+    declaration: 'export interface KnowledgePage extends KnowledgeIndexEntry {\n    relations: KnowledgeRelationDeclaration[];\n    content: string;\n    body: string;\n    status?: KnowledgePageStatus;\n}',
+  },
+  {
+    name: 'KnowledgePageId',
+    declaration: 'export type KnowledgePageId = Branded<\'KnowledgePageId\'>;',
+  },
+  {
+    name: 'KnowledgePageStatus',
+    declaration: 'export type KnowledgePageStatus = \'archived\';',
+  },
+  {
+    name: 'KnowledgeRelation',
+    declaration: 'export type KnowledgeRelation = KnowledgeDeclaredRelation | \'wikilink\' | \'mdlink\' | \'touches\';',
+  },
+  {
+    name: 'KnowledgeRelationDeclaration',
+    declaration: 'export interface KnowledgeRelationDeclaration {\n    relation: KnowledgeDeclaredRelation;\n    to: KnowledgePageId;\n}',
+  },
+  {
+    name: 'KnowledgeRule',
+    declaration: 'export type KnowledgeRule = \'layout\' | \'read-only-dir\' | \'frontmatter\' | \'origin\' | \'citation\' | \'dangling-relation\' | \'superseded-dependency\';',
+  },
+  {
+    name: 'KnowledgeScope',
+    declaration: 'export interface KnowledgeScope {\n    readonly cwd?: string | undefined;\n    readonly signal?: AbortSignal | undefined;\n}',
+  },
+  {
+    name: 'KnowledgeWriter',
+    declaration: 'export type KnowledgeWriter = \'tool\' | \'distill\';',
+  },
+  {
+    name: 'KnowledgeWriteResult',
+    declaration: 'export type KnowledgeWriteResult = {\n    kind: \'written\';\n    id: KnowledgePageId;\n    operation: \'create\' | \'update\';\n    stale: KnowledgePageId[];\n} | {\n    kind: \'refused\';\n    rule: KnowledgeRule;\n    reason: string;\n};',
+  },
+  {
     name: 'KvFacet',
     declaration: 'export interface KvFacet {\n    open(descriptor: KvUnitDescriptor): Promise<KvUnit>;\n}',
   },
@@ -5688,6 +6042,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LspRange',
     declaration: 'export interface LspRange {\n    readonly start: LspPosition;\n    readonly end: LspPosition;\n}',
+  },
+  {
+    name: 'M365ConnectAttemptId',
+    declaration: 'export type M365ConnectAttemptId = Branded<\'M365ConnectAttemptId\'>;',
+  },
+  {
+    name: 'M365ConnectorError',
+    declaration: 'export type M365ConnectorError = \'not-assigned\' | \'disabled-by-admin\' | \'consent-required\' | \'revoked\' | \'failed\';',
+  },
+  {
+    name: 'M365ConnectorId',
+    declaration: 'export type M365ConnectorId = \'mail\' | \'chat\' | \'files\';',
+  },
+  {
+    name: 'M365ConnectorView',
+    declaration: 'export type M365ConnectorView = {\n    readonly id: M365ConnectorId;\n    readonly status: \'not-configured\';\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'disconnected\';\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'connecting\';\n    readonly attemptId: M365ConnectAttemptId;\n    readonly url: string | null;\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'connected\';\n    readonly username: string;\n} | {\n    readonly id: M365ConnectorId;\n    readonly status: \'blocked\';\n    readonly errorCode: M365ConnectorError;\n};',
   },
   {
     name: 'ManagementError',

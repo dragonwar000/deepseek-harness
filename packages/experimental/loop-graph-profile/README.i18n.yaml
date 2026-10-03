@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/loop-graph-profile/README.md
+/:
+  en: f80503173a28ad20
+  zh: 1554edd617085057
+/deepseek-ai-dsh-experimental-loop-graph-profile:
+  en: 73200c096febef48
+  zh: 4e3942bdefcc59e5
+/deepseek-ai-dsh-experimental-loop-graph-profile/summary:
+  en: e4e797cc36b83e4a
+  zh: 7696f003afa91e57
+/deepseek-ai-dsh-experimental-loop-graph-profile/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-loop-graph-profile/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-experimental-loop-graph-profile/use-this-package/install-into-a-profile:
+  en: ea79aeaa908a31de
+  zh: 09630dac6baf3013
+/deepseek-ai-dsh-experimental-loop-graph-profile/use-this-package/what-you-get:
+  en: 65af68da8afba2c9
+  zh: 3756cc5011b1497d
+/deepseek-ai-dsh-experimental-loop-graph-profile/understand-the-implementation:
+  en: d44914d3fb01b943
+  zh: 7d4431345b977cbf
+/deepseek-ai-dsh-experimental-loop-graph-profile/further-exploration:
+  en: 54bcc9b7f0f5e68a
+  zh: 3d59d453b08864ae
+/deepseek-ai-dsh-experimental-loop-graph-profile/model-experience:
+  en: caa81bbdd210c540
+  zh: e88600893b9fb50d
+/deepseek-ai-dsh-experimental-loop-graph-profile/model-experience/kv-cache-effect:
+  en: e902d3660d0d4aea
+  zh: 33fb78aa53cefa8d
+/deepseek-ai-dsh-experimental-loop-graph-profile/known-limitations-and-deferred-work:
+  en: f369883b918cdfc6
+  zh: 243966d3c54961e1
+/deepseek-ai-dsh-experimental-loop-graph-profile/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

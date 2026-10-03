@@ -28,8 +28,8 @@ it.each(['desktop', 'web'])('limits collection and its shutdown to the Desktop l
     name: profile, dir: '/profile', patchPath: '/profile/cordis.patch.yml', installAnchor: '/profile/package.json',
     cwd: '/workspace', home: '/home', startedBundles: [], overlays: [], telemetryDisabledEnv: undefined,
   })
-  const identity = vi.fn().mockResolvedValue(undefined)
-  ctx.provide('deepseekAccount', { getDeviceIdentity: identity } as never)
+  // No `deepseekAccount`: the shipped composition disables DeepSeek Platform
+  // sign-in, so the row must activate and report without identity attributes.
   await ctx.plugin(OTel)
   ctx.baseUrl = 'file:///'
   await ctx.plugin(Loader).await()
@@ -65,10 +65,7 @@ it.each(['desktop', 'web'])('limits collection and its shutdown to the Desktop l
     expect(await changed).toEqual({ value: enabled, done: false })
     expect(ctx.loader.resolve('product-analytics').fiber === analyticsFiber).toBe(true)
     expect(entry.fiber === telemetryFiber).toBe(true)
-    if (!enabled) {
-      await analytics.report({ eventName: 'desktop_app_launch', timestamp: 1, attributes: {} })
-      expect(identity).not.toHaveBeenCalled()
-    }
+    if (!enabled) await analytics.report({ eventName: 'desktop_app_launch', timestamp: 1, attributes: {} })
   }
   const emit = vi.spyOn(ctx.productTelemetry, 'emit')
   await analytics.report({ eventName: 'desktop_app_launch', timestamp: 1, attributes: {} })

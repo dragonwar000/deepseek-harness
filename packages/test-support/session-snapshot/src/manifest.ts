@@ -49,6 +49,12 @@ export interface SnapshotWorkspaceManifest {
   final?: true
   /** Place the generated cwd outside automatically writable temporary roots. */
   parent?: 'outside-temp'
+  /**
+   * Compare final and expected text files after replacing the run's session
+   * ids with `{{session:<n>}}` and ISO-8601 UTC instants with `{{time}}`;
+   * requires `final`.
+   */
+  tokens?: true
 }
 
 /** Controller input that cannot enter a session because admission rejects it. */
@@ -318,9 +324,12 @@ export function parseSnapshotManifest(source: string, path = 'snapshot.yml'): Sn
     let workspace: SnapshotWorkspaceManifest | undefined
     if (root.workspace !== undefined) {
       const value = record(root.workspace, 'manifest.workspace')
-      exactKeys(value, ['setup', 'final', 'parent'], 'manifest.workspace')
+      exactKeys(value, ['setup', 'final', 'parent', 'tokens'], 'manifest.workspace')
       if (value.final !== undefined && value.final !== true) {
         throw new Error('manifest.workspace.final must equal true when present')
+      }
+      if (value.tokens !== undefined && (value.tokens !== true || value.final !== true)) {
+        throw new Error('manifest.workspace.tokens must equal true and requires final: true')
       }
       if (value.parent !== undefined && value.parent !== 'outside-temp') {
         throw new Error('manifest.workspace.parent must equal outside-temp')
@@ -329,6 +338,7 @@ export function parseSnapshotManifest(source: string, path = 'snapshot.yml'): Sn
         ...(value.setup === undefined ? {} : { setup: name(value.setup, 'manifest.workspace.setup') }),
         ...(value.final === true ? { final: true as const } : {}),
         ...(value.parent === 'outside-temp' ? { parent: 'outside-temp' as const } : {}),
+        ...(value.tokens === true ? { tokens: true as const } : {}),
       }
       if (Object.keys(workspace).length === 0) throw new Error('manifest.workspace must not be empty')
     }

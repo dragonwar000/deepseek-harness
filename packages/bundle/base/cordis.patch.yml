@@ -109,10 +109,16 @@
     - id: authorization
       name: '@deepseek-ai/dsh-authorization'
 
+    # DeepSeek Platform sign-in is not part of CTD Core; Coteccons SSO in the
+    # Web App Bundle replaces it. The row stays addressable for profile patches.
     - id: deepseek-account
       name: '@deepseek-ai/dsh-deepseek-account-platform'
+      disabled: true
       config:
         desktopPlatform: !!js "ctx.get('profileContext')?.name === 'desktop' && ['darwin', 'win32'].includes(process.platform) ? process.platform : null"
+
+    - id: ai-account
+      name: '@deepseek-ai/dsh-ai-account-platform'
 
     - id: credentials
       name: '@deepseek-ai/dsh-credentials-local'
@@ -527,3 +533,13 @@
 
     - id: llm-deepseek-account
       name: '@deepseek-ai/dsh-llm-deepseek-account'
+      disabled: true
+
+    # A Claude subscription as a chat model, with the Claude Code CLI as the transport: the CLI owns
+    # authentication and this Harness never calls the Anthropic model API. The route registers only
+    # while an AI Account of kind `claude` has a default. Off by default because the CLI accepts no
+    # caller-supplied tool definitions, so a tool-bearing turn is served by declaring the tools in
+    # the prompt and parsing the model's fenced call back out; enable it from a profile patch.
+    - id: llm-claude-cli
+      name: '@deepseek-ai/dsh-llm-claude-cli'
+      disabled: true

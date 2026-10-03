@@ -1,0 +1,11 @@
+version: 1
+scenario: graph-run-diamond
+profile: headless
+composition: graph-run-diamond
+recording: live
+header:
+  class: graph-run-diamond
+  pin: true
+  systemPromptSource: text-turn
+  childSystemPrompts: [1, 2, 3, 4]
+  childToolSchemas: [1, 2, 3, 4]

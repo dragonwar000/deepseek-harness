@@ -232,6 +232,9 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // The headless entry and its startup row share the JSON projection code
   // through a hashed tsdown chunk; both import it by relative path.
   '@deepseek-ai/dsh-headless': ['lib/json-stream-*.js'],
+  // The package entry and its invariant companion share the graphPlans fold
+  // and plan schemas through a hashed tsdown chunk.
+  '@deepseek-ai/dsh-experimental-graph-contract': ['lib/projection-*.js'],
 }
 
 function sameStringList(actual: readonly string[] | undefined, expected: readonly string[]): boolean {

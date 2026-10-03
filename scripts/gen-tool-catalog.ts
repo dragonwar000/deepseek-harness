@@ -63,6 +63,12 @@ import BrowserUseRegistry from '@deepseek-ai/dsh-browser-use'
 import * as StagehandBrowserTools from '@deepseek-ai/dsh-experimental-browser-use-stagehand-native'
 import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
+import * as GraphContract from '@deepseek-ai/dsh-experimental-graph-contract'
+import * as GraphProjection from '@deepseek-ai/dsh-experimental-graph-projection'
+import * as GraphRunner from '@deepseek-ai/dsh-experimental-graph-runner'
+import WikiFilesystemKnowledge from '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
+import * as ToolKnowledge from '@deepseek-ai/dsh-experimental-tool-knowledge'
+import * as MemoryZeromem from '@deepseek-ai/dsh-experimental-memory-zeromem'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
 import type PluginManager from '@deepseek-ai/dsh-plugin-manager'
 import * as PluginManagerTools from '@deepseek-ai/dsh-plugin-manager/tools'
@@ -71,6 +77,7 @@ import McpResources from '@deepseek-ai/dsh-mcp-resources'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import { registerListSubagentModels } from '../packages/subagent/tool-subagent/src/list-models.ts'
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
+import * as ToolM365 from '@deepseek-ai/dsh-tool-m365'
 import WorkflowEngine from '@deepseek-ai/dsh-workflow'
 import type { WorkflowRun, WorkflowStartRequest } from '@deepseek-ai/dsh-workflow'
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
@@ -619,6 +626,74 @@ const TOOL_PACKAGES: ToolPackage[] = [
       'All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.',
   },
   {
+    pkg: '@deepseek-ai/dsh-experimental-graph-contract',
+    dir: 'graph-contract',
+    source: 'packages/experimental/graph-contract/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'owning Agent session', 'optional ctx.subagents for the depth check'],
+    writes: ['tool/call', 'graph/plan', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(GraphContract, {
+        mode: 'enforce',
+        assumption: 'the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them',
+      })
+    },
+    note:
+      'Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same two tools and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` and `routes` default to none, which only changes audit and capability results, not the schemas.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-graph-projection',
+    dir: 'graph-projection',
+    source: 'packages/experimental/graph-projection/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'owning Agent session', 'optional ctx.sessionQuery for history_read'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(GraphProjection)
+    },
+    note: 'Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn\'s tool records, and compaction spans, and writes no session event of its own.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-graph-runner',
+    dir: 'graph-runner',
+    source: 'packages/experimental/graph-runner/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'ctx.subagents', 'graph-contract and graph-projection mounted', 'owning Agent session'],
+    writes: ['tool/call', 'graph/run', 'graph/node', 'graph/edge', 'subagent/catalog', 'approval/asked', 'approval/decided', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(SubagentRuntime)
+      await ctx.plugin(GraphRunner, {
+        mode: 'enforce',
+        assumption: 'node agents report completion without proof unless a verifier or a command confirms it',
+      })
+    },
+    note: 'Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-tool-knowledge',
+    dir: 'tool-knowledge',
+    source: 'packages/experimental/tool-knowledge/src/index.ts',
+    requires: ['ctx.tools', 'ctx.sessionProjections', 'ctx.fs', 'a ctx.knowledge provider', 'owning Agent session for knowledge_write'],
+    writes: ['tool/call', 'approval/asked', 'approval/decided', 'knowledge/write', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(LocalFileSystem)
+      await ctx.plugin(WikiFilesystemKnowledge)
+      await ctx.plugin(ToolKnowledge, { mode: 'read-write' })
+    },
+    note: 'Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-memory-zeromem',
+    dir: 'memory-zeromem',
+    source: 'packages/experimental/memory-zeromem/src/index.ts',
+    requires: ['ctx.tools', 'ctx.subprocess', 'ctx.sessionProjections', 'a zeromem zm executable', 'the bge-small-en-v1.5 model directory for embedder default', 'owning Agent session for the working directory and the excluded session'],
+    writes: ['tool/call', 'approval/asked', 'approval/decided', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(LocalSubprocessRuntime)
+      // Schema harvest never runs zm; any resolvable executable satisfies the load-time lookup, and the hash
+      // embedder skips the model check without changing a tool definition.
+      await ctx.plugin(MemoryZeromem, { zmPath: process.execPath, embedder: 'hash', allowForget: true })
+    },
+    note: 'Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`).',
+  },
+  {
     pkg: '@deepseek-ai/dsh-tool-todo',
     dir: 'tool-todo',
     source: 'packages/todo/tool-todo/src/index.ts',
@@ -670,6 +745,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-m365',
+    dir: 'tool-m365',
+    source: 'packages/web/tool-m365/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.cotecconsSso (execution time)'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // The SSO provider is read at each call, so the schema harvest mounts none.
+      await ctx.plugin(ToolM365)
+    },
+    note:
+      'Every m365_* tool reads with the signed-in user\'s delegated Microsoft Graph token; a connector IT has not granted returns a refusal naming the source instead of data.',
   },
 ]
 

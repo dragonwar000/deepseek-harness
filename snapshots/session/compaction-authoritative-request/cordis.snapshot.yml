@@ -1,0 +1,35 @@
+# Keyless replay of a split checkpoint. The quoted request is capped at 300
+# characters. The 1,500-token headroom sets the proactive trigger to 5,882
+# tokens, so the split checkpoint alone brings the next request below it.
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  disabled: true
+
+- id: session-persistence-jsonl
+  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+
+- id: compaction-basic
+  name: '@deepseek-ai/dsh-compaction-basic'
+  config:
+    thresholdRatio: 0.8
+    headroomTokens: 1500
+    retainTokens: 20
+    authoritativeRequest:
+      mode: split
+      maxChars: 300
+
+- insert:
+    - id: llm-replay
+      name: '@deepseek-ai/dsh-llm-replay'
+      config:
+        providers:
+          - id: deepseek-official
+            name: DeepSeek
+            models:
+              - id: deepseek-v4-flash
+                contextWindow: 8382
+                defaultMaxTokens: 1000

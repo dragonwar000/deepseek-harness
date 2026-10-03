@@ -34,6 +34,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`@agentclientprotocol/sdk`](https://github.com/agentclientprotocol/typescript-sdk) | Apache-2.0 |
 | [`@anthropic-ai/claude-agent-sdk`](https://github.com/anthropics/claude-agent-sdk-typescript) | SEE LICENSE IN README.md |
 | [`@anthropic-ai/sdk`](https://github.com/anthropics/anthropic-sdk-typescript) | MIT |
+| [`@azure/msal-node`](https://github.com/AzureAD/microsoft-authentication-library-for-js) | MIT |
 | [`@babel/code-frame`](https://github.com/babel/babel) | MIT |
 | [`@browserbasehq/stagehand`](https://github.com/browserbase/stagehand) | MIT |
 | [`@deepseek-ai/libreoffice-kit`](https://github.com/deepseek-harness/libreoffice-kit) | MPL-2.0 |
@@ -283,6 +284,16 @@ The [shared runtime lock](scripts/primary-runtime/lock.json) records each distri
 | [`typing-extensions`](https://github.com/python/typing_extensions) | 4.16.0 | PSF-2.0 |
 | [`tzdata`](https://github.com/python/tzdata) | 2025.2 | Apache-2.0 |
 | [`xlsxwriter`](https://github.com/jmcnamara/XlsxWriter) | 3.2.9 | BSD-2-Clause |
+
+## Bundled executables and models
+
+CTD Core Desktop compiles zeromem's `zm` from source during packaging and carries it, the embedding model it loads, and their license texts under `resources/runtime/zeromem/`. The [Desktop zeromem lock](apps/desktop/scripts/zeromem-lock.json) pins each input: cargo builds the zeromem revision with its own `Cargo.lock` and default features against the static onnxruntime archive the lock pins by URL and SHA-256, and the lock pins each model file by SHA-256. The crates `zm` links are recorded in that `Cargo.lock`; onnxruntime's own third-party notices ship beside `zm` as `onnxruntime-ThirdPartyNotices.txt`.
+
+| Component | Source | Pinned revision | License |
+| --- | --- | --- | --- |
+| `zm` (`zeromem` 0.3.0) | [ptaranat/zeromem](https://github.com/ptaranat/zeromem) | `eda212665a35cd01c188121e759de282728238d5` | MIT |
+| onnxruntime 1.20.0, statically linked into `zm` | [microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) | `c4fb724e810bb496165b9015c77f402727392933` | MIT |
+| bge-small-en-v1.5 model | [Xenova/bge-small-en-v1.5](https://huggingface.co/Xenova/bge-small-en-v1.5) | `ea104dacec62c0de699686887e3f920caeb4f3e3` | MIT |
 
 ## First-party native packages
 

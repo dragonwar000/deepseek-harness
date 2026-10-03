@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-10-compact-tool-details.zh.md)
-
 ## Problem
 
 Goal, todo, and schedule results contain a small set of user-facing facts that take more effort to read as JSON. Dedicated expanded bodies need to fit the existing conversation rows without adding a second presentation registry or live state to historical calls.

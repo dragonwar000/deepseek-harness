@@ -1,4 +1,8 @@
-/** Pure archive-format, triplet, and immutable-manifest helpers. */
+/**
+ * Pure archive-format, artifact-set, and immutable-manifest helpers. An archived
+ * note is either an English-only `.md` or a complete English/Chinese/record
+ * triplet; the manifest seals whichever files it has.
+ */
 
 import { createHash } from 'node:crypto'
 import { basename } from 'node:path'
@@ -129,7 +133,14 @@ function validateMetadata(path: string, content: Buffer, sourceBase: string): { 
   return { errors, date: archived }
 }
 
-/** Validate the closed kind tree, implemented/archive metadata, and complete bilingual triplets. */
+/**
+ * Validate the closed kind tree, implemented/archive metadata, and each note's
+ * artifact set: the English file alone, or the complete triplet with matching
+ * archive dates and a pairing record of both sides' current Git blob hashes.
+ *
+ * @param artifacts - Archived file contents keyed by `{kind}/{file}` path.
+ * @returns One message per violation; empty when every note is valid.
+ */
 export function validateArchiveArtifacts(artifacts: ReadonlyMap<string, Buffer>): string[] {
   const errors: string[] = []
   const triplets = new Map<string, Triplet>()
@@ -156,6 +167,11 @@ export function validateArchiveArtifacts(artifacts: ReadonlyMap<string, Buffer>)
     const zhPath = `${key}.zh.md`
     const metaPath = `${key}.i18n.yaml`
     const { source, zh, meta } = triplet
+    const sourceBase = basename(key)
+    if (source !== undefined && zh === undefined && meta === undefined) {
+      errors.push(...validateMetadata(sourcePath, source, sourceBase).errors)
+      continue
+    }
     const missing = [
       source === undefined ? sourcePath : undefined,
       zh === undefined ? zhPath : undefined,
@@ -165,7 +181,6 @@ export function validateArchiveArtifacts(artifacts: ReadonlyMap<string, Buffer>)
       errors.push(`${key}: incomplete archived triplet; missing ${missing.join(', ')}`)
       continue
     }
-    const sourceBase = basename(key)
     const { errors: sourceErrors, date: sourceDate } = validateMetadata(sourcePath, source, sourceBase)
     const { errors: zhErrors, date: zhDate } = validateMetadata(zhPath, zh, sourceBase)
     errors.push(...sourceErrors, ...zhErrors)

@@ -1,0 +1,19 @@
+# The ordinary headless composition plus the graph layer: audit, task graph,
+# and the foreground runner, all enforcing. One node runs at a time so node
+# sessions are recorded in plan order.
+
+- insert:
+    - id: graph-contract
+      name: '@deepseek-ai/dsh-experimental-graph-contract'
+      config:
+        mode: enforce
+        assumption: "the model writes multi-unit plans with cycles, unconsumed nodes, or self-verification unless a deterministic audit rejects them"
+        allowedTools: [read, grep]
+    - id: graph-projection
+      name: '@deepseek-ai/dsh-experimental-graph-projection'
+    - id: graph-runner
+      name: '@deepseek-ai/dsh-experimental-graph-runner'
+      config:
+        mode: enforce
+        assumption: "node agents report completion without proof unless a verifier or a command confirms it"
+        maxConcurrent: 1

@@ -1,0 +1,9 @@
+version: 1
+scenario: memory-episodes
+profile: headless
+composition: memory-episodes
+recording: authored
+header:
+  class: memory-episodes
+  pin: true
+  systemPromptSource: text-turn

@@ -41,10 +41,16 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`, `list_agents`, `send_message` | `ctx.tools`, `ctx.subagents`, `ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`, `tool/result`, `child session events through ctx.subagents` | - | The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries). |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
+| `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit`, `graph_capabilities` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.subagents for the depth check` | `tool/call`, `graph/plan`, `tool/result` | - | Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same two tools and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` and `routes` default to none, which only changes audit and capability results, not the schemas. |
+| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`, `graph_query`, `history_read` | `ctx.tools`, `ctx.sessionProjections`, `owning Agent session`, `optional ctx.sessionQuery for history_read` | `tool/call`, `tool/result` | - | Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn's tool records, and compaction spans, and writes no session event of its own. |
+| `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`, `ctx.sessionProjections`, `ctx.subagents`, `graph-contract and graph-projection mounted`, `owning Agent session` | `tool/call`, `graph/run`, `graph/node`, `graph/edge`, `subagent/catalog`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema. |
+| `@deepseek-ai/dsh-experimental-tool-knowledge` | `knowledge_cite`, `knowledge_query`, `knowledge_read`, `knowledge_write` | `ctx.tools`, `ctx.sessionProjections`, `ctx.fs`, `a ctx.knowledge provider`, `owning Agent session for knowledge_write` | `tool/call`, `approval/asked`, `approval/decided`, `knowledge/write`, `tool/result` | - | Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval. |
+| `@deepseek-ai/dsh-experimental-memory-zeromem` | `memory_forget_session`, `memory_recall`, `memory_stats` | `ctx.tools`, `ctx.subprocess`, `ctx.sessionProjections`, `a zeromem zm executable`, `the bge-small-en-v1.5 model directory for embedder default`, `owning Agent session for the working directory and the excluded session` | `tool/call`, `approval/asked`, `approval/decided`, `tool/result` | - | Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`). |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
+| `@deepseek-ai/dsh-tool-m365` | `m365_read_chat`, `m365_read_file`, `m365_read_mail`, `m365_search` | `ctx.tools`, `ctx.systemPrompt`, `ctx.cotecconsSso (execution time)` | `tool/call`, `tool/result` | - | Every m365_* tool reads with the signed-in user's delegated Microsoft Graph token; a connector IT has not granted returns a refusal naming the source instead of data. |
 
 <a id="deepseek-aidsh-plugin-manager"></a>
 
@@ -2505,6 +2511,386 @@ Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/exper
 
 All nine tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
 
+<a id="deepseek-aidsh-experimental-graph-contract"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-contract`
+
+### `graph_audit`
+
+Audit one dsh-graph/v1 plan before any of it runs. The audit is deterministic and runs nothing. It checks: acyclic needs with one declared edge and artifact per dependency; every node output consumed; from L2, an anchor with verify commands and a fresh verification node; at L3, a human_gate and a stop_handoff; disjoint write scopes for nodes that can run together; allowed tools; the run budget; fallbacks for inputs from nodes that may fail; delegation depth; and acceptance unchanged since the first version. It warns when a node declares a tool that can write files through a shell.
+
+Every call with a valid plan id records a new version of that plan. Fix every rejection it reports, then call again. Warnings do not block admission.
+
+Plan: format "dsh-graph/v1"; id (lower-case, stable across versions); level L1|L2|L3; goal; runInputs (names); nodes; edges; deliverable; acceptance (non-empty list, frozen after the first version).
+
+Node: id; kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff; instruction; needs (node ids); inputs [{name, from: "run" or a needed node id, field, fallback?}]; output (object JSON Schema using only type, properties, required, additionalProperties, items, enum, const, oneOf, and annotations; every property declares a type; verification nodes require "verdict": {"type": "string", "enum": ["pass", "fail"]}); tools; writes (workspace-relative path prefixes); verify (shell commands, required for anchors); budget {steps?, tokens?, wallMs?} per attempt; retryBudget; contextScope execution-only|fresh-independent; mayFail; category (optional; one of the categories graph_capabilities lists).
+
+Edge: from; to; relation feeds|verifies|constrains|vetoes|anchors|hands_off; artifact (what crosses the edge); allowedFields (optional); cycleGuard (optional) {maxIterations, until, plateauAfter?, metricCommand?} marks a loop edge: relation feeds, from a node back to itself or to a node it depends on, not listed in needs. When from finishes, the loop runs again unless the until shell command exits 0, maxIterations is reached, or the metricCommand output stayed the same for plateauAfter decisions. Only the from node of a loop may feed nodes outside it.
+
+Status, basis, and version belong to the harness and are rejected inside a plan.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "plan": {
+      "description": "One dsh-graph/v1 plan object."
+    }
+  },
+  "required": [
+    "plan"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-contract/src/index.ts`](../packages/experimental/graph-contract/src/index.ts)
+
+### `graph_capabilities`
+
+List what graph nodes can use in this deployment: each node category with its provider, model, reliability label, and whether the model is available now; the tools a node may declare; and the current and maximum delegation depth. Use only these categories and tools in a dsh-graph/v1 plan.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/graph-contract/src/index.ts`](../packages/experimental/graph-contract/src/index.ts)
+
+Experimental. `mode: off` registers nothing; `shadow` and `enforce` register the same two tools and differ only in admission. `assumption` is required with no default, so the catalog supplies one; `allowedTools` and `routes` default to none, which only changes audit and capability results, not the schemas.
+
+<a id="deepseek-aidsh-experimental-graph-projection"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-projection`
+
+### `graph_cite`
+
+Check which tool calls and tool results of the current turn mention a file path or a shell command you are about to name in your answer. Each supporting record is tool-record (a tool call argument names it), observed (a successful tool result names it), or absence (a failed tool result names it). A claim with no record is parametric: nothing in this turn shows it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "claim": {
+      "type": "string",
+      "description": "One file path or one shell command from your answer."
+    }
+  },
+  "required": [
+    "claim"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+### `graph_query`
+
+Read the admitted task graphs of this session. scope "plans" lists each admitted plan with its version, node count, ready count, and executed count. scope "plan" with plan_id returns its nodes (needs, status, basis, attempt, recovery state, loop iteration), the waves of nodes that can run together, its runs, and the fire count of each loop edge. scope "node" with plan_id and node_id returns one node with its output, child session, and recorded reason. Status is recorded by the harness from the session log; it cannot be set.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "description": "plans lists admitted plans; plan returns one plan; node returns one node.",
+      "enum": [
+        "plans",
+        "plan",
+        "node"
+      ]
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Plan id; required for scope \"plan\" and \"node\"."
+    },
+    "node_id": {
+      "type": "string",
+      "description": "Node id; required for scope \"node\"."
+    }
+  },
+  "required": [
+    "scope"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+### `history_read`
+
+Read back conversation that compaction replaced or shortened in your context. Without seq, list the compacted spans of this session, newest first: each has a seq, a kind (summary: a span replaced by a checkpoint; prune: a tool result shortened in place), its first and last event number, and its item count. With seq from that list, return the span as a transcript starting at offset; a page that stops early names the next offset. The transcript arrives as this tool result; nothing earlier in your context changes.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "description": "Seq of a compacted span from the listing; omit to list spans."
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Item to start at inside the span; default 0."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+Experimental and read-only: it folds graph/plan, graph/node, graph/run, and graph/edge events, the current turn's tool records, and compaction spans, and writes no session event of its own.
+
+<a id="deepseek-aidsh-experimental-graph-runner"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-runner`
+
+### `graph_run`
+
+Run the latest admitted version of one dsh-graph/v1 plan and wait for it to stop. Each agent node runs as a fresh subagent that sees only its instruction, its inputs, and its declared tools, and returns its declared output. Anchors and verify commands run as shell commands; a human_gate asks the user.
+
+A node counts as executed only with proof: its verify commands passed, a verification node returned verdict "pass" for it, or the user granted its gate. A result without proof stays unverified. Failed nodes are retried up to their retryBudget. A loop edge runs its loop again when its from node finishes and its until command fails, at most maxIterations times; the reopened target sees the output the edge sends back.
+
+The result names the stop reason and every node's status. After NO_PROGRESS, fix the plan and audit a new version with graph_audit; unchanged finished nodes are carried over. After BUDGET, call graph_run again to continue.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "Id of a plan with an admitted version."
+    },
+    "inputs": {
+      "description": "Object with a value for every name in the plan's runInputs."
+    }
+  },
+  "required": [
+    "plan_id"
+  ]
+}
+```
+
+Source: [`packages/experimental/graph-runner/src/index.ts`](../packages/experimental/graph-runner/src/index.ts)
+
+Experimental. Runs in the foreground of the calling tool call; `mode` changes only write-scope enforcement, not the schema.
+
+<a id="deepseek-aidsh-experimental-tool-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-knowledge`
+
+### `knowledge_cite`
+
+List the edges that start or end at one knowledge page, each with a stable edge id (e: and 8 hex digits) you can cite: body links (wikilink, mdlink), declared relations (derives-from, depends-on, implements, supports, contradicts, supersedes), and touches edges to workspace code paths the page names. Pass an edge id as ref to look up that one edge. depth from 1 also returns the pages within that many links.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page reference, or an edge id such as e:1a2b3c4d."
+    },
+    "depth": {
+      "type": "integer",
+      "description": "Link distance of neighbor pages to include, 0 to 2 (default 0)."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_query`
+
+Search the knowledge store of this workspace: durable pages about the project that earlier sessions and people recorded. Returns pages ranked by the share of query words they contain, with id, title, type, last update, and stale (a page it depends on changed after it or was superseded). Read a page with knowledge_read before relying on it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words to search for."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most hits to return, 1 to 10 (default 10)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_read`
+
+Read one knowledge page by id (for example concepts/retry.md), by id without .md, or by a file name that is unique in the store. Returns its title, type, last update, stale flag, declared relations, and Markdown text. Pages can be outdated: verify statements about code against the current files before asserting them.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page id, id without .md, or a unique file name."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_write`
+
+Create or replace one knowledge page. id is a path such as concepts/retry.md inside one of the store's content directories. sources must list workspace files you read in this session with read; the harness cites those reads in the page and refuses a page without them. relations may point only at existing pages. The user approves every write. Record durable facts about the project, not plans, progress, or temporary state of this session.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Page path such as concepts/retry.md."
+    },
+    "type": {
+      "type": "string",
+      "description": "One word such as concept, entity, source, or episode."
+    },
+    "title": {
+      "type": "string",
+      "description": "One-line title."
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown body; the harness adds frontmatter, the title heading, and the Origin section."
+    },
+    "relations": {
+      "type": "array",
+      "description": "Relations to existing pages.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "derives-from",
+              "depends-on",
+              "implements",
+              "supports",
+              "contradicts",
+              "supersedes"
+            ]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "to"
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Workspace files you read with read that the page is based on.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "title",
+    "body",
+    "sources"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+Experimental. `read-only` (the default) registers knowledge_query, knowledge_read, and knowledge_cite; `read-write` adds knowledge_write, whose description names the configured evidence tools and which always asks for approval.
+
+<a id="deepseek-aidsh-experimental-memory-zeromem"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-zeromem`
+
+### `memory_forget_session`
+
+Permanently delete every stored turn of one earlier session, named by the session id memory_recall returned. Use only when the user asks to forget that session; the user approves every deletion. The current session cannot be deleted, and later turns of a deleted session are not stored.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "string",
+      "description": "Session id from a memory_recall result."
+    }
+  },
+  "required": [
+    "session"
+  ]
+}
+```
+
+Source: [`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_recall`
+
+Search what the user and you said in earlier sessions in this workspace. Returns the most relevant stored turns, each with its session id, time, speaker (user or assistant), text, and kind: match answers the query, context is linked to a match. Only user messages and final assistant replies are stored, never tool calls or tool output; the current session is left out. Recalled text records what was said then: verify it against the current files before relying on it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words or a question about the earlier conversation."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most turns to return, 1 to 10 (default 5)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_stats`
+
+Count the stored turns and sessions that memory_recall searches.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+Experimental. memory_recall and memory_stats are always registered; `allowForget: true` adds memory_forget_session, which always asks for approval. The memory_recall description names the store scope and whether the current session is left out (shown for the defaults `workspace` and `true`).
+
 <a id="deepseek-aidsh-tool-todo"></a>
 
 ## `@deepseek-ai/dsh-tool-todo`
@@ -2717,3 +3103,114 @@ Search the web for current information. Returns an optional summary answer and a
 Source: [`packages/web/tool-web/src/index.ts`](../packages/web/tool-web/src/index.ts)
 
 web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.
+
+<a id="deepseek-aidsh-tool-m365"></a>
+
+## `@deepseek-ai/dsh-tool-m365`
+
+### `m365_read_chat`
+
+Read the most recent messages of one Teams chat by the chatId m365_search returned, oldest first.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "chatId": {
+      "type": "string",
+      "description": "Teams chat id."
+    },
+    "top": {
+      "type": "integer",
+      "description": "Messages to read, 1–50; defaults to 30."
+    }
+  },
+  "required": [
+    "chatId"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+### `m365_read_file`
+
+Read the text of one OneDrive or SharePoint file by the driveId and id m365_search returned. Supports text formats and Word, PowerPoint, and Excel files.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "driveId": {
+      "type": "string",
+      "description": "Drive id of the file."
+    },
+    "id": {
+      "type": "string",
+      "description": "Drive item id of the file."
+    }
+  },
+  "required": [
+    "driveId",
+    "id"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+### `m365_read_mail`
+
+Read one Outlook message by the id m365_search returned: sender, recipients, date, body text, and attachment names.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Message id."
+    }
+  },
+  "required": [
+    "id"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+### `m365_search`
+
+Search the user's Microsoft 365 data they are allowed to read: Outlook mail, Teams chats, and OneDrive/SharePoint files. Returns hits with ids to pass to m365_read_mail, m365_read_chat, or m365_read_file.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Keyword query (KQL is accepted)."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Sources to search; defaults to all three.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "mail",
+          "chat",
+          "files"
+        ]
+      }
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/web/tool-m365/src/index.ts`](../packages/web/tool-m365/src/index.ts)
+
+Every m365_* tool reads with the signed-in user's delegated Microsoft Graph token; a connector IT has not granted returns a refusal naming the source instead of data.

@@ -1,8 +1,11 @@
-- region "账号与余额":
+- region "DeepSeek — 用于主模型":
+  - heading "DeepSeek — 用于主模型" [level=4]
+  - paragraph: 登录 DeepSeek 账号，使用账号余额运行主模型。
   - text: Radius example
   - status: r***@example.com
   - link "更多账号信息":
     - /url: https://platform.deepseek.com/
+  - button "退出登录"
   - text: 充值余额 ¥128.50 赠金余额 ¥12.00 更多
   - link "查询用量":
     - /url: https://platform.deepseek.com/usage

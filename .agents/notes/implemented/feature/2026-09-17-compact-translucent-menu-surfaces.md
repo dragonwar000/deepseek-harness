@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-17-compact-translucent-menu-surfaces.zh.md)
-
 ## Problem
 
 Shared dropdowns and feature-owned menu panels used the same elevated color token but retained unrelated padding, row height, corner radius, and scrollbar geometry. The opaque menu fill also made nested and portalled surfaces read as solid cards rather than one elevation family, while narrowing individual menus locally would keep those differences distributed across packages.

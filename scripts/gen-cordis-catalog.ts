@@ -34,6 +34,7 @@ import {
   parseTranslationPairingManifest,
   translationPairSourcePredicate,
 } from './translation-pairing.ts'
+import { TRANSLATION_COUNTERPART_POLICY } from './translation-counterpart.ts'
 import { rewriteTranslationLinkLocales } from './translation-links.ts'
 
 const root = resolve(import.meta.dirname, '..')
@@ -80,6 +81,8 @@ export const SERVICE_PAGE: Record<string, string> = {
   cordisInspect: 'extensions.md',
   authorization: 'credentials.md',
   deepseekAccount: 'credentials.md',
+  aiAccount: 'credentials.md',
+  cotecconsSso: 'credentials.md',
   credentials: 'credentials.md',
   credentialsController: 'credentials.md',
   settingsController: 'settings.md',
@@ -94,6 +97,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   inspector: 'extensions.md',
   webServer: 'web-server.md',
   invariants: 'invariants.md',
+  knowledge: 'knowledge.md',
   llm: 'llm-streaming.md',
   lsp: 'lsp.md',
   messageFeedback: 'feedback.md',
@@ -227,6 +231,7 @@ export const EVENT_SCOPE_PAGE: Record<string, string> = {
   'authorization': 'credentials.md',
   'credentials': 'credentials.md',
   'deepseek-account': 'credentials.md',
+  'ai-account': 'credentials.md',
   'domain': 'storage.md',
   'fs': 'filesystem.md',
   'goal': 'goal.md',
@@ -598,6 +603,15 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   SkillSummary: 'skills.md',
   SaveTextSpill: 'spill.md',
   SpillRef: 'spill.md',
+  KnowledgeEdge: 'knowledge.md',
+  KnowledgeEntry: 'knowledge.md',
+  KnowledgeHit: 'knowledge.md',
+  KnowledgeIndex: 'knowledge.md',
+  KnowledgeNeighbors: 'knowledge.md',
+  KnowledgePage: 'knowledge.md',
+  KnowledgeCitation: 'knowledge.md',
+  KnowledgeScope: 'knowledge.md',
+  KnowledgeWriteResult: 'knowledge.md',
   ContinuableCreateRequest: 'subagent.md',
   ContinuableCreateSpec: 'subagent.md',
   ContinuableStart: 'subagent.md',
@@ -725,6 +739,16 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   AccountUserId: 'credentials.md',
   PlatformSession: 'credentials.md',
   SignInAttemptId: 'credentials.md',
+  AiAccountKind: 'credentials.md',
+  AiAccountId: 'credentials.md',
+  AiAccountSignInId: 'credentials.md',
+  AiAccountsView: 'credentials.md',
+  AiAccountStatusChange: 'credentials.md',
+  CotecconsSsoSignInId: 'credentials.md',
+  CotecconsSsoView: 'credentials.md',
+  M365ConnectAttemptId: 'credentials.md',
+  M365ConnectorId: 'credentials.md',
+  M365ConnectorView: 'credentials.md',
   AuthorizationPrompt: 'credentials.md',
   AuthorizationRequest: 'credentials.md',
   AuthorizationSession: 'credentials.md',
@@ -1200,20 +1224,22 @@ export function computeOutputs(): [string, string][] {
     )
     for (const side of [page, page.replace(/\.md$/, '.zh.md')]) {
       const rel = `${SUBSYSTEMS_DIR}/${side}`
+      // The English page must exist and carry the region. Under the `optional`
+      // counterpart policy a Chinese page that is absent or lacks the region is
+      // left as it is; under `required` both are violations.
+      const mustCarryRegion = side === page || TRANSLATION_COUNTERPART_POLICY === 'required'
       const localizedRegion = localizePageRegion(region, rel)
       let current: string
       try {
         current = readFileSync(resolve(root, rel), 'utf8')
       } catch {
-        // Both pair sides must exist before a region can be injected; the
-        // pairing gate owns pair completeness, this generator names the miss.
-        problems.push(`${rel}: mapped subsystems page does not exist.`)
+        if (mustCarryRegion) problems.push(`${rel}: mapped subsystems page does not exist.`)
         continue
       }
       try {
         outputs.push([rel, spliceRegion(current, localizedRegion)])
       } catch (error) {
-        problems.push(`${rel}: ${error instanceof Error ? error.message : String(error)}`)
+        if (mustCarryRegion) problems.push(`${rel}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
   }

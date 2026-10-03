@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/knowledge/README.md
+/:
+  en: 9d9b219c487cf62f
+  zh: 9564985b8220e21a
+/deepseek-ai-dsh-experimental-knowledge:
+  en: 734a5ecadbb3ec8f
+  zh: a5e1665a028d1c1b
+/deepseek-ai-dsh-experimental-knowledge/summary:
+  en: 20f68aad46a8224a
+  zh: fa4fc020af26c3a5
+/deepseek-ai-dsh-experimental-knowledge/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-knowledge/use-this-package:
+  en: e90763a5bdbdd54b
+  zh: 432af6addf33edf2
+/deepseek-ai-dsh-experimental-knowledge/use-this-package/when-to-choose-it:
+  en: 139a00098ed2ca21
+  zh: fafa583dfb3a6849
+/deepseek-ai-dsh-experimental-knowledge/use-this-package/contract:
+  en: 93f94375402e70e5
+  zh: 1a63445b7f333a21
+/deepseek-ai-dsh-experimental-knowledge/understand-the-implementation:
+  en: f354718ddd1f9970
+  zh: 7a9e17541482e4a2
+/deepseek-ai-dsh-experimental-knowledge/understand-the-implementation/design-notes:
+  en: 549083f7e48db656
+  zh: ca627b7a1cf42269
+/deepseek-ai-dsh-experimental-knowledge/understand-the-implementation/source-map:
+  en: 64e92d63cf39a035
+  zh: c1669bfddb07810a
+/deepseek-ai-dsh-experimental-knowledge/further-exploration:
+  en: 48ab914afa1f650f
+  zh: e23d7b38ef0a4827
+/deepseek-ai-dsh-experimental-knowledge/model-experience:
+  en: 236a826e97db5b34
+  zh: 1a412bfaa6b4d261
+/deepseek-ai-dsh-experimental-knowledge/model-experience/kv-cache-effect:
+  en: 7667df9d213b22a0
+  zh: 10ba00383be0e0a7
+/deepseek-ai-dsh-experimental-knowledge/known-limitations-and-deferred-work:
+  en: 6f8772156ee834e7
+  zh: 14d352d03e15cf68
+/deepseek-ai-dsh-experimental-knowledge/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 975625e42085937f

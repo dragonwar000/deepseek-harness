@@ -1,0 +1,9 @@
+version: 1
+scenario: verifier-gate-evidence-knowledge
+profile: headless
+composition: verifier-gate-evidence-knowledge
+recording: authored
+header:
+  class: verifier-gate-evidence-knowledge
+  pin: true
+  systemPromptSource: text-turn

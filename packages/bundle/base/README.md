@@ -148,4 +148,4 @@ None.
 
 </details>
 
-The base composition mounts authorization and the platform account provider alongside credentials. The provider opens a callback listener only during an explicit login attempt.
+The base composition mounts authorization and the AI Account provider alongside credentials. The DeepSeek Platform account provider (`deepseek-account`) and its model route (`llm-deepseek-account`) stay as disabled rows, because Coteccons SSO in the Web App Bundle replaces that sign-in.

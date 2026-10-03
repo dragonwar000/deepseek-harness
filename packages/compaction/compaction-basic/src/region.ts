@@ -21,10 +21,13 @@ import type { Message, UserMessage } from '@deepseek-ai/dsh-llm'
 import type { TokenMeasurement, TokenMeter } from '@deepseek-ai/dsh-token-meter'
 import { SessionSeq, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { frameSummary } from './summarizer.ts'
+import { frameCheckpoint } from './summarizer.ts'
 import type { SummarizationInput, SummaryResult } from './summarizer.ts'
+import type { AuthoritativeRequestConfig } from './types.ts'
 interface RegionDependencies {
   readonly meter: TokenMeter
+  /** Resolved checkpoint framing policy. */
+  readonly framing: Readonly<Required<AuthoritativeRequestConfig>>
   summarize(input: SummarizationInput, agent: Agent, signal?: AbortSignal): Promise<SummaryResult>
   recover(error: unknown, agent: Agent, sourceEventSeqs: readonly SessionSeq[], signal?: AbortSignal): boolean
 }
@@ -75,6 +78,12 @@ interface CompactionEntryState {
  * caller can report the two causes differently.
  */
 class SurfaceChangedError extends Error {}
+
+/**
+ * Rejects a framed summary that is not smaller than the span it would
+ * replace, so automatic callers can refuse to summarize that exact span again.
+ */
+export class SummaryNotSmallerError extends Error {}
 
 /** Whether the summary may still replace the span it was built from. */
 type StabilityCheck = (
@@ -408,7 +417,7 @@ async function summarizeCompaction(
     }
   }
   const checkpointMessage = createUserMessage({
-    content: frameSummary(summaryResult.summary),
+    content: frameCheckpoint(summaryResult.summary, dependencies.framing, prepared.input.messages),
     source: compactCheckpointSource(compactionId, sourceCommandId),
   })
   // The checkpoint is text-only, so its fixed-heuristic price IS its route
@@ -416,7 +425,7 @@ async function summarizeCompaction(
   // question — does the replacement lower the next request's pressure.
   const framedSummaryTokenCount = dependencies.meter.estimateMessage(checkpointMessage)
   if (framedSummaryTokenCount >= prepared.shadowedRouteTokenCount) {
-    throw new Error(
+    throw new SummaryNotSmallerError(
       `summary is not smaller than the shadowed content (${framedSummaryTokenCount} estimated framed tokens >= ${prepared.shadowedRouteTokenCount})`,
     )
   }

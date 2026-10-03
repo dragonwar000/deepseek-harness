@@ -104,6 +104,7 @@ URL 行与浏览器交接都是就绪信号：监督方一观察到该行就发�
 | [`tests/startup.spec.ts`](tests/startup.spec.ts) | 在真实 Loader 树上的命令行解析 |
 | [`tests/trusted-hosts.spec.ts`](tests/trusted-hosts.spec.ts) | LAN 信任采样 |
 | [`tests/browser-open.spec.ts`](tests/browser-open.spec.ts) | 页面可达后的默认浏览器交接 |
+| [`tests/browser-surface-activation.spec.ts`](tests/browser-surface-activation.spec.ts) | 通过 Loader 启动每个浏览器行的 Node 半边：要么在无任何服务的 Host 上激活，要么只等待该 spec 表格声明的 Host 服务 |
 
 ### 不变式归属
 
@@ -167,4 +168,4 @@ URL 行与浏览器交接都是就绪信号：监督方一观察到该行就发�
 
 </details>
 
-Web 组合包含账号 Remote 控制器和账号设置页面。
+Web 组合包含 AI 账号设置页面及其 Remote 控制器，以及 Coteccons SSO 组件：配置了 CTD-Core 应用注册的 `coteccons-sso` 提供者、`coteccons` 模型路由、`cotecconsSso` Remote 控制器和 Coteccons SSO 设置分组。DeepSeek 账号设置与控制器行保持禁用。

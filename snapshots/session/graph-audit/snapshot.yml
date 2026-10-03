@@ -1,0 +1,9 @@
+version: 1
+scenario: graph-audit
+profile: headless
+composition: graph-audit
+recording: live
+header:
+  class: graph-audit
+  pin: true
+  systemPromptSource: text-turn

@@ -2,8 +2,6 @@
 
 Status: implemented
 
-English | [中文](2026-09-16-subagent-catalog-membership-only.zh.md)
-
 ## Problem
 
 The parent catalog serves direct-child discovery. Recording a child's creation-time LLM provider and model would preserve immutable configuration without opening child histories, but discovery and navigation consumers do not read those values. Creation configuration also does not establish which model served a request.

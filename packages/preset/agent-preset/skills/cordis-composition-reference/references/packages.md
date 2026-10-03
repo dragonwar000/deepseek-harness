@@ -15,6 +15,8 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-api-account-controller` | no | Expose safe account operations over authenticated Remote |
+| `@deepseek-ai/dsh-api-ai-account-controller` | no | Expose AI Account operations over authenticated Remote without credentials or paths |
+| `@deepseek-ai/dsh-api-coteccons-sso-controller` | no | Expose Coteccons SSO sign-in state and commands over authenticated Remote without tokens |
 | `@deepseek-ai/dsh-api-gateway` | yes | Typert Remote Host dispatcher and Client API endpoint |
 | `@deepseek-ai/dsh-api-job-controller` | yes | Job Remote observation stream and the reference-counted client job-output service |
 | `@deepseek-ai/dsh-api-remotes` | no | Remote BFF assembly for application-selected Host capabilities |
@@ -68,7 +70,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-agent-preset` | no | Agent-preset surfaces: the default for later sessions, this session's seat, and the composition editor |
 | `@deepseek-ai/dsh-client-ui-approval` | no | Approval composer takeover over the scoped Remote Event waterfall |
 | `@deepseek-ai/dsh-client-ui-attachment` | no | Dynamic attachment presentation plugin for conversation input, message-image, and trajectory image slots |
-| `@deepseek-ai/dsh-client-ui-brand-official` | no | Official DeepSeek Harness brand occupants for the Web client's sidebar slots |
+| `@deepseek-ai/dsh-client-ui-brand-official` | no | Official CTD Core brand occupants for the Web client's sidebar slots |
 | `@deepseek-ai/dsh-client-ui-chat` | no | Chat Conversation target, node definitions, renderers, and details surface |
 | `@deepseek-ai/dsh-client-ui-commands` | no | Client command surface: global directory cache, '/' source, three command UI kinds, popupSelect registry |
 | `@deepseek-ai/dsh-client-ui-conversation` | no | Target-neutral Conversation assembly, shell, composer, queue, and view navigation |
@@ -90,8 +92,10 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-client-ui-schedule` | no | Host task management page and Session reminder catalog |
 | `@deepseek-ai/dsh-client-ui-session` | no | Session Controller adapter for React and session-scoped slots |
 | `@deepseek-ai/dsh-client-ui-settings` | no | Settings domain base plugin: shared configuration forms and the canonical settings slot-type contract |
-| `@deepseek-ai/dsh-client-ui-settings-account` | yes | Manage DeepSeek login and open Platform billing pages |
+| `@deepseek-ai/dsh-client-ui-settings-account` | yes | DeepSeek account group on the AI Account settings page: sign in, balances, Platform billing pages, and sign-out |
 | `@deepseek-ai/dsh-client-ui-settings-agent-loop` | no | Settings page of the agent loop on the dsh web client's Plugins page: the parallel tool-call cap of the agent-loop namespace |
+| `@deepseek-ai/dsh-client-ui-settings-ai-account` | no | AI Account settings page: contributed account groups such as Coteccons SSO for the main model, then Claude and ChatGPT subscription accounts through the official CLIs with defaults and sign-out |
+| `@deepseek-ai/dsh-client-ui-settings-coteccons-sso` | no | Coteccons SSO group on the AI Account settings page: Microsoft Entra ID sign-in for the main model |
 | `@deepseek-ai/dsh-client-ui-settings-general` | no | Settings ownerless-copy and product onboarding plugin: the General section, shell trigger/header chrome content, settings dictionaries, and the versioned welcome notice |
 | `@deepseek-ai/dsh-client-ui-settings-models` | yes | Models settings and shared product-onboarding dialogs over existing settings and credential joins |
 | `@deepseek-ai/dsh-client-ui-settings-plugin-inventory` | no | Read-only Cordis Loader inventory tab in Web Plugins settings |
@@ -157,7 +161,9 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 
 | Package | Config | Description |
 |---|---|---|
+| `@deepseek-ai/dsh-ai-account-platform` | yes | Sign Claude and ChatGPT subscription accounts in and out through the official Claude Code and Codex CLIs |
 | `@deepseek-ai/dsh-authorization` | no | Authorization seam (ctx.authorization): plugin-owned flows that obtain a credential through a conversation with the human |
+| `@deepseek-ai/dsh-coteccons-sso-msal` | yes | Coteccons SSO through Microsoft Entra ID with MSAL: browser sign-in with PKCE and a loopback redirect, token cache in the credential store |
 | `@deepseek-ai/dsh-credentials-local` | yes | File-backed credentials provider ($DSH_HOME/.env under the live process environment) for the DeepSeek Harness |
 | `@deepseek-ai/dsh-deepseek-account-platform` | yes | Authorize DeepSeek accounts through browser PKCE |
 
@@ -188,11 +194,25 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | no | Record speech and insert editable text into the conversation draft |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp` | yes | Experimental computer use through an installed Cua Driver MCP executable |
 | `@deepseek-ai/dsh-experimental-computer-use-cua-driver-native` | no | Experimental computer-use provider embedding the Cua Driver native npm SDK |
+| `@deepseek-ai/dsh-experimental-context-knowledge` | yes | Knowledge index context: page ids, titles, types, update dates, and stale marks of the knowledge store, capped by lines and bytes, added at the first step of a turn when the index changed |
+| `@deepseek-ai/dsh-experimental-denial-budget` | yes | Counts policy-denied tool calls, appends fixed safer-approach advice, and asks approval before continuing past a denial budget; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-graph-contract` | yes | dsh-graph/v1 plan contract: deterministic graph_audit admission and graph/plan records with rejection memory; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-graph-projection` | yes | Task graphs, turn evidence, and compacted history folded from the session log, with the read-only graph_query, graph_cite, and history_read tools |
+| `@deepseek-ai/dsh-experimental-graph-runner` | yes | Runs admitted dsh-graph/v1 plans in the foreground: each agent node a fresh subagent, verify commands and human gates as proof, retries, resume, and write-scope enforcement; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-infra-snapshot` | yes | Appends one infra/snapshot session event per agent: node, platform, cpu, memory, sandbox mode |
 | `@deepseek-ai/dsh-experimental-inspector` | yes | Experimental cross-realm CDP hub for Host debugging and Client Runtime inspection |
+| `@deepseek-ai/dsh-experimental-knowledge-rules` | yes | Fail-closed guard of the knowledge store: refuses file tool writes and edits and shell commands that change store pages without going through knowledge_write |
+| `@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem` | yes | Wiki filesystem provider of the knowledge seam: Markdown pages with YAML frontmatter in the session workspace, derived links, relations, touches edges and staleness, and rule-checked writes that cite session events |
+| `@deepseek-ai/dsh-experimental-loop-budget` | yes | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor; pauses the goal on a trip; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-memory-distill` | yes | Episode distillation into the knowledge store: after the verifier gate records verdict ok, one episode page with the request, the filtered final response, and the changed files, citing their tool results; shadow or enforce |
+| `@deepseek-ai/dsh-experimental-memory-zeromem` | yes | Conversation memory backed by the zeromem zm CLI: each completed turn's user messages and final assistant text are spooled into a per-workspace zeromem store with no model call, and memory_recall and memory_stats search it; tool output is never stored |
 | `@deepseek-ai/dsh-experimental-ptc-runtime-python` | yes | CPython subprocess implementation of the DeepSeek Harness PTC execution seam |
 | `@deepseek-ai/dsh-experimental-speech-to-text` | yes | Experimental speech recognition with independently selectable providers |
 | `@deepseek-ai/dsh-experimental-speech-to-text-sensevoice` | yes | Local SenseVoice ONNX transcription with a managed sherpa-onnx process |
+| `@deepseek-ai/dsh-experimental-stationarity-guard` | yes | Step-boundary guard: reminds or stops an agent whose tool steps keep returning identical evidence; shadow or enforce |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | yes | Scoped model-facing Agent Teams tools over ctx.agentTeams |
+| `@deepseek-ai/dsh-experimental-tool-knowledge` | yes | Model-facing knowledge tools: knowledge_query, knowledge_read, knowledge_cite, and approval-gated knowledge_write whose pages cite the session's successful reads |
+| `@deepseek-ai/dsh-experimental-verifier-gate` | yes | Turn-stopping gate: runs configured verify commands before a turn may end; shadow or enforce |
 
 ## extensions
 
@@ -280,6 +300,8 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 |---|---|---|
 | `@deepseek-ai/dsh-deepseek-llm-api-extensions` | no | Additive request-field registry for the official DeepSeek LLM API adapter |
 | `@deepseek-ai/dsh-llm` | no | Provider-neutral LLM service interface for the DeepSeek Harness |
+| `@deepseek-ai/dsh-llm-claude-cli` | yes | Claude model route whose transport is the Claude Code CLI as a subprocess, so the CLI owns authentication |
+| `@deepseek-ai/dsh-llm-coteccons-sso` | yes | Coteccons model route: Azure OpenAI / Foundry called with the signed-in user's Entra ID token |
 | `@deepseek-ai/dsh-llm-deepseek-account` | yes | DeepSeek account provider authentication and discovery |
 | `@deepseek-ai/dsh-llm-deepseek-api-key` | yes | DeepSeek api-key provider authentication and discovery |
 | `@deepseek-ai/dsh-llm-pi-ai` | yes | pi-ai-backed DeepSeek adapter for the DeepSeek Harness LLM seam (design-verification twin of dsh-llm-deepseek) |
@@ -433,6 +455,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 |---|---|---|
 | `@deepseek-ai/dsh-subagent` | yes | Abstract subagent seam (ctx.subagents): named-provider registry for delegating to child agents |
 | `@deepseek-ai/dsh-subagent-acp` | yes | Out-of-process ACP subagent backend: drives a child agent in a spawned subprocess over the Agent Client Protocol |
+| `@deepseek-ai/dsh-subagent-ai-account` | yes | Run the Claude Code and Codex subagent providers as the default AI Account of each kind |
 | `@deepseek-ai/dsh-subagent-claude-code` | yes | One-shot Claude Code subagent provider over the official Agent SDK |
 | `@deepseek-ai/dsh-subagent-codex` | yes | One-shot Codex subagent provider over the official app-server protocol |
 | `@deepseek-ai/dsh-subagent-dsh-sdk` | yes | Out-of-process SDK subagent backend: drives a child DeepSeek Harness runtime subprocess over stdio JSON-RPC through the TypeScript SDK client |
@@ -483,6 +506,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 
 | Package | Config | Description |
 |---|---|---|
+| `@deepseek-ai/dsh-tool-m365` | yes | Model-facing read-only Microsoft 365 tools (mail, Teams chats, OneDrive/SharePoint files) over Coteccons SSO connectors, with the signed-in user's delegated permissions |
 | `@deepseek-ai/dsh-tool-web` | yes | Model-facing web tools (web_search, web_fetch) over the DeepSeek Harness web capability seam (ctx.web) |
 | `@deepseek-ai/dsh-web` | yes | Abstract web access capability seam (ctx.web) for the DeepSeek Harness — search/fetch provider registry, registration-order-independent selection, request/result vocabulary, and the WebError taxonomy |
 | `@deepseek-ai/dsh-web-fetch-http` | yes | Anonymous public HTTP(S) fetch provider for the DeepSeek Harness web capability seam (ctx.web) |

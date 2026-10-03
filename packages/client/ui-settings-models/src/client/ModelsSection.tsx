@@ -167,7 +167,7 @@ export async function removeProviderProfile(
  * @returns whether to render the setup card.
  */
 export function needsSetup(row: ProviderRow, anyUsable: boolean): boolean {
-  if (anyUsable || row.entry.provider === 'deepseek-account') return false
+  if (anyUsable || row.entry.provider.endsWith('-account')) return false
   if (row.entry.settingsPath.length > 0) return false
   return row.credential?.configured !== true
 }
@@ -216,6 +216,22 @@ export function providerCopy(template: string, target: ProviderIdentity): string
 }
 
 /**
+ * Derive the display name of an account-based provider from its route id.
+ * An account provider's label key is `camelCaseId + 'Account'` in the locale
+ * dictionary; this extracts the prefix before `-account` and adds the standard
+ * camelCase conversion. Falls back to the original display name from the entry
+ * when no locale key matches.
+ * @param provider - the stable provider route id, e.g. `deepseek-account`.
+ * @param t - the section locale function.
+ * @returns the locale-resolved label.
+ */
+function providerAccountLabel(provider: string, t: ModelsSectionFace['t']): string {
+  const prefix = provider.replace(/-account$/, '')
+  const key = `${prefix}Account` as keyof typeof en
+  return t(key)
+}
+
+/**
  * Render the Models section content column.
  * @param props - slot-delivered injected dependencies.
  * @returns the section, or null while the shell has not injected yet.
@@ -232,8 +248,11 @@ export function ModelsSection(props: ModelsSectionProps): ReactNode {
 function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderSlot: ModelsRenderSlot }): ReactNode {
   const { controller, operations, schema, t } = injected
   const snapshot = injected.useSnapshot(value => value)
-  const state = { ...snapshot, rows: snapshot.rows.map(row => row.entry.provider === 'deepseek-account'
-    ? { ...row, entry: { ...row.entry, displayName: t('deepSeekAccount') } } : row) }
+  const state = { ...snapshot, rows: snapshot.rows.map(row =>
+    row.entry.provider.endsWith('-account')
+      ? { ...row, entry: { ...row.entry,
+        displayName: providerAccountLabel(row.entry.provider, t) } }
+      : row) }
   const [editing, setEditing] = useState<EditorTarget | undefined>(undefined)
   const [addOpen, setAddOpen] = useState(false)
   const [addMode, setAddMode] = useState<AddMode>('catalog')

@@ -45,6 +45,11 @@
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是控制可继续后台 subagent 的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包注册一次 `send_message` 和 `interrupt_agent`，另由 `list_agents` 通过单独加载的 `/list-agents` 插件提供，其目录行使用 sessionProjections 和实时 Agent 注册表。 |
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 9 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
+| `@deepseek-ai/dsh-experimental-graph-contract` | `graph_audit`、`graph_capabilities` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.subagents for the depth check` | `tool/call`、`graph/plan`、`tool/result` | - | 实验性。`mode: off` 不注册任何东西；`shadow` 与 `enforce` 注册相同的两个工具，只在准入上不同。`assumption` 是没有默认值的必填项，因此本目录提供了一个；`allowedTools` 与 `routes` 默认为空，这只影响审计与能力结果，不影响 schema。 |
+| `@deepseek-ai/dsh-experimental-graph-projection` | `graph_cite`、`graph_query`、`history_read` | `ctx.tools`、`ctx.sessionProjections`、`owning Agent session`、`optional ctx.sessionQuery for history_read` | `tool/call`、`tool/result` | - | 实验性且只读：它折叠 graph/plan、graph/node、graph/run 与 graph/edge 事件、当前轮次的工具记录以及压缩片段，自身不写入任何会话事件。 |
+| `@deepseek-ai/dsh-experimental-graph-runner` | `graph_run` | `ctx.tools`、`ctx.sessionProjections`、`ctx.subagents`、`graph-contract and graph-projection mounted`、`owning Agent session` | `tool/call`、`graph/run`、`graph/node`、`graph/edge`、`subagent/catalog`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。 |
+| `@deepseek-ai/dsh-experimental-tool-knowledge` | `knowledge_cite`、`knowledge_query`、`knowledge_read`、`knowledge_write` | `ctx.tools`、`ctx.sessionProjections`、`ctx.fs`、`a ctx.knowledge provider`、`owning Agent session for knowledge_write` | `tool/call`、`approval/asked`、`approval/decided`、`knowledge/write`、`tool/result` | - | 实验性。`read-only`（默认）注册 knowledge_query、knowledge_read 与 knowledge_cite；`read-write` 另加 knowledge_write，其描述会写出所配置的证据工具，并且总是请求批准。 |
+| `@deepseek-ai/dsh-experimental-memory-zeromem` | `memory_forget_session`、`memory_recall`、`memory_stats` | `ctx.tools`、`ctx.subprocess`、`ctx.sessionProjections`、`a zeromem zm executable`、`the bge-small-en-v1.5 model directory for embedder default`、`owning Agent session for the working directory and the excluded session` | `tool/call`、`approval/asked`、`approval/decided`、`tool/result` | - | 实验性。memory_recall 与 memory_stats 始终注册；`allowForget: true` 另加 memory_forget_session，它总是请求批准。memory_recall 的描述会写出存储范围，以及是否排除当前会话（此处展示默认值 `workspace` 与 `true`）。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
@@ -2515,6 +2520,386 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 
 这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。
 
+
+<a id="deepseek-aidsh-experimental-graph-contract"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-contract`
+
+### `graph_audit`
+
+在一个 dsh-graph/v1 计划的任何部分运行之前审计它。审计是确定性的，不运行任何内容。它检查：无环的 needs，且每个依赖都有一条声明的边与 artifact；每个节点的输出都被消费；从 L2 起，需要带 verify 命令的锚点与全新的验证节点；在 L3，需要 human_gate 与 stop_handoff；可一起运行的节点写入范围互不相交；允许的工具；运行预算；来自可能失败节点的输入需有回退值；委派深度；以及自第一个版本以来未改变的 acceptance。当节点声明了可以通过 shell 写入文件的工具时，它会发出警告。
+
+每次带有有效计划 id 的调用都会记录该计划的一个新版本。修复它报告的每个拒绝，然后再次调用。警告不会阻止准入。
+
+计划：format "dsh-graph/v1"；id（小写，跨版本稳定）；level L1|L2|L3；goal；runInputs（名称）；nodes；edges；deliverable；acceptance（非空列表，第一个版本之后冻结）。
+
+节点：id；kind execution|verification|anchor|human_gate|reducer|synthesis|stop_handoff；instruction；needs（节点 id）；inputs [{name, from: "run" 或所需节点 id, field, fallback?}]；output（只使用 type、properties、required、additionalProperties、items、enum、const、oneOf 与注解的 object JSON Schema；每个属性都声明 type；验证节点要求 "verdict": {"type": "string", "enum": ["pass", "fail"]}）；tools；writes（相对工作区的路径前缀）；verify（shell 命令，锚点必填）；每次尝试的 budget {steps?, tokens?, wallMs?}；retryBudget；contextScope execution-only|fresh-independent；mayFail；category（可选；graph_capabilities 列出的类别之一）。
+
+边：from；to；relation feeds|verifies|constrains|vetoes|anchors|hands_off；artifact（跨越该边的内容）；allowedFields（可选）；cycleGuard（可选）{maxIterations, until, plateauAfter?, metricCommand?} 标记一条循环边：关系为 feeds，从一个节点指回自身或它依赖的某个节点，且不列在 needs 中。当 from 完成时，循环会再次运行，除非 until shell 命令以 0 退出、达到 maxIterations，或 metricCommand 的输出在 plateauAfter 次决策中保持不变。只有循环的 from 节点可以供给循环之外的节点。
+
+status、basis 与 version 属于 harness，出现在计划中会被拒绝。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "plan": {
+      "description": "One dsh-graph/v1 plan object."
+    }
+  },
+  "required": [
+    "plan"
+  ]
+}
+```
+
+来源：[`packages/experimental/graph-contract/src/index.ts`](../packages/experimental/graph-contract/src/index.ts)
+
+### `graph_capabilities`
+
+列出本部署中图节点可以使用的内容：每个节点类别及其提供方、模型、可靠性标签，以及该模型当前是否可用；节点可以声明的工具；以及当前与最大委派深度。在 dsh-graph/v1 计划中只使用这些类别与工具。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/graph-contract/src/index.ts`](../packages/experimental/graph-contract/src/index.ts)
+
+实验性。`mode: off` 不注册任何东西；`shadow` 与 `enforce` 注册相同的两个工具，只在准入上不同。`assumption` 是没有默认值的必填项，因此本目录提供了一个；`allowedTools` 与 `routes` 默认为空，这只影响审计与能力结果，不影响 schema。
+
+<a id="deepseek-aidsh-experimental-graph-projection"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-projection`
+
+### `graph_cite`
+
+检查当前轮次的哪些工具调用与工具结果提到了你即将在回答中提及的文件路径或 shell 命令。每条支持记录是 tool-record（某个工具调用参数提到它）、observed（某个成功的工具结果提到它）或 absence（某个失败的工具结果提到它）。没有记录的声明是 parametric：本轮次中没有任何内容显示它。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "claim": {
+      "type": "string",
+      "description": "One file path or one shell command from your answer."
+    }
+  },
+  "required": [
+    "claim"
+  ]
+}
+```
+
+来源：[`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+### `graph_query`
+
+读取本会话已准入的任务图。scope "plans" 列出每个已准入计划及其版本、节点数、就绪数与已执行数。scope "plan" 加 plan_id 返回其节点（needs、状态、依据、尝试次数、恢复状态、循环迭代）、可以一起运行的节点波次、其运行，以及每条循环边的触发次数。scope "node" 加 plan_id 与 node_id 返回一个节点及其输出、子会话与记录的原因。状态由 harness 根据会话日志记录，无法设置。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "description": "plans lists admitted plans; plan returns one plan; node returns one node.",
+      "enum": [
+        "plans",
+        "plan",
+        "node"
+      ]
+    },
+    "plan_id": {
+      "type": "string",
+      "description": "Plan id; required for scope \"plan\" and \"node\"."
+    },
+    "node_id": {
+      "type": "string",
+      "description": "Node id; required for scope \"node\"."
+    }
+  },
+  "required": [
+    "scope"
+  ]
+}
+```
+
+来源：[`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+### `history_read`
+
+读回压缩在你的上下文中替换或缩短的对话。不带 seq 时，按最新优先列出本会话被压缩的片段：每个片段有一个 seq、一个类型（summary：被检查点替换的片段；prune：被原地缩短的工具结果）、其首尾事件编号以及其条目数。带上该列表中的 seq 时，从 offset 开始把该片段作为转录返回；提前停止的页面会给出下一个 offset。转录作为本工具结果到达；你上下文中更早的内容都不会改变。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "description": "Seq of a compacted span from the listing; omit to list spans."
+    },
+    "offset": {
+      "type": "integer",
+      "description": "Item to start at inside the span; default 0."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/graph-projection/src/index.ts`](../packages/experimental/graph-projection/src/index.ts)
+
+实验性且只读：它折叠 graph/plan、graph/node、graph/run 与 graph/edge 事件、当前轮次的工具记录以及压缩片段，自身不写入任何会话事件。
+
+<a id="deepseek-aidsh-experimental-graph-runner"></a>
+
+## `@deepseek-ai/dsh-experimental-graph-runner`
+
+### `graph_run`
+
+运行一个 dsh-graph/v1 计划的最新准入版本，并等待它停止。每个代理节点作为一个新的子代理运行，只看到自己的指令、输入与声明的工具，并返回声明的输出。锚点与 verify 命令作为 shell 命令运行；human_gate 会询问用户。
+
+只有带证据时节点才算已执行：其 verify 命令通过、某个验证节点为它返回 verdict "pass"，或用户批准了它的关口。没有证据的结果保持 unverified。失败的节点最多按其 retryBudget 重试。当 from 节点完成且其 until 命令失败时，循环边会再次运行其循环，至多 maxIterations 次；重新打开的目标会看到该边回传的输出。
+
+结果给出停止原因与每个节点的状态。遇到 NO_PROGRESS 时，修正计划并用 graph_audit 审计一个新版本；未改变的已完成节点会被携带过去。遇到 BUDGET 时，再次调用 graph_run 继续。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "Id of a plan with an admitted version."
+    },
+    "inputs": {
+      "description": "Object with a value for every name in the plan's runInputs."
+    }
+  },
+  "required": [
+    "plan_id"
+  ]
+}
+```
+
+来源：[`packages/experimental/graph-runner/src/index.ts`](../packages/experimental/graph-runner/src/index.ts)
+
+实验性。在调用它的工具调用前台运行；`mode` 只改变写入范围的执行方式，不改变 schema。
+
+<a id="deepseek-aidsh-experimental-tool-knowledge"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-knowledge`
+
+### `knowledge_cite`
+
+列出起于或止于某个知识页面的边，每条边带一个可引用的稳定边 id（e: 加 8 位十六进制）：正文链接（wikilink、mdlink）、声明的关系（derives-from、depends-on、implements、supports、contradicts、supersedes），以及指向页面所提及的工作区代码路径的 touches 边。把边 id 作为 ref 传入可查找那一条边。depth 从 1 起还会返回相距不超过该链接数的页面。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page reference, or an edge id such as e:1a2b3c4d."
+    },
+    "depth": {
+      "type": "integer",
+      "description": "Link distance of neighbor pages to include, 0 to 2 (default 0)."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_query`
+
+搜索本工作区的知识库：由之前的会话和人记录的、关于项目的持久页面。按页面包含的查询词比例排序返回页面，附带 id、标题、类型、最后更新时间与 stale（它所依赖的页面在它之后发生了变化或已被取代）。依赖某个页面之前，先用 knowledge_read 阅读它。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words to search for."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most hits to return, 1 to 10 (default 10)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_read`
+
+按 id（例如 concepts/retry.md）、不带 .md 的 id，或在知识库中唯一的文件名读取一个知识页面。返回其标题、类型、最后更新时间、stale 标记、声明的关系与 Markdown 文本。页面可能已过时：在断言关于代码的陈述之前，先对照当前文件核实。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ref": {
+      "type": "string",
+      "description": "Page id, id without .md, or a unique file name."
+    }
+  },
+  "required": [
+    "ref"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+### `knowledge_write`
+
+创建或替换一个知识页面。id 是位于知识库某个内容目录内的路径，例如 concepts/retry.md。sources 必须列出你在本会话中用 read 读取过的工作区文件；harness 会在页面中引用这些读取，并拒绝没有这些读取的页面。relations 只能指向已存在的页面。每次写入都需用户批准。记录关于项目的持久事实，而不是本会话的计划、进度或临时状态。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Page path such as concepts/retry.md."
+    },
+    "type": {
+      "type": "string",
+      "description": "One word such as concept, entity, source, or episode."
+    },
+    "title": {
+      "type": "string",
+      "description": "One-line title."
+    },
+    "body": {
+      "type": "string",
+      "description": "Markdown body; the harness adds frontmatter, the title heading, and the Origin section."
+    },
+    "relations": {
+      "type": "array",
+      "description": "Relations to existing pages.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "relation": {
+            "type": "string",
+            "enum": [
+              "derives-from",
+              "depends-on",
+              "implements",
+              "supports",
+              "contradicts",
+              "supersedes"
+            ]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "to"
+        ]
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Workspace files you read with read that the page is based on.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "title",
+    "body",
+    "sources"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-knowledge/src/index.ts`](../packages/experimental/tool-knowledge/src/index.ts)
+
+实验性。`read-only`（默认）注册 knowledge_query、knowledge_read 与 knowledge_cite；`read-write` 另加 knowledge_write，其描述会写出所配置的证据工具，并且总是请求批准。
+
+<a id="deepseek-aidsh-experimental-memory-zeromem"></a>
+
+## `@deepseek-ai/dsh-experimental-memory-zeromem`
+
+### `memory_forget_session`
+
+永久删除一个更早会话的全部已存储轮次，会话由 memory_recall 返回的会话 id 指定。仅在用户要求遗忘该会话时使用；每次删除都由用户批准。当前会话不能删除，被删除会话之后的轮次也不会再存储。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "session": {
+      "type": "string",
+      "description": "Session id from a memory_recall result."
+    }
+  },
+  "required": [
+    "session"
+  ]
+}
+```
+
+来源：[`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_recall`
+
+检索用户与你在此工作区更早的会话中说过的内容。返回最相关的已存储轮次，每个轮次带其会话 id、时间、说话方（user 或 assistant）、文本以及类型：match 直接回答查询，context 与某个 match 相关联。只存储用户消息与最终助手回复，从不存储工具调用或工具输出；当前会话被排除。召回的文本记录的是当时说过的话：依赖它之前请对照当前文件核实。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Words or a question about the earlier conversation."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Most turns to return, 1 to 10 (default 5)."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+### `memory_stats`
+
+统计 memory_recall 所检索的已存储轮次数与会话数。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/memory-zeromem/src/index.ts`](../packages/experimental/memory-zeromem/src/index.ts)
+
+实验性。memory_recall 与 memory_stats 始终注册；`allowForget: true` 另加 memory_forget_session，它总是请求批准。memory_recall 的描述会写出存储范围，以及是否排除当前会话（此处展示默认值 `workspace` 与 `true`）。
 
 <a id="deepseek-aidsh-tool-todo"></a>
 

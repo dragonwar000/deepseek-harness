@@ -1,5 +1,5 @@
 ---
-description: "面向侧栏的官方 DeepSeek Harness 品牌填充，仅在官方构建中生效；供选择或替换品牌呈现的用户与维护者阅读。"
+description: "面向侧栏的官方 CTD Core 品牌填充，仅在官方构建中生效；供选择或替换品牌呈现的用户与维护者阅读。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本包让以 `official` profile 构建的客户端在侧栏显示 DeepSeek Harness 标志与名称。其他构建 profile 保留外壳的鱼形标志与本地构建标签，会话首屏则始终使用动画鱼。品牌为 DeepSeek Harness 的部署应选择本包；使用其他品牌的部署应提供替代品牌包。本包不保留运行时状态，也不影响模型请求。
+本包让以 `official` profile 构建的客户端在侧栏显示 CTD Core 名称字标。所有构建 profile 本就在侧栏显示同一个 Coteccons 标志——本包的标志填充渲染的正是外壳回退所用的同一个 `CtdMark` 图形——因此两者的差异只在名称呈现：官方字标 SVG，而非外壳的纯文本本地构建标签。会话首屏无论 profile 如何都使用 Coteccons 标志回退。品牌为 CTD Core 的部署应选择本包；使用其他品牌的部署应提供替代品牌包。本包不保留运行时状态，也不影响模型请求。
 
 ## 目录
 
@@ -25,11 +25,11 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在采用 DeepSeek 自有品牌的部署中，将本插件挂载到浏览器插件名单，然后以 `official` profile 构建客户端，让填充得以注册。
+在采用 CTD Core 自有品牌的部署中，将本插件挂载到浏览器插件名单；一旦挂载，其填充无条件注册。
 
 ### 选择 profile
 
-`DSH_CLIENT_BUILD_PROFILE` 决定渲染哪个品牌。`official` 构建在侧栏显示官方标志与名称；任何其他取值都让外壳回退——鱼形标志与本地构建标签——保持原样。会话首屏无论 profile 如何都显示来自 `dsh-client-ui-conversation` 的动画首屏鱼，因为这个回退本身就是官方标志。两种情况下插件都会照常加载并通过校验；只有注册受 profile 门控。
+本包内部没有构建 profile 判断：一旦插件挂载，`apply()` 始终注册 `OfficialBrandMark` 与 `OfficialBrandName`。部署的组合方式——而非某个运行时环境值——才决定本包是否出现在插件名单中；`DSH_CLIENT_BUILD_PROFILE` 只选择其他地方读取的内嵌 `official`/默认客户端构建记录（参见 [`scripts/client-build-environment.ts`](../../../scripts/client-build-environment.ts)），与本包自身的注册无关。未将本包纳入名单的部署会保留外壳回退——Coteccons 标志与本地构建标签。会话首屏无论 profile 如何都显示来自 `dsh-client-ui-conversation` 的 Coteccons 标志回退，因为这个回退本身就是官方标志。
 
 ### 替换品牌
 
@@ -56,7 +56,7 @@ kind: "package-reference"
 
 - [ui-sidebar](../ui-sidebar/README.zh.md)——声明 `sidebar.brand.mark` 与 `sidebar.brand.name` 并渲染其回退。
 - [ui-conversation](../ui-conversation/README.zh.md)——在首屏声明 `conversation.hero.brand.mark`。
-- [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.zh.md)——浏览器插件行如何加载并注册 slot。
+- [Web 客户端架构](../../../.agents/notes/implemented/architecture/2026-07-19-gui-web-client-architecture.md)——浏览器插件行如何加载并注册 slot。
 
 -----
 

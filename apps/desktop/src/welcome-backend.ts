@@ -2,32 +2,37 @@ import type { ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/typ
 /** Native welcome operations using the shared Web authentication and RPC APIs. */
 
 import { randomUUID } from 'node:crypto'
-import { desktopAccountBackend, type DesktopAccountBackend } from './account-backend.ts'
+import { desktopSsoBackend, type DesktopSsoBackend } from './sso-backend.ts'
 
 /** Metadata needed before the native entry or workspace becomes visible. */
 export interface WelcomeState {
+  /** Whether a Coteccons SSO account is signed in. */
   readonly loggedIn: boolean
   readonly hasApiKey: boolean
   readonly writable: boolean
   readonly localePreference: string | null
+  /** Provider namespaces with writable credentials, for the welcome page to list. */
+  readonly writableProviders: readonly string[]
 }
 
 /** Narrow operations available to the native welcome flow. */
 export interface DesktopWelcomeBackend {
   /** @returns the current Host policy; every read observes live configuration. */
   analyticsEnabled(): Promise<boolean>
-  readonly account: DesktopAccountBackend
+  readonly sso: DesktopSsoBackend
   /** @param event - desktop-owned fields. @returns after local Host intake. */
   report(event: ProductEvent): Promise<void>
-  /** @returns Configured-key presence and the shared language preference, without credential values. */
+  /** @returns Sign-in state, configured-key presence, and the shared language preference, without credential values. */
   read(): Promise<WelcomeState>
   /** @returns The saved UI language without account or provider requests. */
   readLocalePreference(): Promise<string | null>
   /**
-   * @param apiKey - User-entered official provider key.
+   * Store an API key for a configurable provider.
+   * @param settingsNs - Provider settings namespace (e.g. `llm-deepseek`, `llm-pi-ai`).
+   * @param apiKey - User-entered provider key.
    * @returns A safe write outcome without provider diagnostics.
    */
-  save(apiKey: string): Promise<{ ok: boolean }>
+  save(settingsNs: string, apiKey: string): Promise<{ ok: boolean }>
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -68,16 +73,20 @@ export async function connectDesktopWelcome(
     }
     return envelope.result.value
   }
-  const account = desktopAccountBackend(origin, invoke, cookies)
-  const settingsAndReference = async () => {
+  const sso = desktopSsoBackend(origin, invoke, cookies)
+  /**
+   * Resolve a provider namespace's credential reference, returning the settings
+   * namespaces alongside the ref so callers can batch credential reads.
+   */
+  const providerRef = async (ns: string): Promise<{ settings: { namespaces: unknown[] }; ref: string | undefined }> => {
     const settings = await invoke({ namespace: 'settings', method: 'describe', args: {} })
     if (!record(settings) || !Array.isArray(settings.namespaces)) throw new Error('desktop welcome: missing settings namespaces')
-    const official: unknown = settings.namespaces.find((item: unknown) => record(item) && item.ns === 'llm-deepseek')
-    if (official === undefined) return { settings: { namespaces: settings.namespaces }, ref: undefined }
-    if (!record(official) || !record(official.value) || typeof official.value.apiKeyEnv !== 'string') {
-      throw new Error('desktop welcome: missing official DeepSeek credential reference')
+    const namespace: unknown = settings.namespaces.find((item: unknown) => record(item) && item.ns === ns)
+    if (namespace === undefined) return { settings: { namespaces: settings.namespaces }, ref: undefined }
+    if (!record(namespace) || !record(namespace.value) || typeof namespace.value.apiKeyEnv !== 'string') {
+      return { settings: { namespaces: settings.namespaces }, ref: undefined }
     }
-    return { settings: { namespaces: settings.namespaces }, ref: official.value.apiKeyEnv }
+    return { settings: { namespaces: settings.namespaces }, ref: namespace.value.apiKeyEnv }
   }
   const localePreference = (namespaces: unknown[]): string | null => {
     const locale: unknown = namespaces.find((item: unknown) => record(item) && item.ns === 'locale')
@@ -88,10 +97,13 @@ export async function connectDesktopWelcome(
     return locale.value.preference ?? null
   }
   const read = async (): Promise<WelcomeState> => {
-    const { settings, ref } = await settingsAndReference()
     const providers = await invoke({ namespace: 'llm', method: 'listConfigurableProviders', args: {} })
     if (!Array.isArray(providers)) throw new Error('desktop welcome: invalid provider directory')
+    // Read settings once and resolve the ref for each configurable provider.
+    const settings = await invoke({ namespace: 'settings', method: 'describe', args: {} })
+    if (!record(settings) || !Array.isArray(settings.namespaces)) throw new Error('desktop welcome: missing settings namespaces')
     const namespaces = settings.namespaces
+    // Collect every provider's apiKeyEnv ref.
     const refs = providers.flatMap((provider: unknown) => {
       if (!record(provider) || typeof provider.settingsNs !== 'string' || !Array.isArray(provider.settingsPath)) {
         throw new Error('desktop welcome: invalid provider settings address')
@@ -104,7 +116,7 @@ export async function connectDesktopWelcome(
       }
       return record(value) && typeof value.apiKeyEnv === 'string' ? [value.apiKeyEnv] : []
     })
-    const unique = [...new Set([...(ref === undefined ? [] : [ref]), ...refs])]
+    const unique = [...new Set(refs)]
     const states: Record<string, unknown> = {}
     // credentials.describe accepts at most 64 references per request.
     for (let offset = 0; offset < unique.length; offset += 64) {
@@ -112,16 +124,35 @@ export async function connectDesktopWelcome(
       if (!record(batch)) throw new Error('desktop welcome: invalid credential metadata')
       Object.assign(states, batch)
     }
-    if (ref !== undefined && !record(states[ref])) throw new Error('desktop welcome: missing credential metadata')
+    const writableProviders: string[] = []
+    for (const provider of providers) {
+      if (!record(provider) || typeof provider.settingsNs !== 'string' || !Array.isArray(provider.settingsPath)) {
+        throw new Error('desktop welcome: invalid provider settings address')
+      }
+      const namespace: unknown = namespaces.find((item: unknown) => record(item) && item.ns === provider.settingsNs)
+      let value: unknown = record(namespace) ? namespace.value : undefined
+      for (const key of provider.settingsPath as unknown[]) {
+        if (typeof key !== 'string') throw new Error('desktop welcome: invalid provider settings path')
+        value = record(value) ? value[key] : undefined
+      }
+      const ref: unknown = record(value) && typeof value === 'object' && 'apiKeyEnv' in value && typeof value.apiKeyEnv === 'string'
+        ? value.apiKeyEnv
+        : undefined
+      const state = typeof ref === 'string' ? states[ref] as Record<string, unknown> | undefined : undefined
+      if (typeof state === 'object' && state.writable === true) {
+        writableProviders.push(provider.settingsNs)
+      }
+    }
     return {
-      loggedIn: (await account.state()).status === 'credential-stored',
+      loggedIn: (await sso.state()).status === 'signed-in',
       hasApiKey: Object.values(states).some(value => record(value) && value.configured === true),
-      writable: ref !== undefined && record(states[ref]) && states[ref].writable === true,
+      writable: writableProviders.length > 0,
+      writableProviders,
       localePreference: localePreference(namespaces),
     }
   }
   return {
-    account,
+    sso,
     read,
     async analyticsEnabled() {
       const enabled = await invoke({ namespace: 'productAnalytics', method: 'enabled', args: {} }, AbortSignal.timeout(1000))
@@ -134,10 +165,10 @@ export async function connectDesktopWelcome(
       if (!record(settings) || !Array.isArray(settings.namespaces)) throw new Error('desktop welcome: missing settings namespaces')
       return localePreference(settings.namespaces)
     },
-    async save(apiKey) {
+    async save(settingsNs, apiKey) {
       if (!/^[\x21-\x7e]+$/.test(apiKey)) return { ok: false }
       try {
-        const { ref } = await settingsAndReference()
+        const { ref } = await providerRef(settingsNs)
         if (ref === undefined) return { ok: false }
         await invoke({ namespace: 'credentials', method: 'set', args: { ref, value: apiKey } })
         return { ok: true }

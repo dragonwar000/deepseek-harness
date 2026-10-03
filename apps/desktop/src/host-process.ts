@@ -23,7 +23,16 @@ interface PlatformSessionEvent {
   readonly session: PlatformSession | null
 }
 
-type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | { readonly type: 'shutdown-complete' } | {
+/** A registered AI Account's status check changed its sign-in status to signed out. */
+interface AiAccountSignedOutEvent {
+  readonly type: 'ai-account-signed-out'
+  readonly kind: DesktopAiAccountKind
+}
+
+/** AI Account kinds the Host reports; mirrors `AiAccountKind` of `@deepseek-ai/dsh-ai-account`. */
+export type DesktopAiAccountKind = 'claude' | 'chatgpt'
+
+type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | AiAccountSignedOutEvent | { readonly type: 'shutdown-complete' } | {
   readonly type: 'update-tasks'
   readonly requestId: number
   readonly active: boolean
@@ -77,6 +86,8 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
           && (url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))
       } catch { return false }
     }
+    case 'ai-account-signed-out':
+      return candidate.kind === 'claude' || candidate.kind === 'chatgpt'
     case 'fatal':
       return typeof candidate.message === 'string' && (candidate.diagnostic === undefined || typeof candidate.diagnostic === 'string')
     case 'update-tasks':
@@ -165,6 +176,7 @@ export class DesktopHostProcess {
    *   `office-skills` resources fail Host startup.
    * @param packageManager - Bundled pnpm entry and Node launcher directory, scoped to package operations.
    * @param onPlatformSession - Private credential updates for embedded Platform views.
+   * @param onAiAccountSignedOut - One call per AI Account transition into signed out, with its kind.
    */
   constructor(
     private readonly node: string,
@@ -177,6 +189,7 @@ export class DesktopHostProcess {
     private readonly packageManager?: { readonly pnpm: string; readonly nodeBin: string },
 
     private readonly onPlatformSession?: (session: PlatformSession | null) => void,
+    private readonly onAiAccountSignedOut?: (kind: DesktopAiAccountKind) => void,
   ) {}
 
   /**
@@ -211,6 +224,7 @@ export class DesktopHostProcess {
       }
       if (message.type === 'ready') this.readyResolve({ url: message.url, injections: message.injections })
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
+      else if (message.type === 'ai-account-signed-out') this.onAiAccountSignedOut?.(message.kind)
       else if (message.type === 'shutdown-complete') {
         if (this.stopping) this.shutdownCompleted = true
         else this.fail(new Error('dsh desktop host acknowledged an unrequested shutdown'))

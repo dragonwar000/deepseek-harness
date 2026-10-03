@@ -496,16 +496,27 @@ it('explicitly reopens one onboarding editor during an existing session', () => 
   expect(screen.queryByTestId('onboarding')).toBeNull()
 })
 
-it('opens Account from the contributed sidebar launcher', () => {
-  const { renderSlot } = mount({ rows: [{ id: 'account', order: -10, label: 'Account' }] })
+it('opens AI Account from the contributed sidebar launcher', () => {
+  const { renderSlot } = mount({ rows: [{ id: 'ai-account', order: -10, label: 'AI Account' }] })
   const launcher = renderSlot.mock.calls.find(call => call[0] === 'settings.launcher')!
   expect(launcher[1]).toMatchObject({ settingsOpen: false })
   act(() => { (launcher[1] as { openSettings: () => void }).openSettings() })
-  expect(screen.getByTestId('section-account')).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'Account' }).querySelector('svg')).not.toBeNull()
+  expect(screen.getByTestId('section-ai-account')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'AI Account' }).querySelector('svg')).not.toBeNull()
   expect(renderSlot.mock.calls.filter(call => call[0] === 'settings.launcher').at(-1)?.[1]).toMatchObject({ settingsOpen: true })
   fireEvent.keyDown(document, { key: 'Escape' })
   expect(renderSlot.mock.calls.filter(call => call[0] === 'settings.launcher').at(-1)?.[1]).toMatchObject({ settingsOpen: false })
+})
+
+it('opens the retired Account section id on AI Account, which now holds the DeepSeek account', () => {
+  const { renderSlot } = mount({
+    rows: [{ id: 'general', order: 0, label: 'General' }, { id: 'ai-account', order: 10, label: 'AI Account' }],
+  })
+  const step = renderSlot.mock.calls.find(call => call[0] === 'settings.onboarding')!
+  act(() => { (step[1] as { openSection: (id: string) => void }).openSection('account') })
+  expect(screen.getByTestId('section-ai-account')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'AI Account' }).getAttribute('aria-current')).toBe('true')
+  expect(screen.queryByRole('button', { name: 'Account' })).toBeNull()
 })
 
 it('shows the effective settings binding on focus and exposes it to assistive technology', () => {

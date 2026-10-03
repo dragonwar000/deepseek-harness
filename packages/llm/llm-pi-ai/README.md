@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`@deepseek-ai/dsh-llm-pi-ai` routes model requests to multiple pi-ai providers, OpenAI-compatible gateways, or self-hosted servers from one configuration. Installed pi-ai providers supply endpoint, protocol, and model-catalog defaults; custom routes can declare those values without code changes. Profiles and credentials are resolved for each request, so settings changes take effect on the next request without a restart. Supported providers can use stored OAuth or interactive-key sign-in with cross-process refresh locking. The package may start with no routes and activate when user settings add them.
+`@deepseek-ai/dsh-llm-pi-ai` routes model requests to multiple pi-ai providers, OpenAI-compatible gateways, or self-hosted servers from one configuration. Installed pi-ai providers supply endpoint, protocol, and model-catalog defaults; custom routes can declare those values without code changes. Profiles and credentials are resolved for each request, so settings changes take effect on the next request without a restart. Supported providers can use stored OAuth or interactive-key sign-in with cross-process refresh locking. The package may start with no routes and activate them when user settings add a profile or a sanctioned sign-in lands; consumer subscription grants stay delegated-only.
 
 ## Table of Contents
 
@@ -88,11 +88,30 @@ Each profile may set a `retryPolicy`; omission uses normal mode with five retrie
 | `maxRequestImageBytes` | `20 MiB` | Aggregate base64 image-payload bound; a request whose retained images exceed it fails with `IMAGE_OFFLOAD_REQUIRED` |
 | `retryPolicy` | normal, 5 retries | Provider-owned retry policy executed by `dsh-llm-retry` |
 
+Beside `providers`, one top-level field governs whether a sign-in may add a route of its own:
+
+| Field | Default | Purpose |
+|---|---|---|
+| `signInRoutes` | `true` | Whether a sanctioned sign-in activates a route serving its provider's installed catalog. `false` leaves `providers` the only source of routes |
+
 The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-llm-pi-ai) is the exhaustive source for every accepted field and its JSDoc.
 
 ### Sign in to a provider
 
 A provider pi-ai ships a login for can be signed into through the harness authorization seam: the flow offers OAuth or an interactive key prompt (a key is typed into pi-ai's own login prompt, not into the settings form), and the resulting credential is stored in the harness credential store at `llm-pi-ai/<provider id>`. The stored sign-in authenticates its route beneath any `apiKeyEnv` override and refreshes itself under the store's cross-process lock; signing out deletes the stored record. A hand-declared route key outside the record grammar — a lowercase hyphenated identifier — cannot be signed into, because a record write for it refuses with `LlmError('UNSTORABLE_PROVIDER_ID')`; such a route authenticates through `apiKeyEnv` or ambient provider settings instead.
+
+A **sanctioned** sign-in also activates a route for its provider, so its catalog models reach the chat model picker on the next read — no restart, and no `providers` entry to write. The activated route is the installed catalog entry unchanged: the catalog's endpoint, protocol, and models, authenticated by the stored record. Signing out removes the route and its models with the record. A profile in `providers` always wins: activation only adds a provider the settings document is silent about, so a declared route keeps its own `displayName`, narrowed `models`, `apiKeyEnv`, and every other field exactly as before, and reappears as an activated catalog route only if the profile is removed while the sign-in remains. `signInRoutes: false` turns activation off for deployments that pin their routes.
+
+Whether a stored credential is sanctioned follows from what the vendor issued, not from configuration:
+
+| Stored credential | Main model | Why |
+|---|---|---|
+| API key (any provider offering the key prompt) | Activates a route | A key the account holder minted in the vendor's console names only the account it bills |
+| OAuth grant pi-ai does not mark `isSubscription` (`openrouter`, `radius`) | Activates a route | A grant the vendor issues to third-party clients |
+| OAuth grant pi-ai marks `isSubscription` (`anthropic`, `github-copilot`, `kimi-coding`, `meta`, `openai-codex`, `xai`) | Never a route | A consumer subscription grant issued to the vendor's own assistant client; sending it from here would mean identifying this harness as that client |
+| Grant for a route no installed provider defines OAuth for | Never a route | Nothing here can derive request auth from it |
+
+A withheld sign-in is still stored, so the account exists and delegated runs of the vendor's own product can use it — which is what [`dsh-ai-account`](../../credentials/ai-account/README.md) manages for Claude and ChatGPT. The plugin logs once per withheld sign-in naming the reason and, where an installed provider offers one, the API-key sign-in that does reach the main model: the same record id for a provider shipping both methods, and `openai` for `openai-codex`, which ships no key. `classifySignIn`, `signInClassifications`, and `resolveSignInRoutes` are exported so a surface can state the same thing without restating the rule.
 
 ### Resolve the model catalog
 
@@ -141,6 +160,7 @@ The adapter is built on immutable snapshots and per-operation resolution. Each o
 | [`src/index.ts`](src/index.ts) | Config snapshots, directory and route registration |
 | [`src/auth.ts`](src/auth.ts) | The credential store and ambient auth context over the harness credential plane |
 | [`src/login.ts`](src/login.ts) | Authorization flows for the installed providers that ship a login |
+| [`src/sign-in.ts`](src/sign-in.ts) | Which stored sign-ins may authenticate a route, and the route set that produces |
 | [`src/config.ts`](src/config.ts) | Profile schema, resolution, and serviceability checks |
 | [`src/catalog.ts`](src/catalog.ts) | Installed-catalog integration and drift gates |
 | [`src/models.ts`](src/models.ts) | Model collections, static providers, and reasoning levels over narrow pi-ai entry points |
@@ -239,7 +259,7 @@ These limits define where the adapter stops and future work begins. They are cur
 
 This Dev Note is non-authoritative working context: undecided directions and notes for maintainers. Shipped behavior and accepted rationale live in the sections above, the package code, and the linked Agent Notes.
 
-- The offered protocol set is deliberately narrower than pi-ai's full API set: Bedrock, Vertex, Azure, and Codex authenticate through flows a profile cannot completely describe with a key, an endpoint, and headers; catalog routes still reach them through their own provider, and only an explicit override is refused. Codex is sign-in-able through the authorization flow's OAuth grant.
+- The offered protocol set is deliberately narrower than pi-ai's full API set: Bedrock, Vertex, Azure, and Codex authenticate through flows a profile cannot completely describe with a key, an endpoint, and headers; catalog routes still reach them through their own provider, and only an explicit override is refused. Codex is sign-in-able through the authorization flow's OAuth grant, which is stored for delegated runs and never becomes a route here.
 - The `compat` switch set is pinned to pi-ai's compat types by drift gates; an upstream upgrade that adds a field, gives a further protocol a compat type, or widens a value union fails the build until someone classifies it.
 
 </details>

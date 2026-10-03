@@ -11,6 +11,7 @@ import { createClientTest, type TestClient, webApp } from '@deepseek-ai/dsh-clie
 import { inject } from '../src/client/index.ts'
 import type { SettingsRootInjected } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
+import type { createSettingsShellStore } from '../src/client/shell-store.ts'
 import type { DesktopUpdatePresentation } from '../src/types.ts'
 
 const SELF = '@deepseek-ai/dsh-client-ui-settings-general'
@@ -41,7 +42,7 @@ const CHILD_NAMES = Object.keys(CHILD_SPECS) as Array<keyof typeof CHILD_SPECS>
  * ui-settings-models, ui-settings-plugins, and ui-agent-preset. A plugin
  * adding a section changes this list.
  */
-const PRODUCT_SECTIONS: readonly string[] = ['general', 'models', 'plugins', 'agent-presets']
+const PRODUCT_SECTIONS: readonly string[] = ['general', 'ai-account', 'models', 'plugins', 'agent-presets']
 /** Onboarding steps the web-app roster registers, in coordinator order; both come from ui-settings-models. */
 const PRODUCT_ONBOARDING: readonly { id: string; order: number }[] = [
   { id: 'welcome-notice', order: -100 },
@@ -74,6 +75,28 @@ describe('ui-settings-general shell', () => {
     expect(c.ctx.slots.entries('sidebar.toggle.badge')).toHaveLength(0)
     publish!({ phase: 'error', version: status.version, failure: 'install' })
     expect(row.hooks.desktopUpdate.getSnapshot().presentation).toEqual(status)
+  }, COLD_BOOT_TIMEOUT_MS)
+
+  it('opens the section a Desktop request names, the default section for an unregistered id, and unsubscribes on unload', async ({ start }) => {
+    let request: ((sectionId: string) => void) | undefined
+    const off = vi.fn()
+    const subscribe = vi.fn((listener: typeof request) => { request = listener; return off })
+    vi.stubGlobal('dshDesktop', { protocolVersion: 1, settings: { subscribe } })
+    onTestFinished(() => { vi.unstubAllGlobals() })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    onTestFinished(() => { warn.mockRestore() })
+    const c = await start()
+    expect(subscribe).toHaveBeenCalledOnce()
+    const shell = (c.ctx.slots.entries('sidebar.settings')[0]!.store as ReturnType<typeof createSettingsShellStore>).create()
+    request!('ai-account')
+    expect(shell.store.getSnapshot()).toEqual({ open: true, activeId: 'ai-account' })
+    shell.actions.close()
+    request!('retired-section')
+    expect(warn).toHaveBeenCalledWith('ui-settings-general: Desktop requested unregistered Settings section "retired-section"; opening the default section')
+    expect(shell.store.getSnapshot()).toEqual({ open: true, activeId: undefined })
+    await c.unload(SELF)
+    await c.flush()
+    expect(off).toHaveBeenCalledOnce()
   }, COLD_BOOT_TIMEOUT_MS)
 
   it('declares its services', () => {
@@ -109,21 +132,19 @@ describe('ui-settings-general shell', () => {
     off()
   })
 
-  it('shows Account first in Desktop while signed in and removes it on sign-out', async ({ start }) => {
+  it('keeps the section list fixed across Desktop sign-in and sign-out; the Coteccons SSO group lives in AI Account', async ({ start }) => {
     vi.stubGlobal('dshDesktop', {})
     onTestFinished(() => { vi.unstubAllGlobals() })
     const c = await start()
     const { sections } = injectedOf(c).hooks
-    await c.mock.streams.opened('account/watch', 1)
+    await c.mock.streams.opened('cotecconsSso/watch', 1)
     expect(sections.getSnapshot().map(row => row.id)).toEqual(PRODUCT_SECTIONS)
-    c.mock.streams.push('account/watch', { status: 'credential-stored', attempt: null })
-    await vi.waitFor(() => {
-      expect(sections.getSnapshot().map(row => row.id)).toEqual(['account', ...PRODUCT_SECTIONS])
-    })
-    c.mock.streams.push('account/watch', { status: 'credential-stored', attempt: null })
-    await vi.waitFor(() => { expect(sections.getSnapshot().filter(row => row.id === 'account')).toHaveLength(1) })
-    c.mock.streams.push('account/watch', { status: 'signed-out', attempt: null })
-    await vi.waitFor(() => { expect(sections.getSnapshot().map(row => row.id)).toEqual(PRODUCT_SECTIONS) })
+    const account = { name: 'User', username: 'user@coteccons.vn', tenantId: 'tenant' }
+    for (const view of [{ status: 'signed-in', account }, { status: 'signed-out' }] as const) {
+      c.mock.streams.push('cotecconsSso/watch', view)
+      await c.flush()
+      expect(sections.getSnapshot().map(row => row.id)).toEqual(PRODUCT_SECTIONS)
+    }
   })
 
   it('projects the roster Connection control without copying its state; reconnect opens a new $events generation', async ({ start }) => {

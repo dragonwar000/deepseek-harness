@@ -2,78 +2,81 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/desktop/README.md
-/deepseek-harness-desktop:
-  en: eccac345d51428fa
-  zh: 4a448b3d63cb8117
-/deepseek-harness-desktop/terminal-command:
+/ctd-core-desktop:
+  en: 9746be3a2a406831
+  zh: 253197cf768fba57
+/ctd-core-desktop/terminal-command:
   en: bef92953c237363f
   zh: d21d6effd21b8c00
-/deepseek-harness-desktop/closing-the-window-and-quitting:
-  en: c323e02e3f0305fe
-  zh: 3c730db632136443
-/deepseek-harness-desktop/key-technical-decisions:
-  en: 069fdfd72d2ea26a
-  zh: 76ae549d43c99bb4
-/deepseek-harness-desktop/key-technical-decisions/bundled-workspace-dependencies:
-  en: 320733f93ede61a4
-  zh: 33206c3c4753c802
-/deepseek-harness-desktop/bundled-command-runtime:
-  en: beecf076aa2f0796
-  zh: c9001ce0f22d2379
-/deepseek-harness-desktop/installation-ownership:
+/ctd-core-desktop/closing-the-window-and-quitting:
+  en: 0131742bb84b8570
+  zh: 0ff1ab69fc644411
+/ctd-core-desktop/key-technical-decisions:
+  en: 63b2b9888dcb4a34
+  zh: ac0f8b04084c0c4d
+/ctd-core-desktop/key-technical-decisions/bundled-workspace-dependencies:
+  en: c68d9920965d6c1b
+  zh: 4dfed29dee16131d
+/ctd-core-desktop/bundled-command-runtime:
+  en: 2150c957c8ce5d6b
+  zh: 27a03b11861bc0db
+/ctd-core-desktop/installation-ownership:
   en: 22153a298a6662e1
   zh: 3600803c8c9d0274
-/deepseek-harness-desktop/installation-ownership/runtime-and-plugin-activation:
-  en: 0d11af8639977a6d
-  zh: 86b086b12d2210d3
-/deepseek-harness-desktop/installation-ownership/host-environment:
+/ctd-core-desktop/installation-ownership/runtime-and-plugin-activation:
+  en: a3510396260e76ce
+  zh: 421fefd49473371b
+/ctd-core-desktop/installation-ownership/host-environment:
   en: 84a9cc7ca9455aa8
   zh: 4091b8aa8231b74a
-/deepseek-harness-desktop/develop:
+/ctd-core-desktop/develop:
   en: 40d2ad4014bf445b
   zh: 6a08de06df9ed042
-/deepseek-harness-desktop/develop/startup-onboarding:
-  en: a51346b8d880ddba
-  zh: 7913214c1c66063c
-/deepseek-harness-desktop/develop/welcome-window-appearance:
-  en: ae319a496639b38d
-  zh: ef044103240ac9da
-/deepseek-harness-desktop/package:
+/ctd-core-desktop/develop/startup-onboarding:
+  en: f9851f3e39c721b9
+  zh: b336d1e77fab0a85
+/ctd-core-desktop/develop/welcome-window-appearance:
+  en: 3efdadffd33ca38e
+  zh: e5e06411d9f02740
+/ctd-core-desktop/package:
   en: 4cd8a8da6977928d
   zh: 9f624855a2edac37
-/deepseek-harness-desktop/package/release-versions:
-  en: f461b255133384cc
-  zh: 2b9db718f22fdd04
-/deepseek-harness-desktop/package/runtime-file-selection:
-  en: f0e345fd89868803
-  zh: fd2c775ad23fa2f0
-/deepseek-harness-desktop/package/upload-updates:
-  en: 72073b2e72590067
-  zh: 63b1f9790395c37d
-/deepseek-harness-desktop/package/unsigned-windows-test-installer:
+/ctd-core-desktop/package/release-versions:
+  en: 3385ff93c7745c6c
+  zh: 3edc11a448dd6253
+/ctd-core-desktop/package/runtime-file-selection:
+  en: c409637d93fd1941
+  zh: db6f6b6b8140f774
+/ctd-core-desktop/package/bundled-zeromem-executable:
+  en: da6d273bf2fa990d
+  zh: 9928d423fe312f49
+/ctd-core-desktop/package/upload-updates:
+  en: 2a2b18961d8fdc09
+  zh: 5c7904df0428bd4f
+/ctd-core-desktop/package/unsigned-windows-test-installer:
   en: cfd5780dd26a8e46
   zh: f7a16b1ede793b7b
-/deepseek-harness-desktop/package/windows-installer-interface:
-  en: f176a8b1c7de3064
-  zh: 6ea2dbe6bb808c34
-/deepseek-harness-desktop/package/windows-ev-signing:
-  en: 8efe3498dbe8686d
-  zh: a88c16f20a9430f3
-/deepseek-harness-desktop/updates:
+/ctd-core-desktop/package/windows-installer-interface:
+  en: 16a44f35f3f688b1
+  zh: d75f81c53a3650ec
+/ctd-core-desktop/package/windows-ev-signing:
+  en: cd1248306ac9d586
+  zh: 41f640fa53f7f52d
+/ctd-core-desktop/updates:
   en: d0df867b69cbffa4
   zh: eeb47b79b86fe5ee
-/deepseek-harness-desktop/updates/mandatory-update-policy:
-  en: 2f789a4949fafb12
-  zh: d8b28c01cfee11b7
-/deepseek-harness-desktop/updates/local-updater-qualification:
-  en: bc50fd8a4d96c227
-  zh: fb0a6ce80c31cda6
-/deepseek-harness-desktop/low-level-development-overrides:
+/ctd-core-desktop/updates/mandatory-update-policy:
+  en: 3c2215f9770e810d
+  zh: 0b5775b670024c79
+/ctd-core-desktop/updates/local-updater-qualification:
+  en: 6ceb4938f0fae4d6
+  zh: 1ed1736d0143a866
+/ctd-core-desktop/low-level-development-overrides:
   en: 0b225f914142ef0b
   zh: 9ffd07768d37824e
-/deepseek-harness-desktop/known-limitations:
-  en: 5b77213c86bbcfb6
-  zh: b34bf21773bb852b
-/deepseek-harness-desktop/dev-note:
-  en: 8e26b460ba31f21b
-  zh: fbcd0307b3867125
+/ctd-core-desktop/known-limitations:
+  en: 55bb87bc4050cd7e
+  zh: a72115796c610acb
+/ctd-core-desktop/dev-note:
+  en: ae8c884e29307df8
+  zh: 825d472376c28444

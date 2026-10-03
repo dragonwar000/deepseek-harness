@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for 2026-10-03-graph-node-ratchet.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/persistence-changes/2026-10-03-graph-node-ratchet.md
+/:
+  en: 3d5a424ae7d7e46b
+  zh: c22a8e4a62d8cc1a
+/2026-10-03-graph-node-ratchet:
+  en: dcf39b565ee3eacc
+  zh: 525caa442c0c5258
+/2026-10-03-graph-node-ratchet/summary:
+  en: 08535ceb0ae0c94d
+  zh: c027c2bea98ed5c0
+/2026-10-03-graph-node-ratchet/table-of-contents:
+  en: 6cf314a069ceb451
+  zh: 9adff678e9ecab3b
+/2026-10-03-graph-node-ratchet/declaration:
+  en: 6907136f28e48c90
+  zh: 02f8298485f3d8e7
+/2026-10-03-graph-node-ratchet/compatibility:
+  en: b7a1357bfc4e8804
+  zh: dd927c24cba89a64
+/2026-10-03-graph-node-ratchet/verification:
+  en: 5bf476c136f88c0e
+  zh: 540ce2d6c42c2dde
+/2026-10-03-graph-node-ratchet/dev-note:
+  en: b75c8458928b72b9
+  zh: 003ba4e17b4b5269

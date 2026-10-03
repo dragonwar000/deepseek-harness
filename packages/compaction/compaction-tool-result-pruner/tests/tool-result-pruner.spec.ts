@@ -89,7 +89,7 @@ describe('tool-result pruning configuration', () => {
       } },
     ])
     session.append('image/offload', { targets: [{ seq: SessionSeq(seq), imageIndexes: [0] }] })
-    const pruned = service().pruneSession(session)
+    const pruned = service().pruneSession(session, 'pressure')
     expect(pruned.pruned).toHaveLength(1)
     const replacement = session.snapshotEvents().at(-1)!
     expect(replacement.type).toBe('tool/result')
@@ -102,9 +102,9 @@ describe('tool-result pruning configuration', () => {
     const raw = { thresholdChars: 100, headChars: 20, tailChars: 10 }
     const resolved = resolveConfig(raw)
     raw.headChars = 1
-    expect(resolved).toEqual({ thresholdChars: 100, headChars: 20, tailChars: 10 })
+    expect(resolved).toEqual({ thresholdChars: 100, headChars: 20, tailChars: 10, protectUnseen: false })
     expect(Object.isFrozen(resolved)).toBe(true)
-    expect(DEFAULTS).toEqual({ thresholdChars: 8192, headChars: 4096, tailChars: 1024 })
+    expect(DEFAULTS).toEqual({ thresholdChars: 8192, headChars: 4096, tailChars: 1024, protectUnseen: false })
     expect(Object.isFrozen(DEFAULTS)).toBe(true)
   })
 
@@ -115,6 +115,7 @@ describe('tool-result pruning configuration', () => {
       [{ tailChars: 1.5 }, /tailChars .* non-negative integer/],
       [{ thresholdChars: 50, headChars: 20, tailChars: 20 }, /headChars \+ marker \+ tailChars/],
       [{ threshold: 10 }, /unknown key "threshold"/],
+      [{ protectUnseen: 'yes' }, /protectUnseen \(yes\) must be a boolean/],
     ] as Array<[unknown, RegExp]>
     for (const [config, pattern] of bad) {
       expect(() => resolveConfig(config as ToolResultPruneConfig)).toThrow(pattern)
@@ -199,7 +200,7 @@ describe('ToolResultPruner session transaction', () => {
       turn: 2,
     })
 
-    const result = service().pruneSession(session)
+    const result = service().pruneSession(session, 'pressure')
     expect(result.pruned).toHaveLength(1)
     expect(result.charsRemoved).toBeGreaterThan(0)
     const entry = result.pruned[0]!
@@ -259,8 +260,8 @@ describe('ToolResultPruner session transaction', () => {
       turn: 4,
     })
     const prune = service()
-    const first = prune.pruneSession(session)
-    const second = prune.pruneSession(session)
+    const first = prune.pruneSession(session, 'pressure')
+    const second = prune.pruneSession(session, 'pressure')
     expect(first.pruned.map(entry => entry.callId)).toEqual([ToolCallId('a'), ToolCallId('c')])
     expect(first.charsRemoved).toBe(
       first.pruned.reduce((sum, entry) => sum + entry.charsBefore - entry.charsAfter, 0),
@@ -274,7 +275,7 @@ describe('ToolResultPruner session transaction', () => {
     session.append('turn/start', {
       turn: 2,
     })
-    service().pruneSession(session)
+    service().pruneSession(session, 'pressure')
     const replay = Session.create(session.id, session.snapshotEvents())
     expect(replay.deriveMessages()).toEqual(session.deriveMessages())
     expect(replay.surface.replaceGeneration).toBe(session.surface.replaceGeneration)
@@ -290,10 +291,40 @@ describe('ToolResultPruner session transaction', () => {
     const prune = new ToolResultPruner(ctx, SMALL)
     const session = ctx.sessions.create(SessionId('invariants'))
     appendToolStep(session, 1, 'a', [{ type: 'text', text: 'A'.repeat(100) }])
-    expect(() => prune.pruneSession(session)).toThrow(/outside any open turn/)
+    expect(() => prune.pruneSession(session, 'pressure')).toThrow(/outside any open turn/)
     session.append('turn/start', {
       turn: 2,
     })
-    expect(() => prune.pruneSession(session)).not.toThrow()
+    expect(() => prune.pruneSession(session, 'pressure')).not.toThrow()
+  })
+})
+
+describe('unseen tool-result protection', () => {
+  /** Two closed tool steps: the first result is followed by an assistant message, the second is not. */
+  function seenAndUnseen(): { session: Session; seen: number; unseen: number } {
+    const session = Session.create(SessionId('unseen'))
+    const seen = appendToolStep(session, 1, 'seen', [{ type: 'text', text: 'S'.repeat(100) }])
+    const unseen = appendToolStep(session, 2, 'unseen', [{ type: 'text', text: 'U'.repeat(100) }])
+    session.append('turn/start', { turn: 3 })
+    return { session, seen, unseen }
+  }
+
+  it('keeps results after the latest assistant message verbatim under pressure', () => {
+    const { session, seen, unseen } = seenAndUnseen()
+    const result = service({ ...SMALL, protectUnseen: true }).pruneSession(session, 'pressure')
+    expect(result.pruned.map(entry => entry.originalSeq)).toEqual([seen])
+    expect(session.surface.nodes).toContain(unseen)
+  })
+
+  it('prunes unseen results for confirmed context overflow', () => {
+    const { session, seen, unseen } = seenAndUnseen()
+    const result = service({ ...SMALL, protectUnseen: true }).pruneSession(session, 'context-overflow')
+    expect(result.pruned.map(entry => entry.originalSeq)).toEqual([seen, unseen])
+  })
+
+  it('prunes every over-budget result under pressure when protection is off', () => {
+    const { session, seen, unseen } = seenAndUnseen()
+    const result = service().pruneSession(session, 'pressure')
+    expect(result.pruned.map(entry => entry.originalSeq)).toEqual([seen, unseen])
   })
 })

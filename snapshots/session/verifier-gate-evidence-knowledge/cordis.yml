@@ -1,0 +1,18 @@
+# The ordinary headless composition plus the knowledge store, the graph
+# projection, and the verifier gate recording its evidence check in shadow
+# mode: a store page and a store edge the answer names get graph-edge leaves,
+# and an unknown edge id stays unsupported.
+
+- insert:
+    - id: knowledge-wiki-filesystem
+      name: '@deepseek-ai/dsh-experimental-knowledge-wiki-filesystem'
+      config:
+        root: knowledge
+    - id: graph-projection
+      name: '@deepseek-ai/dsh-experimental-graph-projection'
+    - id: verifier-gate
+      name: '@deepseek-ai/dsh-experimental-verifier-gate'
+      config:
+        mode: shadow
+        assumption: "the model names knowledge pages and edges in its answer that the store does not hold"
+        evidence: { mode: shadow }

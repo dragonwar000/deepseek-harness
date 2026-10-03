@@ -1,0 +1,505 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:graph/node",
+      "kind": "event",
+      "event": "graph/node",
+      "surface": false,
+      "digest": "f8c0f9a529e2ea6e1943e450e8c5e5dc2494353e527fad2a57617da51d89a2fa",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 34,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 35,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "attempt",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "basis",
+                "type": 3,
+                "optional": true
+              },
+              {
+                "name": "carriedFrom",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "checks",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "childSession",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "detail",
+                "type": 11,
+                "optional": true
+              },
+              {
+                "name": "fingerprint",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "iteration",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "nodeId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "output",
+                "type": 15,
+                "optional": true
+              },
+              {
+                "name": "planId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "recoveryState",
+                "type": 18,
+                "optional": false
+              },
+              {
+                "name": "revision",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "runId",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "status",
+                "type": 22,
+                "optional": false
+              },
+              {
+                "name": "version",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "violations",
+                "type": 33,
+                "optional": true
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "verifier"
+          },
+          {
+            "kind": "literal",
+            "value": "agentReported"
+          },
+          {
+            "kind": "literal",
+            "value": "human"
+          },
+          {
+            "kind": "literal",
+            "value": "predicate"
+          },
+          {
+            "kind": "literal",
+            "value": "sessionExited"
+          },
+          {
+            "kind": "array",
+            "element": 10
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "command",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "exitCode",
+                "type": 12,
+                "optional": false
+              },
+              {
+                "name": "outputTail",
+                "type": 11,
+                "optional": false
+              },
+              {
+                "name": "timedOut",
+                "type": 14,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              13
+            ]
+          },
+          {
+            "kind": "primitive",
+            "type": "null"
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "union",
+            "types": [
+              2,
+              11,
+              13,
+              14,
+              16,
+              17
+            ]
+          },
+          {
+            "kind": "object",
+            "properties": [],
+            "indices": [
+              {
+                "key": 11,
+                "value": 15
+              }
+            ]
+          },
+          {
+            "kind": "array",
+            "element": 15
+          },
+          {
+            "kind": "union",
+            "types": [
+              19,
+              20,
+              21
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "patched"
+          },
+          {
+            "kind": "literal",
+            "value": "pristine"
+          },
+          {
+            "kind": "literal",
+            "value": "retried"
+          },
+          {
+            "kind": "union",
+            "types": [
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31,
+              32
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "skipped"
+          },
+          {
+            "kind": "literal",
+            "value": "unverified"
+          },
+          {
+            "kind": "literal",
+            "value": "waiting_human"
+          },
+          {
+            "kind": "literal",
+            "value": "cancelled"
+          },
+          {
+            "kind": "literal",
+            "value": "executed"
+          },
+          {
+            "kind": "literal",
+            "value": "failed"
+          },
+          {
+            "kind": "literal",
+            "value": "failed_retryable"
+          },
+          {
+            "kind": "literal",
+            "value": "pending"
+          },
+          {
+            "kind": "literal",
+            "value": "ready"
+          },
+          {
+            "kind": "literal",
+            "value": "running"
+          },
+          {
+            "kind": "array",
+            "element": 11
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "graph/node"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:graph/run",
+      "kind": "event",
+      "event": "graph/run",
+      "surface": false,
+      "digest": "d3c0b323291b3fd396ec50af064f84f347b7d5df62fbec370268a744b856fc4e",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 18,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 17,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 17,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 19,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "detail",
+                "type": 2,
+                "optional": true
+              },
+              {
+                "name": "mode",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "phase",
+                "type": 6,
+                "optional": false
+              },
+              {
+                "name": "planId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "runId",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "stopReason",
+                "type": 9,
+                "optional": true
+              },
+              {
+                "name": "version",
+                "type": 17,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              4,
+              5
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "enforce"
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "union",
+            "types": [
+              7,
+              8
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "start"
+          },
+          {
+            "kind": "literal",
+            "value": "stop"
+          },
+          {
+            "kind": "union",
+            "types": [
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "ADMISSION_REFUSED"
+          },
+          {
+            "kind": "literal",
+            "value": "BUDGET"
+          },
+          {
+            "kind": "literal",
+            "value": "GOAL_MET"
+          },
+          {
+            "kind": "literal",
+            "value": "HUMAN_STOPPED"
+          },
+          {
+            "kind": "literal",
+            "value": "MAX_ROUNDS"
+          },
+          {
+            "kind": "literal",
+            "value": "NO_FURTHER_WORK"
+          },
+          {
+            "kind": "literal",
+            "value": "NO_PROGRESS"
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "graph/run"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

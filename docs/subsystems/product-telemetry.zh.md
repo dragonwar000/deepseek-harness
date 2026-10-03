@@ -34,7 +34,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.productAnalytics` — `ProductAnalytics`
 
-Authenticated event intake; disabled instances do not inspect identity or accept new events.
+Event intake; disabled instances do not inspect identity or accept new events, and a composition without DeepSeek Platform sign-in reports without identity attributes.
 
 ```ts cordis-catalog
 /**

@@ -1,6 +1,7 @@
-DeepSeek Harness
-DeepSeek Harness
-Welcome to DeepSeek Harness
+CTD Core
+CTD Core
+Welcome to CTD Core
 Build potential. Explore intelligence.
-Sign in
+Sign in with Coteccons SSO
 Add API Key
+Set up later

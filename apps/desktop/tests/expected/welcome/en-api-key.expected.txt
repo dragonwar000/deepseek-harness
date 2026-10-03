@@ -1,8 +1,8 @@
-DeepSeek Harness
-DeepSeek Harness
-Add an API key to get started
-Configure official DeepSeek models to start using Harness
+CTD Core
+CTD Core
+Add a model provider to get started
+Choose your provider and enter its API key to start using CTD Core
 Enter API key [password]
-Save and continue [disabled]
+Continue [disabled]
 Set up later
-Back to sign in
+Back

@@ -12,8 +12,8 @@
   en: a18fe401763efde4
   zh: ef59a76d9c694654
 /llm-streaming/compact-assistant-streams:
-  en: 4d0d51bc3c4cbc9b
-  zh: b5c386d8e995dd06
+  en: f0229cdbd0af29f3
+  zh: 31f6590d8695b7d3
 /llm-streaming/llmfailure:
   en: 13415501869b4ca9
   zh: 723c7533cce3d1d6
@@ -27,8 +27,8 @@
   en: cbab49d689311d4d
   zh: 76246140eabaa55e
 /llm-streaming/appidentity-app-attribution:
-  en: 7ff4b18ef82a959d
-  zh: 8a40e6c7c57258a4
+  en: 792b2feecfd1097f
+  zh: 26c377cd181a2cb3
 /llm-streaming/tokenusage:
   en: 33830f78fdb845fa
   zh: f43a4502c4c3bfff
@@ -39,8 +39,8 @@
   en: ddca84b082554567
   zh: 804ffb1cb0c94bfa
 /llm-streaming/the-model-request/the-request-envelope-llmcallconfig-and-the-logged-header:
-  en: 8b6e6b65ccea943f
-  zh: bce1edd6386e37b1
+  en: 3efe9a68d9af4fdf
+  zh: aca8a8427ce71cf0
 /llm-streaming/official-deepseek-request-extensions:
   en: b19f291f094157ed
   zh: 682f13a833e8bb52

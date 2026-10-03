@@ -226,6 +226,19 @@ export interface Config {
    * and registers them the moment a settings section supplies profiles.
    */
   providers: Volatile<Record<string, PiAiProviderProfile>>
+  /**
+   * Whether a sanctioned sign-in activates a route for its provider on its
+   * own, serving that provider's installed catalog under the stored
+   * credential. Disabling it leaves {@link providers} the only source of
+   * routes, which is what a deployment that pins its endpoints — an egress
+   * allowlist, a billing boundary, a curated model list — needs, because
+   * signing in is a per-user action and a route is a deployment fact.
+   *
+   * It never affects a route {@link providers} declares, and it never widens
+   * what may be sent: a consumer subscription grant stays delegated-only
+   * either way.
+   */
+  signInRoutes: Volatile<boolean>
 }
 
 /** Plain options accepted by the provider resolver. */
@@ -315,12 +328,13 @@ const modelFields = {
   compat: compatProfile,
 }
 
-const modelProfile: z<PiAiModelProfile> = z.object({
+/** Runtime schema for one {@link PiAiModelProfile}, shared with routes that declare their own model catalog. */
+export const PiAiModelProfileSchema: z<PiAiModelProfile> = z.object({
   id: z.string().required(),
   ...modelFields,
 })
 
-/** A {@link modelProfile} whose id lives in the `modelOverrides` dict key. */
+/** A {@link PiAiModelProfileSchema} entry whose id lives in the `modelOverrides` dict key. */
 const modelOverride: z<PiAiModelOverride> = z.object(modelFields)
 
 const profile = z.object({
@@ -328,7 +342,7 @@ const profile = z.object({
   displayName: z.string(),
   api: z.union(supportedProtocols()),
   baseURL: z.string(),
-  models: z.array(modelProfile),
+  models: z.array(PiAiModelProfileSchema),
   modelOverrides: z.dict(modelOverride),
   compat: compatProfile,
   defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW),
@@ -351,6 +365,7 @@ const profile = z.object({
 /** Runtime schema for {@link Config}. */
 export const Config = z.object({
   providers: z.dict(profile).default({}).volatile(),
+  signInRoutes: z.boolean().default(true).volatile(),
 })
 
 /**

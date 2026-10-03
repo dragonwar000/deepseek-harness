@@ -1,0 +1,328 @@
+{
+  "formatVersion": 2,
+  "roots": [
+    {
+      "key": "event:knowledge/inject",
+      "kind": "event",
+      "event": "knowledge/inject",
+      "surface": false,
+      "digest": "e472cdd6eb69e2b1f370cf990d8b4863aac452735a27b7edf945eee79017156c",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 5,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 6,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "bytes",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "digest",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "ids",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "lines",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "omitted",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "quarantined",
+                "type": 2,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "knowledge/inject"
+          }
+        ]
+      }
+    },
+    {
+      "key": "event:knowledge/write",
+      "kind": "event",
+      "event": "knowledge/write",
+      "surface": false,
+      "digest": "2a3b113cb05f616fac21c4a8701fb388170f1f4ee3f85ca3c1dd802791ef3b41",
+      "schema": {
+        "root": 0,
+        "nodes": [
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "data",
+                "type": 1,
+                "optional": false
+              },
+              {
+                "name": "ignorable",
+                "type": 25,
+                "optional": true
+              },
+              {
+                "name": "seq",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "time",
+                "type": 20,
+                "optional": false
+              },
+              {
+                "name": "type",
+                "type": 26,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "applied",
+                "type": 2,
+                "optional": false
+              },
+              {
+                "name": "id",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "mode",
+                "type": 4,
+                "optional": false
+              },
+              {
+                "name": "operation",
+                "type": 7,
+                "optional": true
+              },
+              {
+                "name": "refusal",
+                "type": 10,
+                "optional": true
+              },
+              {
+                "name": "sourceEventSeqs",
+                "type": 19,
+                "optional": false
+              },
+              {
+                "name": "sources",
+                "type": 21,
+                "optional": false
+              },
+              {
+                "name": "stale",
+                "type": 21,
+                "optional": false
+              },
+              {
+                "name": "writer",
+                "type": 22,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "primitive",
+            "type": "boolean"
+          },
+          {
+            "kind": "primitive",
+            "type": "string"
+          },
+          {
+            "kind": "union",
+            "types": [
+              5,
+              6
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "enforce"
+          },
+          {
+            "kind": "literal",
+            "value": "shadow"
+          },
+          {
+            "kind": "union",
+            "types": [
+              8,
+              9
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "create"
+          },
+          {
+            "kind": "literal",
+            "value": "update"
+          },
+          {
+            "kind": "object",
+            "properties": [
+              {
+                "name": "reason",
+                "type": 3,
+                "optional": false
+              },
+              {
+                "name": "rule",
+                "type": 11,
+                "optional": false
+              }
+            ],
+            "indices": []
+          },
+          {
+            "kind": "union",
+            "types": [
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "citation"
+          },
+          {
+            "kind": "literal",
+            "value": "dangling-relation"
+          },
+          {
+            "kind": "literal",
+            "value": "frontmatter"
+          },
+          {
+            "kind": "literal",
+            "value": "layout"
+          },
+          {
+            "kind": "literal",
+            "value": "origin"
+          },
+          {
+            "kind": "literal",
+            "value": "read-only-dir"
+          },
+          {
+            "kind": "literal",
+            "value": "superseded-dependency"
+          },
+          {
+            "kind": "array",
+            "element": 20
+          },
+          {
+            "kind": "primitive",
+            "type": "number"
+          },
+          {
+            "kind": "array",
+            "element": 3
+          },
+          {
+            "kind": "union",
+            "types": [
+              23,
+              24
+            ]
+          },
+          {
+            "kind": "literal",
+            "value": "distill"
+          },
+          {
+            "kind": "literal",
+            "value": "tool"
+          },
+          {
+            "kind": "literal",
+            "value": true
+          },
+          {
+            "kind": "literal",
+            "value": "knowledge/write"
+          }
+        ]
+      }
+    }
+  ],
+  "types": []
+}

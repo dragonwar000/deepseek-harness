@@ -11,6 +11,11 @@ import {
   visitMarkdown,
   type MarkdownDestination,
 } from './markdown.ts'
+import {
+  isLocaleSwitchedTarget,
+  TRANSLATION_COUNTERPART_POLICY,
+  type TranslationCounterpartPolicy,
+} from './translation-counterpart.ts'
 
 /** Repository and source document used to resolve one relative link. */
 export interface TranslationLinkContext {
@@ -22,6 +27,8 @@ export interface TranslationLinkContext {
   isTranslationPairSource: (sourcePath: string) => boolean
   /** Selected content plane; defaults to regular files in the working tree. */
   repositoryFileExists?: (repoPath: string) => boolean
+  /** Counterpart policy for link targets; defaults to `TRANSLATION_COUNTERPART_POLICY`. */
+  counterpartPolicy?: TranslationCounterpartPolicy
 }
 
 /** One relative document link whose target uses the wrong locale sibling. */
@@ -140,6 +147,13 @@ function translationPairTarget(targetPath: string, context: TranslationLinkConte
     : targetPath.endsWith('.md') ? targetPath : undefined
   if (source === undefined || !context.isTranslationPairSource(source)) return undefined
   const zh = source.replace(/\.md$/, '.zh.md')
+  // A target with no counterpart that needs none keeps its `.md` path on both
+  // sides of a pair; `translation-counterpart.ts` owns that rule.
+  if (!isLocaleSwitchedTarget(
+    source,
+    repositoryFileExists(context, zh),
+    context.counterpartPolicy ?? TRANSLATION_COUNTERPART_POLICY,
+  )) return undefined
   return { source, zh }
 }
 

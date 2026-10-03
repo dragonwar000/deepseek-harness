@@ -7,6 +7,7 @@
 import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
 import { deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type {
+  AuthoritativeRequestConfig,
   BasicCompactionConfig,
   CompactionPolicyConfig,
   ModelCompactPolicyConfig,
@@ -40,7 +41,21 @@ const BASIC_COMPACT_CONFIG_KEYS: ReadonlySet<string> = new Set([
   ...POLICY_CONFIG_KEYS,
   'modelPolicies',
   'auto',
+  'convergence',
+  'authoritativeRequest',
 ])
+
+/** Accepted `convergence` values. */
+const CONVERGENCE_MODES: ReadonlySet<string> = new Set(['retry', 'refuse'])
+
+/** Default quoted-request budget in Unicode code points. */
+const DEFAULT_AUTHORITATIVE_MAX_CHARS = 4000
+
+/** Complete `authoritativeRequest` key set. */
+const AUTHORITATIVE_REQUEST_KEYS: ReadonlySet<string> = new Set(['mode', 'maxChars'])
+
+/** Accepted `authoritativeRequest.mode` values. */
+const AUTHORITATIVE_MODES: ReadonlySet<string> = new Set(['off', 'split'])
 
 /** Complete exact-target override key set. */
 const MODEL_POLICY_KEYS: ReadonlySet<string> = new Set([
@@ -71,6 +86,11 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
   if (config.auto !== undefined && typeof config.auto !== 'boolean') {
     throw new Error('BasicCompactionConfig: auto must be a boolean')
   }
+  if (config.convergence !== undefined && !CONVERGENCE_MODES.has(config.convergence)) {
+    throw new Error(
+      `BasicCompactionConfig: convergence must be 'retry' or 'refuse' (got ${config.convergence})`,
+    )
+  }
 
   const headroomTokens = config.headroomTokens ?? 65_536
   const maxTokens = config.maxTokens ?? headroomTokens
@@ -95,6 +115,7 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     )
   }
 
+  const authoritativeRequest = resolveAuthoritativeRequest(config.authoritativeRequest)
   return deepFreeze({
     thresholdRatio,
     headroomTokens,
@@ -106,7 +127,27 @@ export function resolveConfig(config: BasicCompactionConfig = {}): ResolvedConfi
     maxOverflowRetries: config.maxOverflowRetries ?? 1,
     modelPolicies,
     auto: config.auto ?? true,
+    convergence: config.convergence ?? 'retry',
+    authoritativeRequest,
   })
+}
+
+/** Validate and default the checkpoint framing policy. */
+function resolveAuthoritativeRequest(configured: unknown): Required<AuthoritativeRequestConfig> {
+  if (configured === undefined) return { mode: 'off', maxChars: DEFAULT_AUTHORITATIVE_MAX_CHARS }
+  if (!isUnknownRecord(configured)) {
+    throw new Error('BasicCompactionConfig: authoritativeRequest must be an object')
+  }
+  validateKeys(configured, AUTHORITATIVE_REQUEST_KEYS, 'BasicCompactionConfig.authoritativeRequest')
+  const mode: unknown = configured['mode'] ?? 'off'
+  if (typeof mode !== 'string' || !AUTHORITATIVE_MODES.has(mode)) {
+    throw new Error(
+      `BasicCompactionConfig.authoritativeRequest.mode must be 'off' or 'split' (got ${String(mode)})`,
+    )
+  }
+  const maxChars = configured['maxChars'] ?? DEFAULT_AUTHORITATIVE_MAX_CHARS
+  assertPositiveInteger('BasicCompactionConfig.authoritativeRequest.maxChars', maxChars)
+  return { mode: mode === 'split' ? 'split' : 'off', maxChars }
 }
 
 /**

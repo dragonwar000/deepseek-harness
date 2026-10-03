@@ -1,0 +1,103 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/memory-zeromem/README.md
+/:
+  en: de9a7ca0571f39ac
+  zh: 495253ae45c90fef
+/deepseek-ai-dsh-experimental-memory-zeromem:
+  en: 110e2b09db607229
+  zh: c5e8e814208e1759
+/deepseek-ai-dsh-experimental-memory-zeromem/summary:
+  en: 75f37340c0b7740c
+  zh: 312b388091daffe2
+/deepseek-ai-dsh-experimental-memory-zeromem/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-experimental-memory-zeromem/use-this-package:
+  en: bbff250eba0f1b89
+  zh: 0a618f05cc88ee2b
+/deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/get-a-zm-executable:
+  en: 6ffd9480965280a0
+  zh: 5507f05e8f73b776
+/deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/provide-the-embedding-model:
+  en: 9cc0b4b968215596
+  zh: e6568f64e950c9cc
+/deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/enable-the-row:
+  en: 59c0dc668fb166b9
+  zh: 202eb9d9889001d6
+/deepseek-ai-dsh-experimental-memory-zeromem/use-this-package/what-is-stored-and-where:
+  en: d6e9bb78f6baeba3
+  zh: 2ecb73141af3ef0c
+/deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: c8011788e17a2cd6
+/deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/ingestion:
+  en: 64e13e4b7838fb6b
+  zh: a514bc4e4769451b
+/deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/store-operations:
+  en: 0e3615d266376264
+  zh: 904f898b8239c7e3
+/deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/design-notes:
+  en: 12c6934458e51057
+  zh: 5021e4db1d1b5fce
+/deepseek-ai-dsh-experimental-memory-zeromem/understand-the-implementation/source-map:
+  en: bdc174aae93f1192
+  zh: e4e629815857223e
+/deepseek-ai-dsh-experimental-memory-zeromem/further-exploration:
+  en: 1aa955c462426b97
+  zh: 6ca93297e8af79a5
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-recall-tool:
+  en: 96978ac064109a4e
+  zh: c1f299a7d11f53ad
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-recall-tool/what-the-model-sees:
+  en: ee19e02a910859a6
+  zh: 5b119e4c6bafc3e2
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-recall-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-recall-tool/token-effect:
+  en: 4429137b0e156fb7
+  zh: 51433359b1f5655a
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-recall-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 067318110b2beb6b
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-stats-tool:
+  en: 243ea5355054665f
+  zh: c432a4fa7f1568e6
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-stats-tool/what-the-model-sees:
+  en: 29c5a8ccfee99e6a
+  zh: a90154d72c976cd7
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-stats-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-stats-tool/token-effect:
+  en: 38222b3f6e68626a
+  zh: dbf0c7f2028fc74c
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-stats-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 067318110b2beb6b
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-forget-session-tool:
+  en: b97f52d45a0a7e91
+  zh: 6d1e5b6fe2202f69
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-forget-session-tool/what-the-model-sees:
+  en: 01d4a495b212c7ca
+  zh: f0e6961e2dd78c36
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-forget-session-tool/what-the-model-sees/verbatim-text-for-this-field:
+  en: f310d13f2c5a4d6a
+  zh: 3a3795590b110e06
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-forget-session-tool/token-effect:
+  en: 1500c99bbbffaff8
+  zh: 383f54434f617d44
+/deepseek-ai-dsh-experimental-memory-zeromem/model-experience/the-memory-forget-session-tool/kv-cache-effect:
+  en: 17a63238826eea08
+  zh: 067318110b2beb6b
+/deepseek-ai-dsh-experimental-memory-zeromem/known-limitations-and-deferred-work:
+  en: f3e3679bc84a3443
+  zh: e1feefa9bf19a7e5
+/deepseek-ai-dsh-experimental-memory-zeromem/known-limitations-and-deferred-work/dev-note:
+  en: e231ec9124a00f3c
+  zh: ffa2209809660ea1

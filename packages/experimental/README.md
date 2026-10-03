@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The experimental group contains prototype capabilities whose contracts can change and carry no support promise. All current packages publish under their `@deepseek-ai/dsh-experimental-*` names, including the opt-in Agent Teams composition, Auto review, Cua Driver providers, browser-use backends, cross-realm Inspector, CPython PTC backend, and browser-worker preview libraries. Released products outside this group must not depend on experimental packages. The dsh installation ships the Agent Teams, voice input, Auto review, and Schedule packages as optional bundles switched on from the Web sidebar's Plugins page ([decision](../../.agents/notes/implemented/architecture/2026-09-21-experimental-capabilities-as-optional-bundles.md)); the other packages are libraries or explicit compositions.
+The experimental group contains prototype capabilities whose contracts can change and carry no support promise. All current packages publish under their `@deepseek-ai/dsh-experimental-*` names, including the opt-in Agent Teams composition, Auto review, Cua Driver providers, browser-use backends, cross-realm Inspector, CPython PTC backend, and browser-worker preview libraries. Released products outside this group must not depend on experimental packages. The dsh installation ships the Agent Teams, voice input, Auto review, Schedule, and Loop guards packages as optional bundles switched on from the Web sidebar's Plugins page ([decision](../../.agents/notes/implemented/architecture/2026-09-21-experimental-capabilities-as-optional-bundles.md)); the other packages are libraries or explicit compositions.
 
 ## Table of Contents
 
@@ -45,6 +45,23 @@ The experimental group contains prototype capabilities whose contracts can chang
 | [`tool-agent-team`](tool-agent-team/README.md) | Nine tools that let the model create, message, and coordinate teammates | registers scoped tools on `ctx.tools` |
 | [`webworker-packer`](webworker-packer/README.md) | Builds the gzip-compressed VFS image consumed by the browser worker preview | library and CLI — no ctx key |
 | [`webworker-runtime`](webworker-runtime/README.md) | Runs the harness plugin tree inside a dedicated browser worker | library and worker entry — no ctx key |
+| [`verifier-gate`](verifier-gate/README.md) | Turn-stopping verify-command gate and an opt-in evidence check of the final answer, shadow or enforce | registers listeners on `agent/turn-stopping` |
+| [`infra-snapshot`](infra-snapshot/README.md) | One `infra/snapshot` event per agent | — |
+| [`loop-graph-profile`](loop-graph-profile/README.md) | Loop guards bundle switched on from the Plugins page | — |
+| [`stationarity-guard`](stationarity-guard/README.md) | Step-signature guard that reminds or stops repeated tool steps, shadow or enforce | registers listeners on `agent/pre-step` and `session/event` |
+| [`denial-budget`](denial-budget/README.md) | Counts policy denials, advises a safer approach, and asks approval past a budget, shadow or enforce | registers listeners on `tools/*` and `agent/pre-step` |
+| [`loop-budget`](loop-budget/README.md) | Per-turn and per-goal step, token, USD, and wall-time budgets with a work floor, shadow or enforce | registers listeners on `agent/pre-step`, `agent/turn-stopping`, and `session/event` |
+| [`graph-contract`](graph-contract/README.md) | Deterministic `dsh-graph/v1` plan audit with rejection memory, loop-edge rules, and a shell-write warning, shadow or enforce | registers the `graph_audit` tool and the `graphPlans` projection |
+| [`graph-projection`](graph-projection/README.md) | Task graphs, turn evidence, and compacted history folded from the session log, with the read-only `graph_query`, `graph_cite`, and `history_read` tools | registers the `graph_query`, `graph_cite`, and `history_read` tools and the `graph`, `graphEvidence`, and `graphHistory` projections |
+| [`graph-runner`](graph-runner/README.md) | Foreground `graph_run` for admitted plans: fresh subagent per node, proof-based completion, retries, resume, write scopes, and loop edges | registers the `graph_run` tool and `fs/write-intent`/`fs/edit-intent` listeners |
+| [`knowledge`](knowledge/README.md) | Knowledge store seam: page and edge vocabulary, abstract service, and write and inject events | `ctx.knowledge` |
+| [`knowledge-wiki-filesystem`](knowledge-wiki-filesystem/README.md) | Markdown wiki store in the session workspace with derived edges, staleness, and rule-checked writes | `ctx.knowledge` |
+| [`knowledge-rules`](knowledge-rules/README.md) | Fail-closed guard refusing file and shell writes that bypass `knowledge_write` | registers `fs/write-intent`/`fs/edit-intent` listeners and a tool guard |
+| [`tool-knowledge`](tool-knowledge/README.md) | `knowledge_query`, `knowledge_read`, `knowledge_cite`, and approval-gated `knowledge_write` that cites session reads | registers four tools on `ctx.tools` |
+| [`context-knowledge`](context-knowledge/README.md) | Capped knowledge index message at the first step of a turn when the store changed | registers a listener on `agent/pre-step` and the `knowledgeContext` projection |
+| [`memory-distill`](memory-distill/README.md) | Episode page after the verifier gate records ok, citing the changing tool results, shadow or enforce | registers listeners on `agent/turn-stopping` and `session/event` and the `memoryDistill` projection |
+| [`memory-zeromem`](memory-zeromem/README.md) | Conversation memory through the zeromem `zm` CLI: completed turns stored per workspace without model calls, searched with `memory_recall` | registers `memory_recall`, `memory_stats`, and optional `memory_forget_session` on `ctx.tools`, a `session/event` listener, and the `zeromemTurn` projection |
+| [`knowledge-profile`](knowledge-profile/README.md) | Knowledge bundle switched on from the Plugins page | — |
 
 -----
 

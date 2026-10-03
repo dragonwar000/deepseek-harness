@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`@deepseek-ai/dsh-llm-pi-ai` 通过一份配置把模型请求路由到多个 pi-ai 提供方、OpenAI 兼容网关或自托管服务器。已安装的 pi-ai 提供方会提供端点、协议和模型目录默认值；自定义路由可以直接声明这些值，无需修改代码。profile 与凭据按请求解析，因此设置变更会在下一个请求生效，无需重启。受支持的提供方可以使用已存储的 OAuth 或交互式密钥登录，并通过跨进程锁刷新凭据。本包可以在没有路由时启动，并在用户设置添加路由后将其激活。
+`@deepseek-ai/dsh-llm-pi-ai` 通过一份配置把模型请求路由到多个 pi-ai 提供方、OpenAI 兼容网关或自托管服务器。已安装的 pi-ai 提供方会提供端点、协议和模型目录默认值；自定义路由可以直接声明这些值，无需修改代码。profile 与凭据按请求解析，因此设置变更会在下一个请求生效，无需重启。受支持的提供方可以使用已存储的 OAuth 或交互式密钥登录，并通过跨进程锁刷新凭据。本包可以在没有路由时启动，并在用户设置添加 profile 或获准的登录落地后将其激活；消费者订阅 grant 仍仅限委派使用。
 
 ## 目录
 
@@ -88,11 +88,30 @@ kind: "package-reference"
 | `maxRequestImageBytes` | `20 MiB` | base64 图片载荷总上限，保留图片超过时请求以 `IMAGE_OFFLOAD_REQUIRED` 失败 |
 | `retryPolicy` | normal，5 次重试 | 由 `dsh-llm-retry` 执行的提供方自有重试策略 |
 
+除 `providers` 之外，还有一个顶层字段决定登录本身能否新增路由：
+
+| 字段 | 默认 | 用途 |
+|---|---|---|
+| `signInRoutes` | `true` | 获准的登录是否激活一条服务其提供方已安装目录的路由。`false` 使 `providers` 成为路由的唯一来源 |
+
 生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-llm-pi-ai)是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### 登录提供方
 
 pi-ai 提供登录的提供方可以通过 harness 授权 seam 登录：流程提供 OAuth 或交互式密钥提示（密钥键入 pi-ai 自己的登录提示，而非设置表单），得到的凭据存储在 harness 凭据存储的 `llm-pi-ai/<provider id>` 记录中。存储的登录在其路由的 `apiKeyEnv` 覆盖之下完成认证，并在存储的跨进程锁下自行刷新；退出登录即删除存储记录。落在记录文法之外——小写连字符标识符——的手工声明路由键无法登录，因为对它的记录写入会以 `LlmError('UNSTORABLE_PROVIDER_ID')` 拒绝；这类路由改用 `apiKeyEnv` 或提供方 ambient 设置认证。
+
+**获准**的登录还会为其提供方激活一条路由，因此其目录模型在下一次读取时即出现在聊天模型选择器中——无需重启，也无需写 `providers` 条目。激活的路由就是未经改动的已安装目录条目：目录的端点、协议与模型，由存储记录认证。退出登录会随记录一并移除该路由及其模型。`providers` 中的 profile 始终优先：激活只添加设置文档未提及的提供方，因此已声明路由的 `displayName`、收窄的 `models`、`apiKeyEnv` 及其余字段一律保持原样；只有在 profile 被移除而登录仍在时，它才会重新以激活的目录路由出现。`signInRoutes: false` 为固定路由的部署关闭激活。
+
+一份存储凭据是否获准，取决于厂商签发了什么，而非取决于配置：
+
+| 存储的凭据 | 主模型 | 原因 |
+|---|---|---|
+| API 密钥（任何提供密钥提示的提供方） | 激活路由 | 账户持有者在厂商自有控制台中签出的密钥只指明它所计费的账户 |
+| pi-ai 未标记 `isSubscription` 的 OAuth grant（`openrouter`、`radius`） | 激活路由 | 厂商面向第三方客户端签发的 grant |
+| pi-ai 标记 `isSubscription` 的 OAuth grant（`anthropic`、`github-copilot`、`kimi-coding`、`meta`、`openai-codex`、`xai`） | 永不成为路由 | 签发给厂商自有助手客户端的消费者订阅 grant；从这里发送它意味着把本 harness 标明为那个客户端 |
+| 无已安装提供方为其定义 OAuth 的路由的 grant | 永不成为路由 | 这里无法从它推导请求 auth |
+
+被保留的登录仍会存储，因此账户存在，厂商自有产品的委派运行仍可使用它——这正是 [`dsh-ai-account`](../../credentials/ai-account/README.zh.md) 为 Claude 与 ChatGPT 所管理的。本插件为每个被保留的登录记录一次日志，说明原因，并在已安装提供方提供替代时给出确实能到达主模型的 API 密钥登录：对同时提供两种方法的提供方是同一记录 id，对不提供密钥的 `openai-codex` 则是 `openai`。`classifySignIn`、`signInClassifications` 与 `resolveSignInRoutes` 均已导出，便于界面在不复述规则的前提下陈述同一事实。
 
 ### 解析模型目录
 
@@ -141,6 +160,7 @@ Config 更新严格验证发生变化的 provider。初始加载将已存储的�
 | [`src/index.ts`](src/index.ts) | Config 快照、目录及路由注册 |
 | [`src/auth.ts`](src/auth.ts) | 覆盖 harness 凭据平面的凭据存储与 ambient auth context |
 | [`src/login.ts`](src/login.ts) | 面向提供登录的已安装提供方的授权流程 |
+| [`src/sign-in.ts`](src/sign-in.ts) | 哪些存储的登录可以认证路由，以及由此产生的路由集合 |
 | [`src/config.ts`](src/config.ts) | Profile schema、解析与可服务性校验 |
 | [`src/catalog.ts`](src/catalog.ts) | 已安装目录集成与漂移门禁 |
 | [`src/models.ts`](src/models.ts) | 基于 pi-ai 窄入口的 model collection、静态 provider 与 reasoning level |
@@ -171,7 +191,7 @@ Config 更新严格验证发生变化的 provider。初始加载将已存储的�
 - [llm-deepseek 适配器](../llm-deepseek/README.zh.md)——`deepseek-official` 路由的 DeepSeek 直连孪生。
 - [LLM 流式子系统](../../../docs/subsystems/llm-streaming.zh.md)——`StreamChunk` 协议与适配器约定。
 - [llm-retry](../llm-retry/README.zh.md)——应用每个 profile `retryPolicy` 的重试执行器。
-- [孪生 LLM 适配器](../../../.agents/notes/implemented/architecture/2026-06-13-twin-llm-adapters.zh.md)——为什么 DeepSeek 路由交付两个结构不同的适配器。
+- [孪生 LLM 适配器](../../../.agents/notes/implemented/architecture/2026-06-13-twin-llm-adapters.md)——为什么 DeepSeek 路由交付两个结构不同的适配器。
 - [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-llm-pi-ai)——每个受支持配置字段及其源声明。
 
 -----
@@ -239,7 +259,7 @@ pi-ai 事件变成 harness 的推理、文本、工具调用、用量与 finish 
 
 本开发备注是不具权威性的工作上下文：尚未决定的探索方向与维护者备注。已交付的行为与既定理由以上文、包代码和相关 Agent Note 为准。
 
-- 提供的协议集合刻意比 pi-ai 的完整 API 集合更窄：Bedrock、Vertex、Azure 与 Codex 通过 profile 无法以密钥、端点与标头完整描述的流程认证；目录路由仍可经自有提供方到达它们，只有显式覆盖会被拒绝。Codex 可经授权流程的 OAuth grant 登录。
+- 提供的协议集合刻意比 pi-ai 的完整 API 集合更窄：Bedrock、Vertex、Azure 与 Codex 通过 profile 无法以密钥、端点与标头完整描述的流程认证；目录路由仍可经自有提供方到达它们，只有显式覆盖会被拒绝。Codex 可经授权流程的 OAuth grant 登录，该 grant 为委派运行而存储，在此永不成为路由。
 - `compat` 开关集合由漂移门禁钉在 pi-ai 的 compat 类型上；上游升级若新增字段、为更多协议赋予 compat 类型或扩大值联合，会在有人分类前让构建失败。
 
 </details>

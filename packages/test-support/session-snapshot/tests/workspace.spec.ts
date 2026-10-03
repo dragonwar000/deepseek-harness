@@ -6,6 +6,7 @@ import {
   captureExpectedWorkspaceSnapshot,
   captureWorkspaceSnapshot,
   EMPTY_WORKSPACE_MARKER,
+  tokenizeWorkspaceSnapshot,
 } from '../src/workspace.ts'
 
 describe('workspace snapshots', () => {
@@ -58,6 +59,19 @@ describe('workspace snapshots', () => {
     await writeFile(join(directory, 'nul.bin'), Buffer.from([0x61, 0x00, 0x62]))
     expect(await captureWorkspaceSnapshot(directory)).toEqual([
       { path: 'nul.bin', kind: 'binary', base64: 'YQBi' },
+    ])
+  })
+
+  it('tokenizes session ids by header order and ISO UTC instants in text files only', () => {
+    const entries = [
+      { path: 'a.md', kind: 'text' as const, content: 'session: "s-a"\nchild: s-b\nupdated: "2026-09-30T10:00:00.123Z"\nat 2026-09-30T10:00:00Z, not 2026-09-30\n' },
+      { path: 'b.bin', kind: 'binary' as const, base64: 'cy1h' },
+      { path: 'empty', kind: 'empty-directory' as const },
+    ]
+    expect(tokenizeWorkspaceSnapshot(entries, { sessionIds: ['s-a', 's-b'] })).toEqual([
+      { path: 'a.md', kind: 'text', content: 'session: "{{session:1}}"\nchild: {{session:2}}\nupdated: "{{time}}"\nat {{time}}, not 2026-09-30\n' },
+      entries[1],
+      entries[2],
     ])
   })
 })

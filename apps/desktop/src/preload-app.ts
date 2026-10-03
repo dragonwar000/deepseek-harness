@@ -55,6 +55,19 @@ function createProductApi(): DshDesktopProductApi {
         return () => { ipcRenderer.off(DESKTOP_IPC.updatesPresentation, handle) }
       },
     },
+    settings: {
+      subscribe(listener) {
+        let live = true
+        const take = (): void => {
+          void (ipcRenderer.invoke(DESKTOP_IPC.settingsTake) as Promise<unknown>).then((sectionId) => {
+            if (live && typeof sectionId === 'string') listener(sectionId)
+          }, (error: unknown) => { console.warn('dsh desktop: could not read the Settings request', error) })
+        }
+        ipcRenderer.on(DESKTOP_IPC.settingsRequested, take)
+        take()
+        return () => { live = false; ipcRenderer.off(DESKTOP_IPC.settingsRequested, take) }
+      },
+    },
   }
 }
 
