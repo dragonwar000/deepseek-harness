@@ -48,8 +48,10 @@ kind: "package-reference"
 |---|---|---|
 | `mode` | `shadow` | `off` 不注册任何东西；`shadow` 只记录；`enforce` 会拒绝 step、暂停或完成 goal，并为下限引导 |
 | `assumption` | 非 `off` 时必填 | 本预算所编码的、关于模型的假设；空白值会使加载失败 |
-| `turn.maxSteps` / `maxTokens` / `maxUsd` / `maxWallMs` | `0`（关闭） | 每次 turn 开始时重置的限额 |
-| `goal.maxSteps` / `maxTokens` / `maxUsd` / `maxWallMs` | `0`（关闭） | 在一个 goal 保持活跃期间累积的限额；恢复的 goal 会重新开始累积 |
+| `turn.maxSteps` / `maxTokens` / `maxUsd` | `0`（关闭） | 每次 turn 开始时重置的限额 |
+| `turn.maxWallMs` | `900000`（15 分钟） | 一个 turn 的墙钟限额，每次 turn 开始时重置；设为 `0` 关闭 |
+| `goal.maxSteps` / `maxTokens` / `maxUsd` | `0`（关闭） | 在一个 goal 保持活跃期间累积的限额；恢复的 goal 会重新开始累积 |
+| `goal.maxWallMs` | `3600000`（1 小时） | 一个 goal 保持活跃期间累积的墙钟限额；设为 `0` 关闭 |
 | `floor.minSteps` / `floor.minTokens` | `0`（关闭） | turn 结束前必须达到的工作量；每个 turn 至多引导一次 |
 | `prices[]` | `[]` | 每个精确 `provider`/`model` 路由的每百万 token 美元价格；当任意 `maxUsd` 大于 0 时必填 |
 

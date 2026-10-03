@@ -301,6 +301,17 @@ describe('config', () => {
     await expect(ctx.plugin(LoopBudget, { ...BASE, ...patch })).rejects.toThrow(message)
   })
 
+  it('bounds wall time by default and leaves the other limits off', () => {
+    const config = LoopBudget.Config({ ...BASE })
+    expect(config.turn).toEqual({ maxSteps: 0, maxTokens: 0, maxUsd: 0, maxWallMs: 900_000 })
+    expect(config.goal).toEqual({ maxSteps: 0, maxTokens: 0, maxUsd: 0, maxWallMs: 3_600_000 })
+  })
+
+  it('keeps a wall clock the deployment sets, including 0 for no limit', () => {
+    expect(LoopBudget.Config({ ...BASE, turn: { maxWallMs: 0 } }).turn?.maxWallMs).toBe(0)
+    expect(LoopBudget.Config({ ...BASE, goal: { maxWallMs: 60_000 } }).goal?.maxWallMs).toBe(60_000)
+  })
+
   it('registers nothing in off mode', async () => {
     const ctx = await harness({ ...BASE, mode: 'off', turn: { maxSteps: 1 } })
     const { agent } = await mockAgent(ctx, [probe('p1'), textResponse('done')])

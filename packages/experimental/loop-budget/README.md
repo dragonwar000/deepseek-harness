@@ -48,8 +48,10 @@ Choose it when a turn or goal can run away in steps, tokens, spend, or wall time
 |---|---|---|
 | `mode` | `shadow` | `off` registers nothing; `shadow` records only; `enforce` rejects the step, pauses or completes the goal, and steers for the floor |
 | `assumption` | required outside `off` | The assumption about the model that this budget encodes; a blank value fails the load |
-| `turn.maxSteps` / `maxTokens` / `maxUsd` / `maxWallMs` | `0` (off) | Limits reset at every turn start |
-| `goal.maxSteps` / `maxTokens` / `maxUsd` / `maxWallMs` | `0` (off) | Limits that accumulate while one goal stays active; a resumed goal starts a fresh accumulator |
+| `turn.maxSteps` / `maxTokens` / `maxUsd` | `0` (off) | Limits reset at every turn start |
+| `turn.maxWallMs` | `900000` (15 min) | Wall-clock limit of one turn, reset at every turn start; set `0` to turn it off |
+| `goal.maxSteps` / `maxTokens` / `maxUsd` | `0` (off) | Limits that accumulate while one goal stays active; a resumed goal starts a fresh accumulator |
+| `goal.maxWallMs` | `3600000` (1 h) | Wall-clock limit that accumulates while one goal stays active; set `0` to turn it off |
 | `floor.minSteps` / `floor.minTokens` | `0` (off) | Work a turn must reach before it ends; one steer per turn |
 | `prices[]` | `[]` | USD per million tokens per exact `provider`/`model`; required when any `maxUsd` is above 0 |
 

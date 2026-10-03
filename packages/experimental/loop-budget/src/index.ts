@@ -43,7 +43,7 @@ export interface BudgetLimits {
   maxTokens?: number
   /** USD priced through `prices`. */
   maxUsd?: number
-  /** Milliseconds since the turn started, or since the goal was first tracked. */
+  /** Milliseconds since the turn started, or since the goal was first tracked (default 900000 per turn, 3600000 per goal). */
   maxWallMs?: number
 }
 
@@ -91,24 +91,31 @@ export interface Config {
 }
 
 /**
- * One fresh limits schema per scope.
+ * One fresh limits schema per scope. Steps, tokens, and USD stay off by default because they need a
+ * deployment's own price or model choice; the wall clock is bounded so an unconfigured bundle cannot run unbounded.
+ * @param maxWallMs - default wall-clock limit in milliseconds for the scope.
  * @returns the limits schema.
  */
-function limitsSchema(): z<BudgetLimits> {
+function limitsSchema(maxWallMs: number): z<BudgetLimits> {
   return z.object({
     maxSteps: z.number().default(0),
     maxTokens: z.number().default(0),
     maxUsd: z.number().default(0),
-    maxWallMs: z.number().default(0),
+    maxWallMs: z.number().default(maxWallMs),
   })
 }
+
+/** Default wall-clock limit of one turn: 15 minutes. */
+const TURN_WALL_MS = 900_000
+/** Default wall-clock limit of one active goal: one hour. */
+const GOAL_WALL_MS = 3_600_000
 
 /** Schemastery validator for {@link Config}. */
 export const Config: z<Config> = z.object({
   mode: z.union(['off', 'shadow', 'enforce']).default('shadow'),
   assumption: z.string().default(''),
-  turn: limitsSchema().default({}),
-  goal: limitsSchema().default({}),
+  turn: limitsSchema(TURN_WALL_MS).default({}),
+  goal: limitsSchema(GOAL_WALL_MS).default({}),
   floor: z.object({
     minSteps: z.number().default(0),
     minTokens: z.number().default(0),
