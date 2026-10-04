@@ -118,6 +118,13 @@ type AttemptOutcome =
   /** The reply was rejected before anything reached the consumer, so it can be replaced. */
   | { readonly kind: 'retry'; readonly failure: EmulationFailure; readonly reading: ReplyReading }
 
+/**
+ * Where `attempt` leaves its outcome. `attempt` is delegated with `yield*` as a statement, because
+ * the webworker transform refuses `yield*` in value position. `attempt` overwrites the initial
+ * value on every path before it ends.
+ */
+type AttemptSlot = { outcome: AttemptOutcome }
+
 /** A counting gate over concurrent CLI children, so a busy session cannot fork a process per turn. */
 class Concurrency {
   private active = 0
@@ -257,7 +264,9 @@ export class ClaudeCliAdapter extends LlmAdapter {
           prompt?.preamble,
           correction?.text,
         )
-        const outcome = yield* this.attempt(launch, options, projected, prompt)
+        const slot: AttemptSlot = { outcome: { kind: 'done', reading: undefined } }
+        yield* this.attempt(launch, options, projected, prompt, slot)
+        const { outcome } = slot
         this.recordReply(options, attempt, outcome.reading)
         if (outcome.kind === 'done') return
         if (attempt >= runs) {
@@ -278,7 +287,8 @@ export class ClaudeCliAdapter extends LlmAdapter {
     options: GenerateOptions,
     projected: ProjectedRequest,
     prompt: PromptPlan | undefined,
-  ): AsyncGenerator<StreamChunk, AttemptOutcome> {
+    slot: AttemptSlot,
+  ): AsyncGenerator<StreamChunk, void> {
     const spec = resolveInferenceSpec(launch, {
       model: claudeCliModelId(options.model),
       system: projected.system,
@@ -301,7 +311,8 @@ export class ClaudeCliAdapter extends LlmAdapter {
       for await (const line of run.lines()) {
         take(decoder.push(line))
         if (emulator?.failure !== undefined && !emulator.committed) {
-          return { kind: 'retry', failure: emulator.failure, reading: reading(emulator) }
+          slot.outcome = { kind: 'retry', failure: emulator.failure, reading: reading(emulator) }
+          return
         }
         if (emulator === undefined || emulator.committed) yield* pending.splice(0)
         // The CLI emits one result per user turn and this run writes exactly one, so the first
@@ -315,7 +326,7 @@ export class ClaudeCliAdapter extends LlmAdapter {
       // A reply that handed over no answer text — tool calls only, or reasoning only — reaches the
       // consumer here, once it has ended without a rejection.
       yield* pending.splice(0)
-      return { kind: 'done', reading: emulator === undefined ? undefined : reading(emulator) }
+      slot.outcome = { kind: 'done', reading: emulator === undefined ? undefined : reading(emulator) }
     }
     finally {
       await run.dispose()
